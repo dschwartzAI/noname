@@ -78,6 +78,8 @@
     "input-otp": "^1.4.2",
     "lucide-react": "^0.539.0",
     "mermaid": "^11.10.1",
+    "mobx": "^6.15.0",
+    "mobx-react-lite": "^4.1.1",
     "nanoid": "^5.1.6",
     "postgres": "^3.4.7",
     "react": "^19.1.1",
