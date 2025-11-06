@@ -11,22 +11,22 @@ id = "d34df303acd8498ab4e74ec22f0b9b1d"
 binding = "SESSIONS"
 id = "ba789d2e87b7422baf321c2d7aa85c99"
 
-# Vectorize - Vector database for RAG
-[[vectorize]]
-binding = "VECTORIZE"
-index_name = "rag-knowledge-base"
-experimental_remote = true
+# Vectorize - Vector database for RAG (Disabled for initial deployment)
+# [[vectorize]]
+# binding = "VECTORIZE"
+# index_name = "rag-knowledge-base"
+# experimental_remote = true
 
-# R2 bucket for AutoRAG document storage
-[[r2_buckets]]
-binding = "R2_DOCUMENTS"
-bucket_name = "buildmantle-rag-documents"
+# R2 bucket for AutoRAG document storage (Disabled for initial deployment)
+# [[r2_buckets]]
+# binding = "R2_DOCUMENTS"
+# bucket_name = "buildmantle-rag-documents"
 
-# AutoRAG - Fully managed RAG service
-[[autorag_stores]]
-binding = "AUTORAG"
-store_name = "buildmantletest"
-r2_source = "R2_DOCUMENTS"
+# AutoRAG - Fully managed RAG service (Disabled for initial deployment)
+# [[autorag_stores]]
+# binding = "AUTORAG"
+# store_name = "buildmantletest"
+# r2_source = "R2_DOCUMENTS"
 
 [ai]
 binding = "AI"
@@ -39,19 +39,19 @@ experimental_vectorize_bind_to_prod = true
 [env.development.ai]
 binding = "AI"
 
-[[env.development.vectorize]]
-binding = "VECTORIZE"
-index_name = "rag-knowledge-base"
-experimental_remote = true
+# [[env.development.vectorize]]
+# binding = "VECTORIZE"
+# index_name = "rag-knowledge-base"
+# experimental_remote = true
 
-[[env.development.r2_buckets]]
-binding = "R2_DOCUMENTS"
-bucket_name = "buildmantle-rag-documents"
+# [[env.development.r2_buckets]]
+# binding = "R2_DOCUMENTS"
+# bucket_name = "buildmantle-rag-documents"
 
-[[env.development.autorag_stores]]
-binding = "AUTORAG"
-store_name = "buildmantletest"
-r2_source = "R2_DOCUMENTS"
+# [[env.development.autorag_stores]]
+# binding = "AUTORAG"
+# store_name = "buildmantletest"
+# r2_source = "R2_DOCUMENTS"
 
 [[env.development.kv_namespaces]]
 binding = "KV"
@@ -116,7 +116,7 @@ tag = "v3"
 new_sqlite_classes = ["UserSysDO"]
 
 [vars]
-BETTER_AUTH_URL = "http://localhost:5173"
+BETTER_AUTH_URL = "https://shadcn-admin-cf-ai.dan-ccc.workers.dev"
 BETTER_AUTH_SECRET = "CPmXy0XgIWaOICeanyyFhR5eFwyQgoSJ0LpGtgJrpHc="
 GOOGLE_CLIENT_ID = ""
 GOOGLE_CLIENT_SECRET = ""
