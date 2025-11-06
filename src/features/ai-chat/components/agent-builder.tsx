@@ -32,7 +32,7 @@ export function AgentBuilder({ open, onOpenChange, trigger }: AgentBuilderProps)
       {trigger && <SheetTrigger asChild>{trigger}</SheetTrigger>}
       <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto px-6">
         <SheetHeader className="pb-6">
-          <SheetTitle>Agent Builder</SheetTitle>
+          <SheetTitle>Tool Builder</SheetTitle>
           <SheetDescription>
             Configure AI tools with custom instructions, models, and capabilities
           </SheetDescription>
@@ -44,19 +44,19 @@ export function AgentBuilder({ open, onOpenChange, trigger }: AgentBuilderProps)
             <div className="flex h-24 w-24 items-center justify-center rounded-full border-2 border-dashed border-muted-foreground/25 hover:border-muted-foreground/50 cursor-pointer transition-colors">
               <Plus className="h-8 w-8 text-muted-foreground" />
             </div>
-            <p className="text-xs text-muted-foreground">Upload agent icon</p>
+            <p className="text-xs text-muted-foreground">Upload tool icon</p>
           </div>
 
           {/* Name */}
           <div className="space-y-2">
             <Label htmlFor="name">Name</Label>
-            <Input id="name" placeholder="Optional: The name of the agent" />
+            <Input id="name" placeholder="Optional: The name of the tool" />
           </div>
 
           {/* Description */}
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
-            <Input id="description" placeholder="Optional: Describe your Agent here" />
+            <Input id="description" placeholder="Optional: Describe your tool here" />
           </div>
 
           {/* Instructions */}
@@ -69,7 +69,7 @@ export function AgentBuilder({ open, onOpenChange, trigger }: AgentBuilderProps)
             </div>
             <Textarea
               id="instructions"
-              placeholder="The system instructions that the agent uses"
+              placeholder="The system instructions that the tool uses"
               className="min-h-[120px] resize-none"
             />
           </div>
@@ -110,7 +110,7 @@ export function AgentBuilder({ open, onOpenChange, trigger }: AgentBuilderProps)
           {/* Save Button */}
           <div className="pt-4">
             <Button className="w-full" onClick={() => onOpenChange?.(false)}>
-              Save Agent
+              Save Tool
             </Button>
           </div>
         </div>
