@@ -232,3 +232,11 @@ Licensed under the [MIT License](https://choosealicense.com/licenses/mit/)
 - **Original shadcn-admin** - [@satnaing](https://github.com/satnaing) for the excellent foundation
 
 **⭐ If this project helps you, please consider giving it a star!**
+
+---
+
+## 🔗 Repository Connection Test
+
+**Last Updated:** November 6, 2025  
+**Repository:** https://github.com/dschwartzAI/noname  
+**Status:** ✅ Connected and verified
