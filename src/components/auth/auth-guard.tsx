@@ -4,7 +4,7 @@
  * Redirects to sign-in when user is not authenticated
  */
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from '@tanstack/react-router'
 import { useAuth } from '@/stores/auth-simple'
 
@@ -16,9 +16,14 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const { isAuthenticated, isLoading } = useAuth()
+  
+  // Use ref to prevent multiple redirects
+  const hasRedirected = useRef(false)
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    // Only redirect once when auth check is complete
+    if (!isLoading && !isAuthenticated && !hasRedirected.current) {
+      hasRedirected.current = true
       const currentPath = location.href
       
       // Redirect to sign-in with current path for redirect after login
@@ -27,6 +32,11 @@ export function AuthGuard({ children }: AuthGuardProps) {
         search: { redirect: currentPath },
         replace: true,
       })
+    }
+    
+    // Reset redirect flag when authenticated
+    if (isAuthenticated) {
+      hasRedirected.current = false
     }
   }, [isAuthenticated, isLoading, location.href, navigate])
 

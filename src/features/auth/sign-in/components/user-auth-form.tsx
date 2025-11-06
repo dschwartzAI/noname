@@ -60,7 +60,15 @@ export function UserAuthForm({
       })
 
       if (result.error) {
-        toast.error(result.error.message || 'Failed to sign in')
+        console.error('Sign in error:', result.error)
+        const errorMessage = result.error.message || 'Failed to sign in'
+        
+        // Check if it's a network/backend error
+        if (errorMessage.includes('fetch') || errorMessage.includes('network')) {
+          toast.error('Backend unavailable. Please configure Cloudflare D1 database.')
+        } else {
+          toast.error(errorMessage)
+        }
       } else if (result.data?.user) {
         const user = result.data.user
         
@@ -70,10 +78,19 @@ export function UserAuthForm({
         // Better Auth handles all session state automatically via cookies
         const targetPath = redirectTo || '/'
         navigate({ to: targetPath, replace: true })
+      } else {
+        // No error but no user either - likely backend issue
+        toast.error('Authentication service not available. Please check backend configuration.')
       }
     } catch (error) {
       console.error('Sign in error:', error)
-      toast.error('An unexpected error occurred')
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error'
+      
+      if (errorMsg.includes('fetch') || errorMsg.includes('Failed to fetch')) {
+        toast.error('Backend not responding. Please configure Cloudflare services (D1, KV).')
+      } else {
+        toast.error(`An unexpected error occurred: ${errorMsg}`)
+      }
     } finally {
       setIsLoading(false)
     }

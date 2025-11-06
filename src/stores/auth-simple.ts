@@ -74,15 +74,20 @@ export const logoutAllDevices = async () => {
 export const useAuth = () => {
   const session = useSession()
   
+  // Stable values to prevent infinite re-renders
+  const user = session.data?.user || null
+  const sessionData = session.data?.session || null
+  const isAuthenticated = !!session.data?.session
+  const isLoading = session.isPending
+  
   return {
-    user: session.data?.user || null,
-    session: session.data?.session || null,
-    isAuthenticated: !!session.data?.session,
-    isLoading: session.isPending,
+    user,
+    session: sessionData,
+    isAuthenticated,
+    isLoading,
     error: session.error,
     refetch: session.refetch,
-    // Reactive preferences from Legend State
-    preferences: authPreferences$.get(),
+    // Note: preferences getter creates new object, use separate hooks for reactive preferences
     setRedirectPath: (path: string | null) => authPreferences$.lastRedirectPath.set(path),
     setTheme: (theme: 'light' | 'dark' | 'system') => authPreferences$.preferredTheme.set(theme),
   }
