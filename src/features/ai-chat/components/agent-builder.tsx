@@ -30,15 +30,15 @@ export function AgentBuilder({ open, onOpenChange, trigger }: AgentBuilderProps)
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       {trigger && <SheetTrigger asChild>{trigger}</SheetTrigger>}
-      <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">
-        <SheetHeader>
+      <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto px-6">
+        <SheetHeader className="pb-6">
           <SheetTitle>Agent Builder</SheetTitle>
           <SheetDescription>
             Configure AI tools with custom instructions, models, and capabilities
           </SheetDescription>
         </SheetHeader>
 
-        <div className="space-y-6 py-6">
+        <div className="space-y-6 pb-6">
           {/* Icon Upload */}
           <div className="flex flex-col items-center gap-3">
             <div className="flex h-24 w-24 items-center justify-center rounded-full border-2 border-dashed border-muted-foreground/25 hover:border-muted-foreground/50 cursor-pointer transition-colors">
