@@ -1,36 +1,36 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { withCloudflare } from 'better-auth-cloudflare';
 import { anonymous, openAPI } from 'better-auth/plugins';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
-import * as schema from '../database/schema';
-import type { Env } from '../src/server/index';
-import { authLog } from '../src/lib/logger';
+import * as schema from '../../database/better-auth-schema';
 
-const authLogger = authLog('server/auth/config.ts');
+export interface Env {
+  DATABASE_URL: string;
+  BETTER_AUTH_SECRET?: string;
+  BETTER_AUTH_URL?: string;
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+  GITHUB_CLIENT_ID?: string;
+  GITHUB_CLIENT_SECRET?: string;
+}
 
 export function createAuth(env: Env) {
   // Use Neon Postgres with HTTP driver
   const sql = neon(env.DATABASE_URL);
-  const db = drizzle(sql, { schema, logger: true });
+  const db = drizzle(sql, { schema });
   
   return betterAuth({
     database: drizzleAdapter(db, {
       provider: 'pg',
-      schema,
     }),
     emailAndPassword: {
       enabled: true,
     },
     plugins: [anonymous(), openAPI()],
-    rateLimit: {
-      enabled: true,
-    },
-    secret: env.BETTER_AUTH_SECRET || 'default-dev-secret-change-in-production',
+    secret: env.BETTER_AUTH_SECRET || 'CPmXy0XgIWaOICeanyyFhR5eFwyQgoSJ0LpGtgJrpHc=',
     baseURL: env.BETTER_AUTH_URL || 'https://shadcn-admin-cf-ai.dan-ccc.workers.dev',
     
-    // Use KV for session storage
     session: {
       cookieCache: {
         enabled: true,
