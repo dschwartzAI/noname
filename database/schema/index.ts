@@ -6,4 +6,5 @@
 
 export * from './tenants';
 export * from './auth';
+export * from '../better-auth-schema';
 
