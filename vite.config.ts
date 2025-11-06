@@ -18,7 +18,6 @@ export default defineConfig({
     cloudflare({
       inspectorPort: false,
       persistState: true,
-      wranglerArgs: ['--experimental-vectorize-bind-to-prod', '--env', 'development'],
     }),
   ],
   resolve: {
