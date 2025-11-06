@@ -15,7 +15,7 @@ import {
   useAuthState, 
   useAIChat,
   useAIChatState,
-  authActions,
+  // authActions, // Not exported in Better Auth setup
   aiChatActions,
   storeUtils
 } from '@/stores'
@@ -146,6 +146,10 @@ export function LegendStateDemo() {
             
             <TabsContent value="auth" className="space-y-4">
               <div className="grid grid-cols-2 gap-2">
+                <p className="text-sm text-muted-foreground col-span-2">
+                  Auth actions are now handled by Better Auth. Use the actual sign-in/sign-out UI instead.
+                </p>
+                {/* Auth actions disabled - now using Better Auth
                 <Button 
                   onClick={() => authActions.setUser({
                     accountNo: 'demo-123',
@@ -179,6 +183,7 @@ export function LegendStateDemo() {
                 >
                   Clear Error
                 </Button>
+                */}
               </div>
             </TabsContent>
             
