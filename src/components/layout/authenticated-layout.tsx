@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { Outlet, useNavigate, useParams } from '@tanstack/react-router'
+import { Settings2 } from 'lucide-react'
 import { getCookie } from '@/lib/cookies'
 import { cn } from '@/lib/utils'
 import { LayoutProvider } from '@/context/layout-provider'
@@ -6,6 +8,7 @@ import { SearchProvider } from '@/context/search-provider'
 import { AuthGuard } from '@/components/auth/auth-guard'
 import { useUserSysEvents } from '@/hooks/use-user-sys-events'
 import { useAuth } from '@/stores/auth-simple'
+import { Button } from '@/components/ui/button'
 import {
   SidebarContent,
   SidebarFooter,
@@ -17,12 +20,14 @@ import {
 } from '@/components/ui/sidebar'
 import { AppSidebar } from '@/components/layout/app-sidebar'
 import { SkipToMain } from '@/components/skip-to-main'
+import { Header } from './header'
 import { sidebarData } from './data/sidebar-data'
 import { NavGroup } from './nav-group'
 import { NavUser } from './nav-user'
 import { TeamSwitcher } from './team-switcher'
 import { ConversationNavGroup } from './conversation-nav-group'
 import { mockConversations } from '@/features/ai-chat/data/mock-conversations'
+import { AgentBuilder } from '@/features/ai-chat/components/agent-builder'
 
 type AuthenticatedLayoutProps = {
   children?: React.ReactNode
@@ -33,6 +38,7 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   const { user } = useAuth()
   const navigate = useNavigate()
   const params = useParams({ strict: false })
+  const [agentBuilderOpen, setAgentBuilderOpen] = useState(false)
 
   // Get active conversation ID from URL params
   const activeConversationId = 'conversationId' in params ? params.conversationId : undefined
@@ -91,6 +97,19 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
                 '@container/content'
               )}
             >
+              <Header fixed className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                <div className="ml-auto flex items-center gap-2">
+                  <AgentBuilder
+                    open={agentBuilderOpen}
+                    onOpenChange={setAgentBuilderOpen}
+                    trigger={
+                      <Button variant="ghost" size="icon">
+                        <Settings2 className="h-5 w-5" />
+                      </Button>
+                    }
+                  />
+                </div>
+              </Header>
               {children ?? <Outlet />}
             </SidebarInset>
           </LayoutProvider>

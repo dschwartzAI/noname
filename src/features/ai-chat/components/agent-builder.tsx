@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Plus, Settings2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,16 +20,16 @@ import {
 } from '@/components/ui/select'
 import { MODELS } from '@/lib/ai-providers'
 
-export function AgentBuilder() {
-  const [open, setOpen] = useState(false)
+interface AgentBuilderProps {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  trigger?: React.ReactNode
+}
 
+export function AgentBuilder({ open, onOpenChange, trigger }: AgentBuilderProps) {
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button variant="ghost" size="icon">
-          <Settings2 className="h-5 w-5" />
-        </Button>
-      </SheetTrigger>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      {trigger && <SheetTrigger asChild>{trigger}</SheetTrigger>}
       <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Agent Builder</SheetTitle>
@@ -110,7 +109,7 @@ export function AgentBuilder() {
 
           {/* Save Button */}
           <div className="pt-4">
-            <Button className="w-full" onClick={() => setOpen(false)}>
+            <Button className="w-full" onClick={() => onOpenChange?.(false)}>
               Save Agent
             </Button>
           </div>

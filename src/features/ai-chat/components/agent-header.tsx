@@ -1,5 +1,4 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { AgentBuilder } from './agent-builder'
 import type { Agent } from '../types'
 
 interface AgentHeaderProps {
@@ -9,11 +8,6 @@ interface AgentHeaderProps {
 export function AgentHeader({ agent }: AgentHeaderProps) {
   return (
     <div className="relative flex flex-col items-center justify-center gap-3 p-8 border-b">
-      {/* Agent Builder Button - Top Right */}
-      <div className="absolute top-4 right-4">
-        <AgentBuilder />
-      </div>
-
       <Avatar className="h-16 w-16">
         <AvatarImage src={agent.avatar} />
         <AvatarFallback className="text-2xl">{agent.name[0]}</AvatarFallback>
