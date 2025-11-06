@@ -2,6 +2,104 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## ⚠️ CRITICAL CONTEXT: What We're Actually Building
+
+**This is NOT just a template app.** This is a **LibreChat fork rebuild** - we're migrating a heavily customized AI business tools platform (Solo:OS) from a Docker-based LibreChat fork to a modern, multi-tenant SaaS architecture.
+
+### The Real Project
+
+**Current State**: LibreChat v0.7.9-rc1 fork with 100K+ lines of custom code
+**Target State**: White-label AI platform for business coaches (multi-tenant SaaS)
+**Timeline**: 4-month rebuild using this ShadFlareAi starter as the foundation
+
+**Key Features Being Rebuilt**:
+- Multi-AI chat with 8+ business agents (Hybrid Offer, DCM, ICP, etc.)
+- Memory system for business context persistence
+- RAG/file search with vector embeddings
+- LMS (Academy) with course modules
+- Community chat (replacing CometChat)
+- Stripe payments with tiered access
+- Stream video calls with recording
+
+### Why This Starter?
+
+We forked **ShadFlareAi** because it has 90% of the infrastructure we need:
+- ✅ React 19 + TypeScript + Vite
+- ✅ Hono backend (edge-compatible)
+- ✅ Better Auth + Drizzle ORM
+- ✅ Vercel AI SDK integration
+- ✅ Shadcn UI components
+
+**What We're Adding**:
+- Multi-tenancy (tenant isolation, white-label branding)
+- oRPC auto-tool generation from API endpoints
+- Business agent system with tool orchestration
+- Memory + RAG with pgvector (Neon Postgres)
+- LMS features + community chat
+- Data migration from MongoDB to Postgres
+
+📚 **Complete rebuild documentation**: See `/REBUILD/` folder for:
+- Architecture diagrams (current vs target)
+- Feature inventory with migration strategies
+- Week-by-week implementation guide
+- Database schemas and API endpoints
+
+## 🎯 Development Principles
+
+### Modular Architecture Strategy
+
+**IMPORTANT**: Build each major feature as a **self-contained, routable module**. This makes the codebase:
+- ✅ Easier for LLMs to understand and modify
+- ✅ Portable between projects
+- ✅ Maintainable with clear boundaries
+- ✅ Testable in isolation
+
+**Pattern**: Each feature gets its own route and is accessed via routing
+```
+src/routes/_authenticated/
+├── ai-chat/           # AI chat feature (self-contained)
+├── agents/            # Agent management (self-contained)
+├── rag-knowledge/     # RAG/file search (self-contained)
+├── academy/           # LMS features (self-contained)
+└── settings/          # Settings (self-contained)
+```
+
+### Code Efficiency & Verification
+
+**Claude Code MUST**:
+1. **Write minimal code** - Use existing libraries and components, don't reinvent
+2. **Verify before implementing** - Check documentation for APIs, libraries, and patterns
+3. **No hallucination** - If you're unsure, ask or look it up. Don't guess.
+4. **Use existing patterns** - Follow patterns from `/REBUILD/` docs and existing codebase
+5. **Reference documentation** - Check official docs for Vercel AI SDK, Hono, Drizzle, etc.
+
+**Example - Good vs Bad**:
+```typescript
+// ❌ BAD: Writing custom streaming logic
+function customStream(text: string) {
+  // 50 lines of custom SSE code...
+}
+
+// ✅ GOOD: Using Vercel AI SDK
+import { streamText } from 'ai';
+const result = streamText({ model, messages });
+return result.toDataStreamResponse();
+```
+
+### Documentation-First Development
+
+Before implementing ANY feature:
+1. Check `/REBUILD/` docs for migration strategy
+2. Review official library documentation
+3. Look for existing patterns in the codebase
+4. Ask the user if multiple valid approaches exist
+
+**Never**:
+- Guess at API signatures
+- Assume library capabilities without checking
+- Implement workarounds when built-in solutions exist
+- Create abstractions without understanding the underlying APIs
+
 ## Commands
 
 ### Development
@@ -22,7 +120,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture
 
-This is a **comprehensive showcase template** demonstrating Cloudflare's full suite of cloud and AI capabilities, integrated with Vercel's AI SDK for modern frontend AI components. Built as a full-stack React admin dashboard for Cloudflare Workers with the following architecture:
+**Foundation**: ShadFlareAi starter template - a production-ready Cloudflare Workers + AI admin dashboard
+
+**Our Customizations**: Rebuilding a LibreChat fork into a multi-tenant white-label AI platform for business coaches
+
+📖 **Detailed Architecture Documentation**: See [/REBUILD/architecture.md](REBUILD/architecture.md) for:
+- Current LibreChat fork architecture (what we're migrating from)
+- Target architecture diagrams with data flows
+- oRPC integration patterns for auto-tool generation
+- Composio integration for external services
+- Multi-tenancy design with row-level security
+
+### Technology Stack
 
 ### Frontend Stack
 - **React 19** with **TypeScript** for the UI
@@ -167,8 +276,59 @@ curl -X GET http://localhost:5174/api/auth/session \
 
 **Cookie Storage**: Sessions persist in `cookies.txt` for easy reuse in testing scripts
 
-## Testing Commands
-No specific test commands are configured. Check with the user if testing setup is needed.
+## Testing Strategy
+
+### Testing Commands
+
+```bash
+# Playwright E2E tests
+npm test                    # Run all tests
+npm run test:headed         # Run with browser UI visible
+npm run test:artifacts      # Test artifact generation features
+npm run test:artifacts:headed  # Test artifacts with browser visible
+```
+
+### Test Structure
+
+```
+tests/
+├── artifacts-gemini.spec.ts   # AI artifact generation tests
+└── (add more test files as features are built)
+```
+
+### Testing Approach
+
+**For New Features**:
+1. Write E2E tests with Playwright for critical user flows
+2. Test AI features with mock streaming responses
+3. Test multi-tenancy isolation (data leakage prevention)
+4. Test authentication flows with test credentials
+
+**Test Credentials** (from Authentication & Testing section):
+- Email: `demo@example.com`
+- Password: `password123`
+
+### AI Feature Testing
+
+When testing AI features:
+```typescript
+// Mock AI responses in tests
+test('agent completes tool call', async ({ page }) => {
+  // Navigate to chat
+  await page.goto('/ai-chat');
+
+  // Send message that triggers tool
+  await page.fill('[data-testid="message-input"]', 'Search for users named John');
+  await page.click('[data-testid="send-button"]');
+
+  // Wait for tool execution
+  await page.waitForSelector('[data-testid="tool-result"]');
+
+  // Verify tool was called correctly
+  const result = await page.textContent('[data-testid="tool-result"]');
+  expect(result).toContain('Found 3 users');
+});
+```
 
 ## Session Planning & Tracking
 
@@ -320,15 +480,82 @@ DELETE /api/[resource]/:id  # Delete
 
 ## Database Schema
 
-### Tables/Collections
+📖 **Complete Schema Documentation**: See [/REBUILD/data-models.md](REBUILD/data-models.md) for full table definitions and relationships
+
+### Key Tables (Neon Postgres + pgvector)
+
+**Multi-Tenancy Foundation**:
+```typescript
+tenants        // White-label tenant configuration
+  ├── id, subdomain, name, config (branding, features, limits)
+
+users          // Tenant-scoped users
+  ├── id, tenantId, email, tier (free/pro), role
+
+conversations  // AI chat conversations
+  ├── id, tenantId, userId, agentId, title
+
+messages       // Chat messages with branching support
+  ├── id, conversationId, tenantId, content, role, parentId
 ```
-[DEFINE YOUR SCHEMA HERE]
+
+**AI Features**:
+```typescript
+agents         // Business agents (Hybrid Offer, DCM, ICP, etc.)
+  ├── id, tenantId, name, instructions, model, tools[], parameters
+
+memories       // Business context with vector search
+  ├── id, tenantId, userId, content, type, embedding (vector)
+
+files          // Uploaded documents
+  ├── id, tenantId, userId, name, url, mimeType, size
+
+document_chunks // RAG with pgvector for semantic search
+  ├── id, fileId, tenantId, content, embedding (vector 1536), metadata
+```
+
+**LMS & Community**:
+```typescript
+courses        // Academy course modules
+  ├── id, tenantId, title, modules (jsonb), tier, published
+
+course_progress // User progress tracking
+  ├── id, tenantId, userId, courseId, completedModules[], percentage
+```
+
+### Vector Search with pgvector
+
+Built-in semantic search using Neon's pgvector extension:
+```sql
+-- RAG similarity search
+SELECT content, (embedding <=> query_embedding) as similarity
+FROM document_chunks
+WHERE tenant_id = $1
+ORDER BY similarity ASC
+LIMIT 5;
 ```
 
 ### Migrations
-- **Tool**: Drizzle Kit + Cloudflare Wrangler
+- **Tool**: Drizzle Kit for Neon Postgres (NOT Cloudflare D1)
 - **Location**: `database/migrations/` directory
-- **Command**: `wrangler d1 migrations apply <DB_NAME>`
+- **Commands**:
+  ```bash
+  npx drizzle-kit generate  # Generate migration from schema changes
+  npx drizzle-kit push      # Apply to database
+  ```
+
+### Row-Level Security
+
+All tables include `tenant_id` for automatic isolation:
+```typescript
+// Every query MUST filter by tenant
+const conversations = await db.query.conversations.findMany({
+  where: and(
+    eq(conversations.tenantId, tenantId),  // Tenant isolation
+    eq(conversations.userId, userId)
+  )
+});
+```
 
 
 ## Environment Variables
@@ -488,3 +715,130 @@ This template demonstrates the full breadth of Cloudflare's capabilities:
 - Test AI features with mock responses in development
 - Deploy incrementally using `wrangler deploy`
 - Monitor performance using Cloudflare Analytics dashboard
+
+---
+
+## 📚 Quick Reference: Implementation Guides
+
+When implementing specific features, **always check these docs first**:
+
+### Architecture & Patterns
+- **[/REBUILD/architecture.md](REBUILD/architecture.md)** - System architecture, data flows, oRPC patterns
+- **[/REBUILD/features.md](REBUILD/features.md)** - Complete feature catalog with code examples
+- **[/REBUILD/starter-integration.md](REBUILD/starter-integration.md)** - Week-by-week implementation guide
+
+### Data & API
+- **[/REBUILD/data-models.md](REBUILD/data-models.md)** - Database schemas with Drizzle examples
+- **[/REBUILD/api-endpoints.md](REBUILD/api-endpoints.md)** - API endpoint documentation
+- **[/REBUILD/tech-stack.md](REBUILD/tech-stack.md)** - Technology decisions and comparisons
+
+### Migration Context
+- **[/REBUILD/README.md](REBUILD/README.md)** - Project overview and quick facts
+- **[/REBUILD/EXECUTIVE_SUMMARY.md](REBUILD/EXECUTIVE_SUMMARY.md)** - Business context and why we're rebuilding
+- **[/REBUILD/migration-plan.md](REBUILD/migration-plan.md)** - Phased migration strategy
+
+### Key Implementation Patterns
+
+**When building a new feature route**:
+1. Check `/REBUILD/features.md` for migration strategy from LibreChat
+2. Follow modular pattern in `src/routes/_authenticated/`
+3. Use existing components from `src/components/ui/`
+4. Reference similar routes for patterns
+
+**When adding AI/agent features**:
+1. Review oRPC patterns in `/REBUILD/architecture.md`
+2. Check Vercel AI SDK docs (don't guess at API signatures)
+3. Use Composio for external services (GitHub, Gmail, etc.)
+4. See agent examples in `/REBUILD/features.md` → Section 2
+
+**When working with database**:
+1. ALL tables must have `tenantId` for isolation
+2. Use Drizzle ORM patterns from `/REBUILD/data-models.md`
+3. Vector search uses pgvector (see examples in data-models.md)
+4. Generate migrations with `npx drizzle-kit generate`
+
+**When adding API endpoints**:
+1. Use Zod validation for all inputs (enables oRPC auto-tool generation)
+2. Add `.describe()` to Zod fields (becomes tool parameter descriptions)
+3. Inject tenant context via middleware (see `/REBUILD/starter-integration.md` Week 3-4)
+4. Check `/REBUILD/api-endpoints.md` for endpoint patterns
+
+---
+
+## 🚨 Critical Reminders
+
+1. **Always filter by tenantId** - Data isolation is critical for multi-tenant SaaS
+2. **Check REBUILD docs before implementing** - Avoid reinventing solutions
+3. **Use Vercel AI SDK patterns** - Don't write custom streaming logic
+4. **Verify with official docs** - No hallucinating API signatures
+5. **Keep features modular** - Each major feature should be route-based and portable
+
+---
+
+## 🤖 Specialized Agents
+
+This project uses specialized agents for specific tasks. When working on these areas, consult the relevant agent documentation:
+
+### Schema Architect Agent
+**File**: [.claude/agents/schema-architect.md](.claude/agents/schema-architect.md)
+
+**Expertise**: Database schema design, Drizzle ORM, multi-tenant isolation, pgvector embeddings
+
+**When to use**:
+- Designing new database tables
+- Adding vector embeddings for RAG features
+- Creating or modifying schema files in `database/schema/`
+- Planning database migrations
+- Questions about Postgres features or indexes
+
+**Key responsibilities**:
+- Ensures all tables have `tenantId` for multi-tenant isolation
+- Uses UUID primary keys (never auto-increment)
+- Adds proper indexes for performance
+- Defines Drizzle relations for type-safe queries
+- Implements pgvector columns for semantic search
+
+**Activation keywords**: "schema", "database", "table", "migration", "drizzle", "postgres"
+
+### API Engineer Agent
+**File**: [.claude/agents/api-engineer.md](.claude/agents/api-engineer.md)
+
+**Expertise**: Hono framework, REST API design, Cloudflare Workers, Zod validation, oRPC integration
+
+**When to use**:
+- Creating new API endpoints
+- Adding validation with Zod
+- Implementing middleware (auth, tenant context)
+- Streaming AI responses
+- Working with Cloudflare Workers runtime
+
+**Key responsibilities**:
+- Ensures tenant filtering in ALL database queries
+- Uses Zod validation with `.describe()` for oRPC auto-tool generation
+- Implements proper HTTP status codes
+- Handles errors gracefully
+- Integrates Vercel AI SDK for streaming
+
+**Activation keywords**: "api", "endpoint", "route", "worker", "hono", "middleware"
+
+### UI Builder Agent
+**File**: [.claude/agents/ui-builder.md](.claude/agents/ui-builder.md)
+
+**Expertise**: React 19, TanStack Router, Shadcn UI, Legend State v3, Vercel AI SDK UI components
+
+**When to use**:
+- Building UI components
+- Creating TanStack Router routes
+- Managing client state with Legend State
+- Implementing forms with React Hook Form
+- Using Vercel AI SDK chat components
+
+**Key responsibilities**:
+- Follows modular feature-based structure
+- Uses Shadcn UI components (no custom UI)
+- Implements responsive, accessible interfaces
+- Handles loading and error states
+- Integrates Legend State for reactive state management
+- Uses TanStack Query for server state
+
+**Activation keywords**: "component", "ui", "frontend", "page", "react", "route", "form"

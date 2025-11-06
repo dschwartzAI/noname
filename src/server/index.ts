@@ -8,9 +8,6 @@ import { VoiceAIWebSocket } from './voice-ai-websocket'
 import { UserSysDO } from './durable-objects/user-sys-do'
 import { createAuth } from '../../server/auth/config'
 import * as routes from './routes'
-// import { testNova3Router } from './test-nova-3'  // Temporarily disabled due to syntax error
-import { testOpusRouter } from './test-opus'
-import { testSimpleNova3Router } from './test-simple-nova3'
 import ragRoutes from './routes/rag'
 import { tasksApp } from './routes/tasks'
 import { z } from '@hono/zod-openapi'
@@ -1353,15 +1350,6 @@ app.openapi(routes.healthRoute, (c) => {
     200
   )
 })
-
-// Nova-3 testing route - temporarily disabled
-// app.route('/api', testNova3Router)
-
-// Opus testing route
-app.route('/api', testOpusRouter)
-
-// Simple Nova-3 testing route
-app.route('/api', testSimpleNova3Router)
 
 // RAG system routes
 app.route('/api/rag', ragRoutes)

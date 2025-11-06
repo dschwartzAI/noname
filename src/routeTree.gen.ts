@@ -11,15 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
-import { Route as AuthenticatedVoiceTestRouteImport } from './routes/_authenticated/voice-test'
-import { Route as AuthenticatedVoiceAiRouteImport } from './routes/_authenticated/voice-ai'
-import { Route as AuthenticatedTtsTestRouteImport } from './routes/_authenticated/tts-test'
-import { Route as AuthenticatedStoreDemoRouteImport } from './routes/_authenticated/store-demo'
-import { Route as AuthenticatedRagKnowledgeRouteImport } from './routes/_authenticated/rag-knowledge'
-import { Route as AuthenticatedLegendDemoRouteImport } from './routes/_authenticated/legend-demo'
-import { Route as AuthenticatedConversationAiRouteImport } from './routes/_authenticated/conversation-ai'
-import { Route as AuthenticatedAiChatLegendTestRouteImport } from './routes/_authenticated/ai-chat-legend-test'
-import { Route as AuthenticatedAiChatEnhancedRouteImport } from './routes/_authenticated/ai-chat-enhanced'
 import { Route as AuthenticatedAiChatRouteImport } from './routes/_authenticated/ai-chat'
 import { Route as errors503RouteImport } from './routes/(errors)/503'
 import { Route as errors500RouteImport } from './routes/(errors)/500'
@@ -32,16 +23,9 @@ import { Route as authSignInRouteImport } from './routes/(auth)/sign-in'
 import { Route as authOtpRouteImport } from './routes/(auth)/otp'
 import { Route as authForgotPasswordRouteImport } from './routes/(auth)/forgot-password'
 import { Route as AuthenticatedSettingsRouteRouteImport } from './routes/_authenticated/settings/route'
-import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authenticated/users/index'
-import { Route as AuthenticatedTasksIndexRouteImport } from './routes/_authenticated/tasks/index'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
-import { Route as AuthenticatedHelpCenterIndexRouteImport } from './routes/_authenticated/help-center/index'
 import { Route as AuthenticatedChatsIndexRouteImport } from './routes/_authenticated/chats/index'
-import { Route as AuthenticatedAppsIndexRouteImport } from './routes/_authenticated/apps/index'
-import { Route as AuthenticatedSettingsNotificationsRouteImport } from './routes/_authenticated/settings/notifications'
-import { Route as AuthenticatedSettingsDisplayRouteImport } from './routes/_authenticated/settings/display'
 import { Route as AuthenticatedSettingsAppearanceRouteImport } from './routes/_authenticated/settings/appearance'
-import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings/account'
 import { Route as AuthenticatedErrorsErrorRouteImport } from './routes/_authenticated/errors/$error'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
@@ -53,55 +37,6 @@ const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedVoiceTestRoute = AuthenticatedVoiceTestRouteImport.update({
-  id: '/voice-test',
-  path: '/voice-test',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedVoiceAiRoute = AuthenticatedVoiceAiRouteImport.update({
-  id: '/voice-ai',
-  path: '/voice-ai',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedTtsTestRoute = AuthenticatedTtsTestRouteImport.update({
-  id: '/tts-test',
-  path: '/tts-test',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedStoreDemoRoute = AuthenticatedStoreDemoRouteImport.update({
-  id: '/store-demo',
-  path: '/store-demo',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedRagKnowledgeRoute =
-  AuthenticatedRagKnowledgeRouteImport.update({
-    id: '/rag-knowledge',
-    path: '/rag-knowledge',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedLegendDemoRoute = AuthenticatedLegendDemoRouteImport.update({
-  id: '/legend-demo',
-  path: '/legend-demo',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedConversationAiRoute =
-  AuthenticatedConversationAiRouteImport.update({
-    id: '/conversation-ai',
-    path: '/conversation-ai',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAiChatLegendTestRoute =
-  AuthenticatedAiChatLegendTestRouteImport.update({
-    id: '/ai-chat-legend-test',
-    path: '/ai-chat-legend-test',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAiChatEnhancedRoute =
-  AuthenticatedAiChatEnhancedRouteImport.update({
-    id: '/ai-chat-enhanced',
-    path: '/ai-chat-enhanced',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedAiChatRoute = AuthenticatedAiChatRouteImport.update({
   id: '/ai-chat',
   path: '/ai-chat',
@@ -163,60 +98,21 @@ const AuthenticatedSettingsRouteRoute =
     path: '/settings',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedUsersIndexRoute = AuthenticatedUsersIndexRouteImport.update({
-  id: '/users/',
-  path: '/users/',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedTasksIndexRoute = AuthenticatedTasksIndexRouteImport.update({
-  id: '/tasks/',
-  path: '/tasks/',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedSettingsIndexRoute =
   AuthenticatedSettingsIndexRouteImport.update({
     id: '/',
     path: '/',
     getParentRoute: () => AuthenticatedSettingsRouteRoute,
   } as any)
-const AuthenticatedHelpCenterIndexRoute =
-  AuthenticatedHelpCenterIndexRouteImport.update({
-    id: '/help-center/',
-    path: '/help-center/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedChatsIndexRoute = AuthenticatedChatsIndexRouteImport.update({
   id: '/chats/',
   path: '/chats/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedAppsIndexRoute = AuthenticatedAppsIndexRouteImport.update({
-  id: '/apps/',
-  path: '/apps/',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedSettingsNotificationsRoute =
-  AuthenticatedSettingsNotificationsRouteImport.update({
-    id: '/notifications',
-    path: '/notifications',
-    getParentRoute: () => AuthenticatedSettingsRouteRoute,
-  } as any)
-const AuthenticatedSettingsDisplayRoute =
-  AuthenticatedSettingsDisplayRouteImport.update({
-    id: '/display',
-    path: '/display',
-    getParentRoute: () => AuthenticatedSettingsRouteRoute,
-  } as any)
 const AuthenticatedSettingsAppearanceRoute =
   AuthenticatedSettingsAppearanceRouteImport.update({
     id: '/appearance',
     path: '/appearance',
-    getParentRoute: () => AuthenticatedSettingsRouteRoute,
-  } as any)
-const AuthenticatedSettingsAccountRoute =
-  AuthenticatedSettingsAccountRouteImport.update({
-    id: '/account',
-    path: '/account',
     getParentRoute: () => AuthenticatedSettingsRouteRoute,
   } as any)
 const AuthenticatedErrorsErrorRoute =
@@ -239,27 +135,11 @@ export interface FileRoutesByFullPath {
   '/500': typeof errors500Route
   '/503': typeof errors503Route
   '/ai-chat': typeof AuthenticatedAiChatRoute
-  '/ai-chat-enhanced': typeof AuthenticatedAiChatEnhancedRoute
-  '/ai-chat-legend-test': typeof AuthenticatedAiChatLegendTestRoute
-  '/conversation-ai': typeof AuthenticatedConversationAiRoute
-  '/legend-demo': typeof AuthenticatedLegendDemoRoute
-  '/rag-knowledge': typeof AuthenticatedRagKnowledgeRoute
-  '/store-demo': typeof AuthenticatedStoreDemoRoute
-  '/tts-test': typeof AuthenticatedTtsTestRoute
-  '/voice-ai': typeof AuthenticatedVoiceAiRoute
-  '/voice-test': typeof AuthenticatedVoiceTestRoute
   '/': typeof AuthenticatedIndexRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
-  '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
-  '/settings/display': typeof AuthenticatedSettingsDisplayRoute
-  '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
-  '/apps': typeof AuthenticatedAppsIndexRoute
   '/chats': typeof AuthenticatedChatsIndexRoute
-  '/help-center': typeof AuthenticatedHelpCenterIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
-  '/tasks': typeof AuthenticatedTasksIndexRoute
-  '/users': typeof AuthenticatedUsersIndexRoute
 }
 export interface FileRoutesByTo {
   '/forgot-password': typeof authForgotPasswordRoute
@@ -273,27 +153,11 @@ export interface FileRoutesByTo {
   '/500': typeof errors500Route
   '/503': typeof errors503Route
   '/ai-chat': typeof AuthenticatedAiChatRoute
-  '/ai-chat-enhanced': typeof AuthenticatedAiChatEnhancedRoute
-  '/ai-chat-legend-test': typeof AuthenticatedAiChatLegendTestRoute
-  '/conversation-ai': typeof AuthenticatedConversationAiRoute
-  '/legend-demo': typeof AuthenticatedLegendDemoRoute
-  '/rag-knowledge': typeof AuthenticatedRagKnowledgeRoute
-  '/store-demo': typeof AuthenticatedStoreDemoRoute
-  '/tts-test': typeof AuthenticatedTtsTestRoute
-  '/voice-ai': typeof AuthenticatedVoiceAiRoute
-  '/voice-test': typeof AuthenticatedVoiceTestRoute
   '/': typeof AuthenticatedIndexRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
-  '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
-  '/settings/display': typeof AuthenticatedSettingsDisplayRoute
-  '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
-  '/apps': typeof AuthenticatedAppsIndexRoute
   '/chats': typeof AuthenticatedChatsIndexRoute
-  '/help-center': typeof AuthenticatedHelpCenterIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
-  '/tasks': typeof AuthenticatedTasksIndexRoute
-  '/users': typeof AuthenticatedUsersIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -310,27 +174,11 @@ export interface FileRoutesById {
   '/(errors)/500': typeof errors500Route
   '/(errors)/503': typeof errors503Route
   '/_authenticated/ai-chat': typeof AuthenticatedAiChatRoute
-  '/_authenticated/ai-chat-enhanced': typeof AuthenticatedAiChatEnhancedRoute
-  '/_authenticated/ai-chat-legend-test': typeof AuthenticatedAiChatLegendTestRoute
-  '/_authenticated/conversation-ai': typeof AuthenticatedConversationAiRoute
-  '/_authenticated/legend-demo': typeof AuthenticatedLegendDemoRoute
-  '/_authenticated/rag-knowledge': typeof AuthenticatedRagKnowledgeRoute
-  '/_authenticated/store-demo': typeof AuthenticatedStoreDemoRoute
-  '/_authenticated/tts-test': typeof AuthenticatedTtsTestRoute
-  '/_authenticated/voice-ai': typeof AuthenticatedVoiceAiRoute
-  '/_authenticated/voice-test': typeof AuthenticatedVoiceTestRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
   '/_authenticated/errors/$error': typeof AuthenticatedErrorsErrorRoute
-  '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/_authenticated/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
-  '/_authenticated/settings/display': typeof AuthenticatedSettingsDisplayRoute
-  '/_authenticated/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
-  '/_authenticated/apps/': typeof AuthenticatedAppsIndexRoute
   '/_authenticated/chats/': typeof AuthenticatedChatsIndexRoute
-  '/_authenticated/help-center/': typeof AuthenticatedHelpCenterIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
-  '/_authenticated/tasks/': typeof AuthenticatedTasksIndexRoute
-  '/_authenticated/users/': typeof AuthenticatedUsersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -347,27 +195,11 @@ export interface FileRouteTypes {
     | '/500'
     | '/503'
     | '/ai-chat'
-    | '/ai-chat-enhanced'
-    | '/ai-chat-legend-test'
-    | '/conversation-ai'
-    | '/legend-demo'
-    | '/rag-knowledge'
-    | '/store-demo'
-    | '/tts-test'
-    | '/voice-ai'
-    | '/voice-test'
     | '/'
     | '/errors/$error'
-    | '/settings/account'
     | '/settings/appearance'
-    | '/settings/display'
-    | '/settings/notifications'
-    | '/apps'
     | '/chats'
-    | '/help-center'
     | '/settings/'
-    | '/tasks'
-    | '/users'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/forgot-password'
@@ -381,27 +213,11 @@ export interface FileRouteTypes {
     | '/500'
     | '/503'
     | '/ai-chat'
-    | '/ai-chat-enhanced'
-    | '/ai-chat-legend-test'
-    | '/conversation-ai'
-    | '/legend-demo'
-    | '/rag-knowledge'
-    | '/store-demo'
-    | '/tts-test'
-    | '/voice-ai'
-    | '/voice-test'
     | '/'
     | '/errors/$error'
-    | '/settings/account'
     | '/settings/appearance'
-    | '/settings/display'
-    | '/settings/notifications'
-    | '/apps'
     | '/chats'
-    | '/help-center'
     | '/settings'
-    | '/tasks'
-    | '/users'
   id:
     | '__root__'
     | '/_authenticated'
@@ -417,27 +233,11 @@ export interface FileRouteTypes {
     | '/(errors)/500'
     | '/(errors)/503'
     | '/_authenticated/ai-chat'
-    | '/_authenticated/ai-chat-enhanced'
-    | '/_authenticated/ai-chat-legend-test'
-    | '/_authenticated/conversation-ai'
-    | '/_authenticated/legend-demo'
-    | '/_authenticated/rag-knowledge'
-    | '/_authenticated/store-demo'
-    | '/_authenticated/tts-test'
-    | '/_authenticated/voice-ai'
-    | '/_authenticated/voice-test'
     | '/_authenticated/'
     | '/_authenticated/errors/$error'
-    | '/_authenticated/settings/account'
     | '/_authenticated/settings/appearance'
-    | '/_authenticated/settings/display'
-    | '/_authenticated/settings/notifications'
-    | '/_authenticated/apps/'
     | '/_authenticated/chats/'
-    | '/_authenticated/help-center/'
     | '/_authenticated/settings/'
-    | '/_authenticated/tasks/'
-    | '/_authenticated/users/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -468,69 +268,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/voice-test': {
-      id: '/_authenticated/voice-test'
-      path: '/voice-test'
-      fullPath: '/voice-test'
-      preLoaderRoute: typeof AuthenticatedVoiceTestRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/voice-ai': {
-      id: '/_authenticated/voice-ai'
-      path: '/voice-ai'
-      fullPath: '/voice-ai'
-      preLoaderRoute: typeof AuthenticatedVoiceAiRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/tts-test': {
-      id: '/_authenticated/tts-test'
-      path: '/tts-test'
-      fullPath: '/tts-test'
-      preLoaderRoute: typeof AuthenticatedTtsTestRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/store-demo': {
-      id: '/_authenticated/store-demo'
-      path: '/store-demo'
-      fullPath: '/store-demo'
-      preLoaderRoute: typeof AuthenticatedStoreDemoRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/rag-knowledge': {
-      id: '/_authenticated/rag-knowledge'
-      path: '/rag-knowledge'
-      fullPath: '/rag-knowledge'
-      preLoaderRoute: typeof AuthenticatedRagKnowledgeRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/legend-demo': {
-      id: '/_authenticated/legend-demo'
-      path: '/legend-demo'
-      fullPath: '/legend-demo'
-      preLoaderRoute: typeof AuthenticatedLegendDemoRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/conversation-ai': {
-      id: '/_authenticated/conversation-ai'
-      path: '/conversation-ai'
-      fullPath: '/conversation-ai'
-      preLoaderRoute: typeof AuthenticatedConversationAiRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/ai-chat-legend-test': {
-      id: '/_authenticated/ai-chat-legend-test'
-      path: '/ai-chat-legend-test'
-      fullPath: '/ai-chat-legend-test'
-      preLoaderRoute: typeof AuthenticatedAiChatLegendTestRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/ai-chat-enhanced': {
-      id: '/_authenticated/ai-chat-enhanced'
-      path: '/ai-chat-enhanced'
-      fullPath: '/ai-chat-enhanced'
-      preLoaderRoute: typeof AuthenticatedAiChatEnhancedRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/ai-chat': {
@@ -617,33 +354,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsRouteRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/users/': {
-      id: '/_authenticated/users/'
-      path: '/users'
-      fullPath: '/users'
-      preLoaderRoute: typeof AuthenticatedUsersIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/tasks/': {
-      id: '/_authenticated/tasks/'
-      path: '/tasks'
-      fullPath: '/tasks'
-      preLoaderRoute: typeof AuthenticatedTasksIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/settings/': {
       id: '/_authenticated/settings/'
       path: '/'
       fullPath: '/settings/'
       preLoaderRoute: typeof AuthenticatedSettingsIndexRouteImport
       parentRoute: typeof AuthenticatedSettingsRouteRoute
-    }
-    '/_authenticated/help-center/': {
-      id: '/_authenticated/help-center/'
-      path: '/help-center'
-      fullPath: '/help-center'
-      preLoaderRoute: typeof AuthenticatedHelpCenterIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/chats/': {
       id: '/_authenticated/chats/'
@@ -652,39 +368,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedChatsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/apps/': {
-      id: '/_authenticated/apps/'
-      path: '/apps'
-      fullPath: '/apps'
-      preLoaderRoute: typeof AuthenticatedAppsIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/settings/notifications': {
-      id: '/_authenticated/settings/notifications'
-      path: '/notifications'
-      fullPath: '/settings/notifications'
-      preLoaderRoute: typeof AuthenticatedSettingsNotificationsRouteImport
-      parentRoute: typeof AuthenticatedSettingsRouteRoute
-    }
-    '/_authenticated/settings/display': {
-      id: '/_authenticated/settings/display'
-      path: '/display'
-      fullPath: '/settings/display'
-      preLoaderRoute: typeof AuthenticatedSettingsDisplayRouteImport
-      parentRoute: typeof AuthenticatedSettingsRouteRoute
-    }
     '/_authenticated/settings/appearance': {
       id: '/_authenticated/settings/appearance'
       path: '/appearance'
       fullPath: '/settings/appearance'
       preLoaderRoute: typeof AuthenticatedSettingsAppearanceRouteImport
-      parentRoute: typeof AuthenticatedSettingsRouteRoute
-    }
-    '/_authenticated/settings/account': {
-      id: '/_authenticated/settings/account'
-      path: '/account'
-      fullPath: '/settings/account'
-      preLoaderRoute: typeof AuthenticatedSettingsAccountRouteImport
       parentRoute: typeof AuthenticatedSettingsRouteRoute
     }
     '/_authenticated/errors/$error': {
@@ -698,20 +386,13 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedSettingsRouteRouteChildren {
-  AuthenticatedSettingsAccountRoute: typeof AuthenticatedSettingsAccountRoute
   AuthenticatedSettingsAppearanceRoute: typeof AuthenticatedSettingsAppearanceRoute
-  AuthenticatedSettingsDisplayRoute: typeof AuthenticatedSettingsDisplayRoute
-  AuthenticatedSettingsNotificationsRoute: typeof AuthenticatedSettingsNotificationsRoute
   AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
 }
 
 const AuthenticatedSettingsRouteRouteChildren: AuthenticatedSettingsRouteRouteChildren =
   {
-    AuthenticatedSettingsAccountRoute: AuthenticatedSettingsAccountRoute,
     AuthenticatedSettingsAppearanceRoute: AuthenticatedSettingsAppearanceRoute,
-    AuthenticatedSettingsDisplayRoute: AuthenticatedSettingsDisplayRoute,
-    AuthenticatedSettingsNotificationsRoute:
-      AuthenticatedSettingsNotificationsRoute,
     AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,
   }
 
@@ -723,43 +404,17 @@ const AuthenticatedSettingsRouteRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
   AuthenticatedAiChatRoute: typeof AuthenticatedAiChatRoute
-  AuthenticatedAiChatEnhancedRoute: typeof AuthenticatedAiChatEnhancedRoute
-  AuthenticatedAiChatLegendTestRoute: typeof AuthenticatedAiChatLegendTestRoute
-  AuthenticatedConversationAiRoute: typeof AuthenticatedConversationAiRoute
-  AuthenticatedLegendDemoRoute: typeof AuthenticatedLegendDemoRoute
-  AuthenticatedRagKnowledgeRoute: typeof AuthenticatedRagKnowledgeRoute
-  AuthenticatedStoreDemoRoute: typeof AuthenticatedStoreDemoRoute
-  AuthenticatedTtsTestRoute: typeof AuthenticatedTtsTestRoute
-  AuthenticatedVoiceAiRoute: typeof AuthenticatedVoiceAiRoute
-  AuthenticatedVoiceTestRoute: typeof AuthenticatedVoiceTestRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedErrorsErrorRoute: typeof AuthenticatedErrorsErrorRoute
-  AuthenticatedAppsIndexRoute: typeof AuthenticatedAppsIndexRoute
   AuthenticatedChatsIndexRoute: typeof AuthenticatedChatsIndexRoute
-  AuthenticatedHelpCenterIndexRoute: typeof AuthenticatedHelpCenterIndexRoute
-  AuthenticatedTasksIndexRoute: typeof AuthenticatedTasksIndexRoute
-  AuthenticatedUsersIndexRoute: typeof AuthenticatedUsersIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRouteWithChildren,
   AuthenticatedAiChatRoute: AuthenticatedAiChatRoute,
-  AuthenticatedAiChatEnhancedRoute: AuthenticatedAiChatEnhancedRoute,
-  AuthenticatedAiChatLegendTestRoute: AuthenticatedAiChatLegendTestRoute,
-  AuthenticatedConversationAiRoute: AuthenticatedConversationAiRoute,
-  AuthenticatedLegendDemoRoute: AuthenticatedLegendDemoRoute,
-  AuthenticatedRagKnowledgeRoute: AuthenticatedRagKnowledgeRoute,
-  AuthenticatedStoreDemoRoute: AuthenticatedStoreDemoRoute,
-  AuthenticatedTtsTestRoute: AuthenticatedTtsTestRoute,
-  AuthenticatedVoiceAiRoute: AuthenticatedVoiceAiRoute,
-  AuthenticatedVoiceTestRoute: AuthenticatedVoiceTestRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedErrorsErrorRoute: AuthenticatedErrorsErrorRoute,
-  AuthenticatedAppsIndexRoute: AuthenticatedAppsIndexRoute,
   AuthenticatedChatsIndexRoute: AuthenticatedChatsIndexRoute,
-  AuthenticatedHelpCenterIndexRoute: AuthenticatedHelpCenterIndexRoute,
-  AuthenticatedTasksIndexRoute: AuthenticatedTasksIndexRoute,
-  AuthenticatedUsersIndexRoute: AuthenticatedUsersIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

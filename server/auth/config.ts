@@ -66,7 +66,7 @@ export function createAuth(env: Env) {
       }),
     ],
     secret: env.BETTER_AUTH_SECRET || 'CPmXy0XgIWaOICeanyyFhR5eFwyQgoSJ0LpGtgJrpHc=',
-    baseURL: env.BETTER_AUTH_URL || 'https://shadcn-admin-cf-ai.dan-ccc.workers.dev',
+    baseURL: env.BETTER_AUTH_URL || 'http://localhost:5175',
     
     session: {
       cookieCache: {

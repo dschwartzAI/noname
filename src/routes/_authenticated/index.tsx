@@ -1,6 +1,10 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { Dashboard } from '@/features/dashboard'
+import { createFileRoute, Navigate } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/_authenticated/')({
-  component: Dashboard,
+  component: HomePage,
 })
+
+function HomePage() {
+  // Redirect to chat history as the home page
+  return <Navigate to="/chats" />
+}
