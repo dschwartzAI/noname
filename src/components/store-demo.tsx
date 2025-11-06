@@ -11,33 +11,23 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { JsonViewer } from '@/components/ui/json-viewer'
 import { 
-  useAuth, 
-  useAuthSelector, 
-  useAuthActions,
-  useAIChat,
-  useAIChatSelector, 
-  useAIChatActions,
-  storeUtils
+  useAuth,
+  useAIChatMobx,
+  storeUtils,
+  observer
 } from '@/stores'
 
-export function StoreDemo() {
+export const StoreDemo = observer(() => {
   const [refreshKey, setRefreshKey] = useState(0)
   
-  // Auth store selectors
-  const authUser = useAuthSelector((state) => state.user)
-  const isAuthenticated = useAuthSelector((state) => state.isAuthenticated)
-  const authError = useAuthSelector((state) => state.error)
-  const authActions = useAuthActions()
+  // Auth state from Better Auth
+  const { user: authUser, isAuthenticated, error: authError } = useAuth()
   
-  // AI Chat store selectors
-  const chatMessages = useAIChatSelector((state) => state.messages)
-  const chatSettings = useAIChatSelector((state) => state.settings)
-  const chatWebSocket = useAIChatSelector((state) => state.websocket)
-  const chatActions = useAIChatActions()
+  // AI Chat store from MobX
+  const chat = useAIChatMobx()
   
   // Full store states for JSON view
   const fullAuthState = useAuth()
-  const fullChatState = useAIChat()
   
   // Force refresh for demo
   const refresh = () => setRefreshKey(prev => prev + 1)
@@ -114,19 +104,19 @@ export function StoreDemo() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm">Messages:</span>
                   <Badge variant="outline">
-                    {chatMessages.length}
+                    {chat.messageCount}
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm">WebSocket:</span>
-                  <Badge variant={chatWebSocket.isConnected ? "default" : "secondary"}>
-                    {chatWebSocket.isConnected ? "Connected" : "Disconnected"}
+                  <Badge variant={chat.websocket.isConnected ? "default" : "secondary"}>
+                    {chat.websocket.isConnected ? "Connected" : "Disconnected"}
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm">Model:</span>
                   <span className="text-xs text-muted-foreground">
-                    {chatSettings.selectedModel}
+                    {chat.settings.selectedModel}
                   </span>
                 </div>
               </CardContent>
@@ -152,59 +142,27 @@ export function StoreDemo() {
             
             <TabsContent value="auth" className="space-y-4">
               <div className="grid grid-cols-2 gap-2">
-                <Button 
-                  onClick={() => authActions.setUser({
-                    accountNo: 'demo-123',
-                    email: 'demo@example.com',
-                    role: ['user'],
-                    exp: Date.now() + 3600000,
-                    displayName: 'Demo User'
-                  })}
-                  size="sm"
-                >
-                  Set Demo User
-                </Button>
-                <Button 
-                  onClick={() => authActions.logout()}
-                  variant="outline"
-                  size="sm"
-                >
-                  Logout
-                </Button>
-                <Button 
-                  onClick={() => authActions.setError('Demo error message')}
-                  variant="destructive"
-                  size="sm"
-                >
-                  Set Error
-                </Button>
-                <Button 
-                  onClick={() => authActions.setError(null)}
-                  variant="ghost"
-                  size="sm"
-                >
-                  Clear Error
-                </Button>
+                <p className="text-sm text-muted-foreground col-span-2">
+                  Auth is now managed by Better Auth. Use the sign-in/sign-out UI instead.
+                </p>
               </div>
             </TabsContent>
             
             <TabsContent value="chat" className="space-y-4">
               <div className="grid grid-cols-2 gap-2">
                 <Button 
-                  onClick={() => chatActions.addMessage({
+                  onClick={() => chat.addMessage({
                     role: 'user',
-                    content: 'This is a demo message!',
-                    artifacts: []
+                    content: 'This is a MobX demo message!',
                   })}
                   size="sm"
                 >
                   Add User Message
                 </Button>
                 <Button 
-                  onClick={() => chatActions.addMessage({
+                  onClick={() => chat.addMessage({
                     role: 'assistant',
-                    content: 'This is a demo AI response!',
-                    artifacts: []
+                    content: 'This is a demo AI response powered by MobX!',
                   })}
                   variant="outline"
                   size="sm"
@@ -212,17 +170,17 @@ export function StoreDemo() {
                   Add AI Message
                 </Button>
                 <Button 
-                  onClick={() => chatActions.clearMessages()}
+                  onClick={() => chat.clearMessages()}
                   variant="destructive"
                   size="sm"
                 >
                   Clear Messages
                 </Button>
                 <Button 
-                  onClick={() => chatActions.updateSettings({
-                    selectedModel: chatSettings.selectedModel === 'llama-3-8b' 
+                  onClick={() => chat.updateSettings({
+                    selectedModel: chat.settings.selectedModel === 'llama-3.1-8b-instruct' 
                       ? 'mistral-7b' 
-                      : 'llama-3-8b'
+                      : 'llama-3.1-8b-instruct'
                   })}
                   variant="ghost"
                   size="sm"
@@ -258,7 +216,13 @@ export function StoreDemo() {
             
             <TabsContent value="chat-state">
               <div className="max-h-96 overflow-auto">
-                <JsonViewer data={fullChatState} />
+                <JsonViewer data={{
+                  messages: chat.messages,
+                  settings: chat.settings,
+                  websocket: chat.websocket,
+                  messageCount: chat.messageCount,
+                  isStreaming: chat.isStreaming,
+                }} />
               </div>
             </TabsContent>
           </Tabs>
@@ -266,4 +230,4 @@ export function StoreDemo() {
       </Card>
     </div>
   )
-}
+})
