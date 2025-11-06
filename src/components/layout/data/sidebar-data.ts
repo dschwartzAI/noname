@@ -5,7 +5,6 @@ import {
   ArrowUpRight,
   Users,
   MessageSquare,
-  Palette,
   Command,
   GalleryVerticalEnd,
   AudioWaveform,
@@ -68,16 +67,6 @@ export const sidebarData: SidebarData = {
           title: 'Feedback',
           url: '#',
           icon: MessageSquare,
-        },
-      ],
-    },
-    {
-      title: '',
-      items: [
-        {
-          title: 'Appearance',
-          url: '/settings/appearance',
-          icon: Palette,
         },
       ],
     },
