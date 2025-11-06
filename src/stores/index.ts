@@ -1,75 +1,73 @@
 /**
- * Legend State v3 Store Index
+ * MobX Store Index
  * 
- * Central export point for all observables and state management utilities
+ * Central export point for all MobX stores and hooks
  */
 
-// Export individual store observables
-export { aiChat$, aiChatActions, aiChatComputed, aiChatSelectors } from './ai-chat'
+// Export MobX stores
+export { authStore } from './auth-mobx'
+export { aiChatStore } from './ai-chat-mobx'
+export { configStore } from './config-mobx'
 
-// Import stores for internal use
-import { aiChat$ } from './ai-chat'
+// Export MobX hooks
+export { useAuthMobx, observer } from '@/hooks/use-auth-mobx'
+export { useAIChatMobx } from '@/hooks/use-ai-chat-mobx'
+export { useConfigMobx } from '@/hooks/use-config-mobx'
 
 // Export types
 export type { 
-  ChatMessage, 
-  WebSocketState, 
-  VoiceState, 
-  ChatSettings 
-} from './ai-chat'
+  ChatMessage,
+  ChatSettings,
+  WebSocketState,
+} from './ai-chat-mobx'
+export type { Config } from './config-mobx'
 
-// Auth is now handled by Better Auth - export the simplified helpers
+// Legacy auth exports for compatibility with Better Auth
 export { useAuth, useAuthHelpers, logout, logoutAllDevices, useSession } from './auth-simple'
 
 // Root store interface for global state coordination
 export interface RootStore {
-  aiChat: typeof import('./ai-chat').aiChat$
-  // auth is now handled by Better Auth's native state
+  auth: typeof import('./auth-mobx').authStore
+  aiChat: typeof import('./ai-chat-mobx').aiChatStore
+  config: typeof import('./config-mobx').configStore
 }
 
 // Store management utilities
 export const storeUtils = {
   // Reset all stores to initial state
   resetAll: () => {
-    aiChatActions.reset()
+    aiChatStore.clearMessages()
+    configStore.reset()
     // Auth reset is handled by Better Auth's signOut
   },
   
   // Get all store states for debugging
   getDebugState: () => ({
-    aiChat: aiChat$.get()
-    // auth state is handled by Better Auth
+    auth: {
+      isAuthenticated: authStore.isAuthenticated,
+      user: authStore.user,
+      isLoading: authStore.isLoading,
+    },
+    aiChat: {
+      messageCount: aiChatStore.messageCount,
+      isStreaming: aiChatStore.isStreaming,
+      settings: aiChatStore.settings,
+      websocket: aiChatStore.websocket,
+    },
+    config: configStore.config,
   }),
-  
-  // Subscribe to AI chat connection status
-  onChatConnectionChange: (callback: (isConnected: boolean) => void) => {
-    return aiChat$.websocket.isConnected.onChange(callback)
-  }
 }
 
 // Development helpers
 if (process.env.NODE_ENV === 'development') {
-  // Attach stores to window for debugging (removed auth$ reference since it doesn't exist)
-  ;(globalThis as unknown as Record<string, unknown>).__LEGEND_STORES__ = {
-    aiChat: aiChat$,
-    getAIChat: () => aiChat$.get(),
-    resetAll: storeUtils.resetAll,
+  // Attach stores to window for debugging
+  ;(globalThis as unknown as Record<string, unknown>).__MOBX_STORES__ = {
+    auth: authStore,
+    aiChat: aiChatStore,
+    config: configStore,
     getDebugState: storeUtils.getDebugState
   }
 }
-
-// Export AI Chat hooks (avoiding circular import by importing directly from hooks)
-export { 
-  useAIChat,
-  useAIChatMessages,
-  useAIChatSettings,
-  useAIChatWebSocket,
-  useAIChatVoice,
-  useAIChatState,
-  useAIChatSelector,
-  useAIChatActions,
-  useStoreDebug
-} from './hooks'
 
 // Export auth compatibility hooks (legacy support)
 export const useAuthUser = () => {
@@ -93,7 +91,3 @@ export const useAuthActions = () => ({
   logout,
   logoutAllDevices
 })
-
-// Re-export Legend State utilities for convenience
-export { observable } from '@legendapp/state'
-export { syncObservable } from '@legendapp/state/sync'

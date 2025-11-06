@@ -6,13 +6,14 @@
 
 import { useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from '@tanstack/react-router'
+import { observer } from 'mobx-react-lite'
 import { useAuth } from '@/stores/auth-simple'
 
 interface AuthGuardProps {
   children: React.ReactNode
 }
 
-export function AuthGuard({ children }: AuthGuardProps) {
+export const AuthGuard = observer(({ children }: AuthGuardProps) => {
   const navigate = useNavigate()
   const location = useLocation()
   const { isAuthenticated, isLoading } = useAuth()
@@ -46,4 +47,4 @@ export function AuthGuard({ children }: AuthGuardProps) {
   }
 
   return <>{children}</>
-}
+})
