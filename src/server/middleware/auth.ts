@@ -8,6 +8,7 @@ type Variables = {
     email: string
     name: string | null
     image: string | null
+    isGod: boolean
   }
   session: any
 }
@@ -31,6 +32,7 @@ export const requireAuth = createMiddleware<{ Bindings: Env; Variables: Variable
       email: sessionData.user.email,
       name: sessionData.user.name,
       image: sessionData.user.image,
+      isGod: sessionData.user.isGod || false,
     })
     
     c.set('session', sessionData.session)

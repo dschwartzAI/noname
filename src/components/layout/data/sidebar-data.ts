@@ -1,22 +1,18 @@
 import {
   Plus,
   Search,
-  Settings,
   ArrowUpRight,
   Users,
   MessageSquare,
   Command,
   GalleryVerticalEnd,
   AudioWaveform,
+  Shield,
+  Building2,
 } from 'lucide-react'
 import { type SidebarData } from '../types'
 
 export const sidebarData: SidebarData = {
-  user: {
-    name: 'satnaing',
-    email: 'satnaingdev@gmail.com',
-    avatar: '/avatars/shadcn.jpg',
-  },
   teams: [
     {
       name: 'Solo:OS',
@@ -49,9 +45,14 @@ export const sidebarData: SidebarData = {
           icon: Search,
         },
         {
+          title: 'God Mode',
+          url: '/admin/god-dashboard',
+          icon: Shield,
+        },
+        {
           title: 'Admin',
-          url: '#',
-          icon: Settings,
+          url: '/admin',
+          icon: Building2,
         },
         {
           title: 'Syndicate',

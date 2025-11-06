@@ -28,6 +28,7 @@ import { TeamSwitcher } from './team-switcher'
 import { ConversationNavGroup } from './conversation-nav-group'
 import { mockConversations } from '@/features/ai-chat/data/mock-conversations'
 import { AgentBuilder } from '@/features/ai-chat/components/agent-builder'
+import { ThemeSwitch } from '@/components/theme-switch'
 
 type AuthenticatedLayoutProps = {
   children?: React.ReactNode
@@ -51,6 +52,18 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
     navigate({ to: '/ai-chat' })
   }
 
+  // Filter navigation groups based on user role
+  const filteredNavGroups = sidebarData.navGroups.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => {
+      // Hide God Mode link if user is not a god
+      if (item.url === '/admin/god-dashboard') {
+        return user?.isGod === true
+      }
+      return true
+    }),
+  }))
+
   return (
     <AuthGuard>
       <SearchProvider>
@@ -63,7 +76,7 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
               </SidebarHeader>
               <SidebarContent>
                 {/* Main navigation */}
-                {sidebarData.navGroups.map((props) => (
+                {filteredNavGroups.map((props) => (
                   <NavGroup key={props.title} {...props} />
                 ))}
 
@@ -78,7 +91,7 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
                 />
               </SidebarContent>
               <SidebarFooter>
-                <NavUser user={sidebarData.user} />
+                <NavUser user={user} />
               </SidebarFooter>
               <SidebarRail />
             </AppSidebar>
@@ -99,6 +112,7 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
             >
               <Header fixed className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <div className="ml-auto flex items-center gap-2">
+                  <ThemeSwitch />
                   <AgentBuilder
                     open={agentBuilderOpen}
                     onOpenChange={setAgentBuilderOpen}
