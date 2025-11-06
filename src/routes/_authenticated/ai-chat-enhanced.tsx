@@ -1,3 +1,9 @@
+/**
+ * TODO: Refactor this file to use MobX stores instead of Legend State
+ * This file is currently not fully working after the MobX migration
+ * Use ai-chat.tsx for the working chat page for now
+ */
+
 import { createFileRoute } from '@tanstack/react-router'
 import { Header } from '@/components/layout/header'
 import { Main } from '@/components/layout/main'
@@ -22,26 +28,36 @@ import { Reasoning, ReasoningTrigger, ReasoningContent } from '@/components/reas
 import { Copy, ThumbsUp, ThumbsDown, RefreshCw, Share, BookmarkPlus } from 'lucide-react'
 import { aiLog } from '@/lib/logger'
 
-// Import our new observable stores
+// Import MobX stores
 import { 
-  useAIChat, 
-  useAIChatSelector, 
-  useAIChatActions,
-  aiChatSelectors 
+  useAIChatMobx,
+  observer
 } from '@/stores'
 
-function AIChatEnhancedPage() {
-  // Use the new observable store instead of local state
-  const messages = useAIChatSelector(aiChatSelectors.messages)
-  const isLoading = useAIChatSelector(aiChatSelectors.isLoading)
-  const error = useAIChatSelector(aiChatSelectors.error)
-  const input = useAIChatSelector(aiChatSelectors.input)
-  const settings = useAIChatSelector(aiChatSelectors.settings)
-  const websocket = useAIChatSelector(aiChatSelectors.websocket)
-  const voice = useAIChatSelector(aiChatSelectors.voice)
+const AIChatEnhancedPage = observer(() => {
+  // Use MobX store
+  const chat = useAIChatMobx()
+  const messages = chat.messages
+  const isLoading = false // TODO: Add to MobX store
+  const error = null // TODO: Add to MobX store
+  const input = chat.input
+  const settings = chat.settings
+  const websocket = chat.websocket
+  const voice = { isListening: false, isSpeaking: false, isRecording: false } // TODO: Add to MobX store
   
-  // Get actions from the store
-  const actions = useAIChatActions()
+  // Create actions object for compatibility
+  const actions = {
+    setInput: chat.setInput.bind(chat),
+    sendMessage: chat.sendMessage.bind(chat),
+    updateSettings: chat.updateSettings.bind(chat),
+    connectWebSocket: () => {}, // TODO
+    disconnectWebSocket: () => {}, // TODO
+    removeMessage: (id: string) => {}, // TODO
+    toggleVoiceMode: () => {}, // TODO
+    startVoiceRecording: () => {}, // TODO
+    stopVoiceRecording: () => {}, // TODO
+    stopGeneration: () => {}, // TODO
+  }
   
   const conversationRef = useRef<HTMLDivElement | null>(null)
   
@@ -480,7 +496,7 @@ function AIChatEnhancedPage() {
       </Main>
     </>
   )
-}
+})
 
 export const Route = createFileRoute('/_authenticated/ai-chat-enhanced')({
   component: AIChatEnhancedPage,

@@ -12,7 +12,6 @@ export const user = pgTable("user", {
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
   isAnonymous: boolean("is_anonymous"),
-  isGod: boolean("is_god").default(false).notNull(), // Super admin flag for white-label management
 });
 
 export const session = pgTable("session", {
@@ -60,26 +59,4 @@ export const verification = pgTable("verification", {
     .defaultNow()
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
-});
-
-// Organization Plugin Tables
-export const organization = pgTable("organization", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  slug: text("slug").notNull().unique(),
-  logo: text("logo"),
-  metadata: text("metadata"), // JSON string for custom branding, tier, etc.
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-export const member = pgTable("member", {
-  id: text("id").primaryKey(),
-  organizationId: text("organization_id")
-    .notNull()
-    .references(() => organization.id, { onDelete: "cascade" }),
-  userId: text("user_id")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
-  role: text("role").notNull(), // "owner", "admin", "member"
-  createdAt: timestamp("created_at").defaultNow().notNull(),
 });

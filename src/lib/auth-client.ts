@@ -1,9 +1,12 @@
 import { createAuthClient } from "better-auth/react";
+import { organizationClient } from "better-auth/client/plugins";
 
 export const authClient = createAuthClient({
   baseURL: import.meta.env.DEV ? window.location.origin : window.location.origin,
   // Enable the plugins you need on the client
-  plugins: [],
+  plugins: [
+    organizationClient(),
+  ],
 });
 
 export const {
@@ -18,4 +21,6 @@ export const {
   revokeSession,
   revokeSessions,
   revokeOtherSessions,
+  // Organization methods
+  organization,
 } = authClient;

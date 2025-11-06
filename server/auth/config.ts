@@ -1,6 +1,6 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
-import { anonymous, openAPI } from 'better-auth/plugins';
+import { anonymous, openAPI, organization } from 'better-auth/plugins';
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from '../../database/better-auth-schema';
@@ -36,7 +36,35 @@ export function createAuth(env: Env) {
       // Add required email verification config
       requireEmailVerification: false, // Set to true if you want email verification
     },
-    plugins: [anonymous(), openAPI()],
+    plugins: [
+      anonymous(),
+      openAPI(),
+      organization({
+        // Only allow users to create organizations (can be restricted later)
+        allowUserToCreateOrganization: async (user) => {
+          // Check if user is God (super admin)
+          if ((user as any).isGod) return true;
+          
+          // For now, allow all authenticated users to create orgs
+          // Later: check subscription tier
+          return true;
+        },
+        
+        // Access control for organizations
+        ac: {
+          organization: {
+            create: ['owner'],
+            update: ['owner', 'admin'],
+            delete: ['owner'],
+          },
+          member: {
+            create: ['owner', 'admin'],
+            update: ['owner', 'admin'],
+            delete: ['owner', 'admin'],
+          },
+        },
+      }),
+    ],
     secret: env.BETTER_AUTH_SECRET || 'CPmXy0XgIWaOICeanyyFhR5eFwyQgoSJ0LpGtgJrpHc=',
     baseURL: env.BETTER_AUTH_URL || 'https://shadcn-admin-cf-ai.dan-ccc.workers.dev',
     
