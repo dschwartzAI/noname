@@ -57,6 +57,9 @@ export interface Env {
   AI_GATEWAY_URL?: string;
   ELEVENLABS_API_KEY?: string;
   DEEPGRAM_API_KEY?: string;
+  ANTHROPIC_API_KEY?: string;
+  OPENAI_API_KEY?: string;
+  XAI_API_KEY?: string;
 }
 
 const app = new OpenAPIHono<{ Bindings: Env }>()
@@ -1243,6 +1246,48 @@ Response: ${JSON.stringify(responseData, null, 2)}`
     console.error('Chat tools error:', error)
     return c.json({ 
       error: 'Failed to process chat request with tools: ' + error.message 
+    }, 500)
+  }
+})
+
+// AI Chat endpoint for external providers (Claude, GPT-4, Grok)
+app.post('/api/ai-chat', async (c) => {
+  try {
+    const { messages, model = 'claude-3-5-sonnet-20241022' } = await c.req.json()
+
+    console.log('AI Chat request for model:', model)
+    console.log('Messages:', messages)
+
+    // Import the getModel helper dynamically
+    const { getModel } = await import('../lib/ai-providers')
+
+    // Get the AI model instance using our provider helper
+    const aiModel = getModel({
+      ANTHROPIC_API_KEY: c.env.ANTHROPIC_API_KEY,
+      OPENAI_API_KEY: c.env.OPENAI_API_KEY,
+      XAI_API_KEY: c.env.XAI_API_KEY,
+    }, model)
+
+    console.log('Using AI SDK with model:', model)
+
+    // Use AI SDK with external provider
+    const result = await streamText({
+      model: aiModel,
+      messages: messages,
+      temperature: 0.7,
+      maxTokens: 2048,
+    })
+
+    console.log('AI SDK streamText result created')
+
+    // Return the data stream response directly (compatible with useChat hook)
+    return result.toDataStreamResponse()
+
+  } catch (error) {
+    console.error('AI Chat API error:', error)
+    return c.json({
+      error: 'Failed to process AI chat request',
+      message: error instanceof Error ? error.message : 'Unknown error'
     }, 500)
   }
 })

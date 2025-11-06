@@ -11,7 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedIndexRouteImport } from './routes/_authenticated/index'
-import { Route as AuthenticatedAiChatRouteImport } from './routes/_authenticated/ai-chat'
 import { Route as errors503RouteImport } from './routes/(errors)/503'
 import { Route as errors500RouteImport } from './routes/(errors)/500'
 import { Route as errors404RouteImport } from './routes/(errors)/404'
@@ -23,10 +22,14 @@ import { Route as authSignInRouteImport } from './routes/(auth)/sign-in'
 import { Route as authOtpRouteImport } from './routes/(auth)/otp'
 import { Route as authForgotPasswordRouteImport } from './routes/(auth)/forgot-password'
 import { Route as AuthenticatedSettingsRouteRouteImport } from './routes/_authenticated/settings/route'
+import { Route as AuthenticatedAiChatRouteRouteImport } from './routes/_authenticated/ai-chat/route'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
 import { Route as AuthenticatedChatsIndexRouteImport } from './routes/_authenticated/chats/index'
+import { Route as AuthenticatedAiChatIndexRouteImport } from './routes/_authenticated/ai-chat/index'
 import { Route as AuthenticatedSettingsAppearanceRouteImport } from './routes/_authenticated/settings/appearance'
 import { Route as AuthenticatedErrorsErrorRouteImport } from './routes/_authenticated/errors/$error'
+import { Route as AuthenticatedAiChatBackupRouteImport } from './routes/_authenticated/ai-chat.backup'
+import { Route as AuthenticatedAiChatConversationIdRouteImport } from './routes/_authenticated/ai-chat/$conversationId'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
@@ -35,11 +38,6 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const AuthenticatedIndexRoute = AuthenticatedIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedAiChatRoute = AuthenticatedAiChatRouteImport.update({
-  id: '/ai-chat',
-  path: '/ai-chat',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const errors503Route = errors503RouteImport.update({
@@ -98,6 +96,12 @@ const AuthenticatedSettingsRouteRoute =
     path: '/settings',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAiChatRouteRoute =
+  AuthenticatedAiChatRouteRouteImport.update({
+    id: '/ai-chat',
+    path: '/ai-chat',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSettingsIndexRoute =
   AuthenticatedSettingsIndexRouteImport.update({
     id: '/',
@@ -109,6 +113,12 @@ const AuthenticatedChatsIndexRoute = AuthenticatedChatsIndexRouteImport.update({
   path: '/chats/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAiChatIndexRoute =
+  AuthenticatedAiChatIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAiChatRouteRoute,
+  } as any)
 const AuthenticatedSettingsAppearanceRoute =
   AuthenticatedSettingsAppearanceRouteImport.update({
     id: '/appearance',
@@ -121,8 +131,21 @@ const AuthenticatedErrorsErrorRoute =
     path: '/errors/$error',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAiChatBackupRoute =
+  AuthenticatedAiChatBackupRouteImport.update({
+    id: '/backup',
+    path: '/backup',
+    getParentRoute: () => AuthenticatedAiChatRouteRoute,
+  } as any)
+const AuthenticatedAiChatConversationIdRoute =
+  AuthenticatedAiChatConversationIdRouteImport.update({
+    id: '/$conversationId',
+    path: '/$conversationId',
+    getParentRoute: () => AuthenticatedAiChatRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
+  '/ai-chat': typeof AuthenticatedAiChatRouteRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRouteRouteWithChildren
   '/forgot-password': typeof authForgotPasswordRoute
   '/otp': typeof authOtpRoute
@@ -134,10 +157,12 @@ export interface FileRoutesByFullPath {
   '/404': typeof errors404Route
   '/500': typeof errors500Route
   '/503': typeof errors503Route
-  '/ai-chat': typeof AuthenticatedAiChatRoute
   '/': typeof AuthenticatedIndexRoute
+  '/ai-chat/$conversationId': typeof AuthenticatedAiChatConversationIdRoute
+  '/ai-chat/backup': typeof AuthenticatedAiChatBackupRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
+  '/ai-chat/': typeof AuthenticatedAiChatIndexRoute
   '/chats': typeof AuthenticatedChatsIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
 }
@@ -152,16 +177,19 @@ export interface FileRoutesByTo {
   '/404': typeof errors404Route
   '/500': typeof errors500Route
   '/503': typeof errors503Route
-  '/ai-chat': typeof AuthenticatedAiChatRoute
   '/': typeof AuthenticatedIndexRoute
+  '/ai-chat/$conversationId': typeof AuthenticatedAiChatConversationIdRoute
+  '/ai-chat/backup': typeof AuthenticatedAiChatBackupRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
+  '/ai-chat': typeof AuthenticatedAiChatIndexRoute
   '/chats': typeof AuthenticatedChatsIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/_authenticated/ai-chat': typeof AuthenticatedAiChatRouteRouteWithChildren
   '/_authenticated/settings': typeof AuthenticatedSettingsRouteRouteWithChildren
   '/(auth)/forgot-password': typeof authForgotPasswordRoute
   '/(auth)/otp': typeof authOtpRoute
@@ -173,16 +201,19 @@ export interface FileRoutesById {
   '/(errors)/404': typeof errors404Route
   '/(errors)/500': typeof errors500Route
   '/(errors)/503': typeof errors503Route
-  '/_authenticated/ai-chat': typeof AuthenticatedAiChatRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/ai-chat/$conversationId': typeof AuthenticatedAiChatConversationIdRoute
+  '/_authenticated/ai-chat/backup': typeof AuthenticatedAiChatBackupRoute
   '/_authenticated/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/_authenticated/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
+  '/_authenticated/ai-chat/': typeof AuthenticatedAiChatIndexRoute
   '/_authenticated/chats/': typeof AuthenticatedChatsIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
+    | '/ai-chat'
     | '/settings'
     | '/forgot-password'
     | '/otp'
@@ -194,10 +225,12 @@ export interface FileRouteTypes {
     | '/404'
     | '/500'
     | '/503'
-    | '/ai-chat'
     | '/'
+    | '/ai-chat/$conversationId'
+    | '/ai-chat/backup'
     | '/errors/$error'
     | '/settings/appearance'
+    | '/ai-chat/'
     | '/chats'
     | '/settings/'
   fileRoutesByTo: FileRoutesByTo
@@ -212,15 +245,18 @@ export interface FileRouteTypes {
     | '/404'
     | '/500'
     | '/503'
-    | '/ai-chat'
     | '/'
+    | '/ai-chat/$conversationId'
+    | '/ai-chat/backup'
     | '/errors/$error'
     | '/settings/appearance'
+    | '/ai-chat'
     | '/chats'
     | '/settings'
   id:
     | '__root__'
     | '/_authenticated'
+    | '/_authenticated/ai-chat'
     | '/_authenticated/settings'
     | '/(auth)/forgot-password'
     | '/(auth)/otp'
@@ -232,10 +268,12 @@ export interface FileRouteTypes {
     | '/(errors)/404'
     | '/(errors)/500'
     | '/(errors)/503'
-    | '/_authenticated/ai-chat'
     | '/_authenticated/'
+    | '/_authenticated/ai-chat/$conversationId'
+    | '/_authenticated/ai-chat/backup'
     | '/_authenticated/errors/$error'
     | '/_authenticated/settings/appearance'
+    | '/_authenticated/ai-chat/'
     | '/_authenticated/chats/'
     | '/_authenticated/settings/'
   fileRoutesById: FileRoutesById
@@ -268,13 +306,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/ai-chat': {
-      id: '/_authenticated/ai-chat'
-      path: '/ai-chat'
-      fullPath: '/ai-chat'
-      preLoaderRoute: typeof AuthenticatedAiChatRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/(errors)/503': {
@@ -354,6 +385,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsRouteRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/ai-chat': {
+      id: '/_authenticated/ai-chat'
+      path: '/ai-chat'
+      fullPath: '/ai-chat'
+      preLoaderRoute: typeof AuthenticatedAiChatRouteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/settings/': {
       id: '/_authenticated/settings/'
       path: '/'
@@ -367,6 +405,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/chats'
       preLoaderRoute: typeof AuthenticatedChatsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/ai-chat/': {
+      id: '/_authenticated/ai-chat/'
+      path: '/'
+      fullPath: '/ai-chat/'
+      preLoaderRoute: typeof AuthenticatedAiChatIndexRouteImport
+      parentRoute: typeof AuthenticatedAiChatRouteRoute
     }
     '/_authenticated/settings/appearance': {
       id: '/_authenticated/settings/appearance'
@@ -382,8 +427,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedErrorsErrorRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/ai-chat/backup': {
+      id: '/_authenticated/ai-chat/backup'
+      path: '/backup'
+      fullPath: '/ai-chat/backup'
+      preLoaderRoute: typeof AuthenticatedAiChatBackupRouteImport
+      parentRoute: typeof AuthenticatedAiChatRouteRoute
+    }
+    '/_authenticated/ai-chat/$conversationId': {
+      id: '/_authenticated/ai-chat/$conversationId'
+      path: '/$conversationId'
+      fullPath: '/ai-chat/$conversationId'
+      preLoaderRoute: typeof AuthenticatedAiChatConversationIdRouteImport
+      parentRoute: typeof AuthenticatedAiChatRouteRoute
+    }
   }
 }
+
+interface AuthenticatedAiChatRouteRouteChildren {
+  AuthenticatedAiChatConversationIdRoute: typeof AuthenticatedAiChatConversationIdRoute
+  AuthenticatedAiChatBackupRoute: typeof AuthenticatedAiChatBackupRoute
+  AuthenticatedAiChatIndexRoute: typeof AuthenticatedAiChatIndexRoute
+}
+
+const AuthenticatedAiChatRouteRouteChildren: AuthenticatedAiChatRouteRouteChildren =
+  {
+    AuthenticatedAiChatConversationIdRoute:
+      AuthenticatedAiChatConversationIdRoute,
+    AuthenticatedAiChatBackupRoute: AuthenticatedAiChatBackupRoute,
+    AuthenticatedAiChatIndexRoute: AuthenticatedAiChatIndexRoute,
+  }
+
+const AuthenticatedAiChatRouteRouteWithChildren =
+  AuthenticatedAiChatRouteRoute._addFileChildren(
+    AuthenticatedAiChatRouteRouteChildren,
+  )
 
 interface AuthenticatedSettingsRouteRouteChildren {
   AuthenticatedSettingsAppearanceRoute: typeof AuthenticatedSettingsAppearanceRoute
@@ -402,16 +480,16 @@ const AuthenticatedSettingsRouteRouteWithChildren =
   )
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAiChatRouteRoute: typeof AuthenticatedAiChatRouteRouteWithChildren
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
-  AuthenticatedAiChatRoute: typeof AuthenticatedAiChatRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedErrorsErrorRoute: typeof AuthenticatedErrorsErrorRoute
   AuthenticatedChatsIndexRoute: typeof AuthenticatedChatsIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAiChatRouteRoute: AuthenticatedAiChatRouteRouteWithChildren,
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRouteWithChildren,
-  AuthenticatedAiChatRoute: AuthenticatedAiChatRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedErrorsErrorRoute: AuthenticatedErrorsErrorRoute,
   AuthenticatedChatsIndexRoute: AuthenticatedChatsIndexRoute,

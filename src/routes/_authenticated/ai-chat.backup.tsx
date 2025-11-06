@@ -989,6 +989,6 @@ function AIChatPage() {
   )
 }
 
-export const Route = createFileRoute('/_authenticated/ai-chat')({
+export const Route = createFileRoute('/_authenticated/ai-chat/backup')({
   component: AIChatPage,
 })

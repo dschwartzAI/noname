@@ -1,11 +1,14 @@
 import {
-  LayoutDashboard,
+  Plus,
+  Search,
+  Settings,
+  ArrowUpRight,
+  Users,
+  MessageSquare,
   Palette,
-  MessagesSquare,
-  AudioWaveform,
   Command,
   GalleryVerticalEnd,
-  Bot,
+  AudioWaveform,
 } from 'lucide-react'
 import { type SidebarData } from '../types'
 
@@ -17,44 +20,59 @@ export const sidebarData: SidebarData = {
   },
   teams: [
     {
-      name: 'Shadcn Admin',
+      name: 'Solo:OS',
       logo: Command,
-      plan: 'Vite + ShadcnUI',
+      plan: 'Professional',
     },
     {
-      name: 'Acme Inc',
+      name: 'Team Workspace',
       logo: GalleryVerticalEnd,
-      plan: 'Enterprise',
+      plan: 'Team',
     },
     {
-      name: 'Acme Corp.',
+      name: 'Agency',
       logo: AudioWaveform,
-      plan: 'Startup',
+      plan: 'Enterprise',
     },
   ],
   navGroups: [
     {
-      title: 'Chat',
+      title: '',
       items: [
-        {
-          title: 'Home',
-          url: '/',
-          icon: LayoutDashboard,
-        },
         {
           title: 'New Chat',
           url: '/ai-chat',
-          icon: Bot,
+          icon: Plus,
         },
         {
-          title: 'Community Chat',
+          title: 'Search',
+          url: '#',
+          icon: Search,
+        },
+        {
+          title: 'Admin',
+          url: '#',
+          icon: Settings,
+        },
+        {
+          title: 'Syndicate',
+          url: '#',
+          icon: ArrowUpRight,
+        },
+        {
+          title: 'Community',
           url: '/chats',
-          icon: MessagesSquare,
+          icon: Users,
+        },
+        {
+          title: 'Feedback',
+          url: '#',
+          icon: MessageSquare,
         },
       ],
     },
     {
-      title: 'Settings',
+      title: '',
       items: [
         {
           title: 'Appearance',
