@@ -19,7 +19,6 @@ import { Route as AuthenticatedRagKnowledgeRouteImport } from './routes/_authent
 import { Route as AuthenticatedLegendDemoRouteImport } from './routes/_authenticated/legend-demo'
 import { Route as AuthenticatedConversationAiRouteImport } from './routes/_authenticated/conversation-ai'
 import { Route as AuthenticatedAiChatLegendTestRouteImport } from './routes/_authenticated/ai-chat-legend-test'
-import { Route as AuthenticatedAiChatLegendRouteImport } from './routes/_authenticated/ai-chat-legend'
 import { Route as AuthenticatedAiChatEnhancedRouteImport } from './routes/_authenticated/ai-chat-enhanced'
 import { Route as AuthenticatedAiChatRouteImport } from './routes/_authenticated/ai-chat'
 import { Route as errors503RouteImport } from './routes/(errors)/503'
@@ -95,12 +94,6 @@ const AuthenticatedAiChatLegendTestRoute =
   AuthenticatedAiChatLegendTestRouteImport.update({
     id: '/ai-chat-legend-test',
     path: '/ai-chat-legend-test',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAiChatLegendRoute =
-  AuthenticatedAiChatLegendRouteImport.update({
-    id: '/ai-chat-legend',
-    path: '/ai-chat-legend',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAiChatEnhancedRoute =
@@ -247,7 +240,6 @@ export interface FileRoutesByFullPath {
   '/503': typeof errors503Route
   '/ai-chat': typeof AuthenticatedAiChatRoute
   '/ai-chat-enhanced': typeof AuthenticatedAiChatEnhancedRoute
-  '/ai-chat-legend': typeof AuthenticatedAiChatLegendRoute
   '/ai-chat-legend-test': typeof AuthenticatedAiChatLegendTestRoute
   '/conversation-ai': typeof AuthenticatedConversationAiRoute
   '/legend-demo': typeof AuthenticatedLegendDemoRoute
@@ -282,7 +274,6 @@ export interface FileRoutesByTo {
   '/503': typeof errors503Route
   '/ai-chat': typeof AuthenticatedAiChatRoute
   '/ai-chat-enhanced': typeof AuthenticatedAiChatEnhancedRoute
-  '/ai-chat-legend': typeof AuthenticatedAiChatLegendRoute
   '/ai-chat-legend-test': typeof AuthenticatedAiChatLegendTestRoute
   '/conversation-ai': typeof AuthenticatedConversationAiRoute
   '/legend-demo': typeof AuthenticatedLegendDemoRoute
@@ -320,7 +311,6 @@ export interface FileRoutesById {
   '/(errors)/503': typeof errors503Route
   '/_authenticated/ai-chat': typeof AuthenticatedAiChatRoute
   '/_authenticated/ai-chat-enhanced': typeof AuthenticatedAiChatEnhancedRoute
-  '/_authenticated/ai-chat-legend': typeof AuthenticatedAiChatLegendRoute
   '/_authenticated/ai-chat-legend-test': typeof AuthenticatedAiChatLegendTestRoute
   '/_authenticated/conversation-ai': typeof AuthenticatedConversationAiRoute
   '/_authenticated/legend-demo': typeof AuthenticatedLegendDemoRoute
@@ -358,7 +348,6 @@ export interface FileRouteTypes {
     | '/503'
     | '/ai-chat'
     | '/ai-chat-enhanced'
-    | '/ai-chat-legend'
     | '/ai-chat-legend-test'
     | '/conversation-ai'
     | '/legend-demo'
@@ -393,7 +382,6 @@ export interface FileRouteTypes {
     | '/503'
     | '/ai-chat'
     | '/ai-chat-enhanced'
-    | '/ai-chat-legend'
     | '/ai-chat-legend-test'
     | '/conversation-ai'
     | '/legend-demo'
@@ -430,7 +418,6 @@ export interface FileRouteTypes {
     | '/(errors)/503'
     | '/_authenticated/ai-chat'
     | '/_authenticated/ai-chat-enhanced'
-    | '/_authenticated/ai-chat-legend'
     | '/_authenticated/ai-chat-legend-test'
     | '/_authenticated/conversation-ai'
     | '/_authenticated/legend-demo'
@@ -537,13 +524,6 @@ declare module '@tanstack/react-router' {
       path: '/ai-chat-legend-test'
       fullPath: '/ai-chat-legend-test'
       preLoaderRoute: typeof AuthenticatedAiChatLegendTestRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/ai-chat-legend': {
-      id: '/_authenticated/ai-chat-legend'
-      path: '/ai-chat-legend'
-      fullPath: '/ai-chat-legend'
-      preLoaderRoute: typeof AuthenticatedAiChatLegendRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/ai-chat-enhanced': {
@@ -744,7 +724,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
   AuthenticatedAiChatRoute: typeof AuthenticatedAiChatRoute
   AuthenticatedAiChatEnhancedRoute: typeof AuthenticatedAiChatEnhancedRoute
-  AuthenticatedAiChatLegendRoute: typeof AuthenticatedAiChatLegendRoute
   AuthenticatedAiChatLegendTestRoute: typeof AuthenticatedAiChatLegendTestRoute
   AuthenticatedConversationAiRoute: typeof AuthenticatedConversationAiRoute
   AuthenticatedLegendDemoRoute: typeof AuthenticatedLegendDemoRoute
@@ -766,7 +745,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRouteWithChildren,
   AuthenticatedAiChatRoute: AuthenticatedAiChatRoute,
   AuthenticatedAiChatEnhancedRoute: AuthenticatedAiChatEnhancedRoute,
-  AuthenticatedAiChatLegendRoute: AuthenticatedAiChatLegendRoute,
   AuthenticatedAiChatLegendTestRoute: AuthenticatedAiChatLegendTestRoute,
   AuthenticatedConversationAiRoute: AuthenticatedConversationAiRoute,
   AuthenticatedLegendDemoRoute: AuthenticatedLegendDemoRoute,
