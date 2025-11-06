@@ -16,7 +16,14 @@ export interface Env {
 }
 
 export function createAuth(env: Env) {
-  // Use Neon Postgres with HTTP driver
+  // Check if DATABASE_URL is available
+  if (!env.DATABASE_URL) {
+    throw new Error('DATABASE_URL is not set. Please configure the Neon database connection string.');
+  }
+
+  console.log('Initializing Better Auth with Neon Postgres...');
+  
+  // Use Neon Postgres with HTTP driver (serverless-friendly)
   const sql = neon(env.DATABASE_URL);
   const db = drizzle(sql, { schema });
   
@@ -26,6 +33,8 @@ export function createAuth(env: Env) {
     }),
     emailAndPassword: {
       enabled: true,
+      // Add required email verification config
+      requireEmailVerification: false, // Set to true if you want email verification
     },
     plugins: [anonymous(), openAPI()],
     secret: env.BETTER_AUTH_SECRET || 'CPmXy0XgIWaOICeanyyFhR5eFwyQgoSJ0LpGtgJrpHc=',

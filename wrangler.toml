@@ -115,6 +115,9 @@ new_sqlite_classes = ["VoiceAIWebSocket"]
 tag = "v3"
 new_sqlite_classes = ["UserSysDO"]
 
+# Secrets (set via: wrangler secret put <NAME>):
+# - DATABASE_URL: Neon Postgres connection string
+
 [vars]
 BETTER_AUTH_URL = "https://shadcn-admin-cf-ai.dan-ccc.workers.dev"
 BETTER_AUTH_SECRET = "CPmXy0XgIWaOICeanyyFhR5eFwyQgoSJ0LpGtgJrpHc="

@@ -163,8 +163,16 @@ app.get('/api/ui', (c) => {
 
 // Better Auth routes (WebSocket broadcast handled by databaseHooks in config)
 app.all('/api/auth/*', async (c) => {
-  const auth = createAuth(c.env)
-  return auth.handler(c.req.raw)
+  try {
+    const auth = createAuth(c.env)
+    return auth.handler(c.req.raw)
+  } catch (error) {
+    console.error('Better Auth error:', error)
+    return c.json({ 
+      error: 'Authentication service error',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }, 503)
+  }
 })
 
 // Chat API endpoint
