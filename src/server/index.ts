@@ -17,24 +17,6 @@ import { z } from '@hono/zod-openapi'
 // import { runWithTools } from '@cloudflare/ai-utils'
 
 // Cloudflare Workers type definitions
-interface D1Database {
-  prepare(query: string): D1PreparedStatement;
-  batch(statements: D1PreparedStatement[]): Promise<D1Result[]>;
-}
-
-interface D1PreparedStatement {
-  bind(...values: unknown[]): D1PreparedStatement;
-  first(): Promise<unknown>;
-  all(): Promise<D1Result>;
-  run(): Promise<D1Result>;
-}
-
-interface D1Result {
-  results?: unknown[];
-  success: boolean;
-  meta: unknown;
-}
-
 interface Ai {
   run(model: string, options: Record<string, unknown>): Promise<unknown>;
 }
@@ -60,7 +42,7 @@ interface DurableObjectStub {
 }
 
 export interface Env {
-  DB: D1Database;
+  DATABASE_URL: string;
   AI?: Ai;
   KV: KVNamespace;
   SESSIONS: KVNamespace;

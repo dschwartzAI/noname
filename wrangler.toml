@@ -3,18 +3,13 @@ main = "worker.ts"
 compatibility_date = "2024-12-30"
 compatibility_flags = ["nodejs_compat"]
 
-[[d1_databases]]
-binding = "DB"
-database_name = "shadcn-admin-db"
-database_id = "YOUR_DATABASE_ID"
-
 [[kv_namespaces]]
 binding = "KV"
-id = "YOUR_KV_NAMESPACE_ID"
+id = "d34df303acd8498ab4e74ec22f0b9b1d"
 
 [[kv_namespaces]]
 binding = "SESSIONS"
-id = "YOUR_SESSIONS_NAMESPACE_ID"
+id = "ba789d2e87b7422baf321c2d7aa85c99"
 
 # Vectorize - Vector database for RAG
 [[vectorize]]
@@ -60,16 +55,11 @@ r2_source = "R2_DOCUMENTS"
 
 [[env.development.kv_namespaces]]
 binding = "KV"
-id = "YOUR_KV_NAMESPACE_ID"
+id = "d34df303acd8498ab4e74ec22f0b9b1d"
 
 [[env.development.kv_namespaces]]
 binding = "SESSIONS"
-id = "YOUR_SESSIONS_NAMESPACE_ID"
-
-[[env.development.d1_databases]]
-binding = "DB"
-database_name = "shadcn-admin-db"
-database_id = "YOUR_DATABASE_ID"
+id = "ba789d2e87b7422baf321c2d7aa85c99"
 
 [[env.development.durable_objects.bindings]]
 name = "AI_CHAT_WEBSOCKET"
