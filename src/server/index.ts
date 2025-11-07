@@ -10,6 +10,10 @@ import { createAuth } from '../../server/auth/config'
 import * as routes from './routes'
 import ragRoutes from './routes/rag'
 import { tasksApp } from './routes/tasks'
+import { godApp } from './routes/god'
+import { orgApp } from './routes/organization'
+import userApp from './routes/user'
+import chatApp from './routes/chat'
 import { z } from '@hono/zod-openapi'
 // import { runWithTools } from '@cloudflare/ai-utils'
 
@@ -64,7 +68,13 @@ export interface Env {
 
 const app = new OpenAPIHono<{ Bindings: Env }>()
 
-app.use('*', cors())
+app.use('*', cors({
+  origin: ['http://localhost:5174', 'http://localhost:5175', 'http://localhost:5176'],
+  credentials: true,
+  allowHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  exposeHeaders: ['Set-Cookie'],
+}))
 
 // OpenAPI documentation
 app.doc('/api/docs', {
@@ -161,6 +171,9 @@ app.get('/api/ui', (c) => {
 </html>`)
 })
 
+// User profile management routes (moved to /api/user to not conflict with Better Auth)
+app.route('/api/user', userApp)
+
 // Better Auth routes (WebSocket broadcast handled by databaseHooks in config)
 app.all('/api/auth/*', async (c) => {
   try {
@@ -178,10 +191,47 @@ app.all('/api/auth/*', async (c) => {
 // Chat API endpoint
 app.post('/api/chat', async (c) => {
   try {
-    const { messages, model = 'llama-3-8b' } = await c.req.json()
+    const { messages, model = 'gpt-4o' } = await c.req.json()
 
-    console.log('Chat request for model:', model)
-    console.log('Messages:', messages)
+    console.log('🤖 Chat request for model:', model)
+    console.log('📨 Messages:', JSON.stringify(messages, null, 2))
+
+    // Handle GPT-4o, Claude, and Grok using Vercel AI SDK
+    if (model.startsWith('gpt-') || model.startsWith('claude-') || model.startsWith('grok-')) {
+      console.log('🔧 Using Vercel AI SDK for model:', model)
+
+      const { getModel } = await import('../lib/ai-providers')
+      const { convertToModelMessages } = await import('ai')
+
+      console.log('🔑 API Keys available:', {
+        anthropic: !!c.env.ANTHROPIC_API_KEY,
+        openai: !!c.env.OPENAI_API_KEY,
+        xai: !!c.env.XAI_API_KEY,
+      })
+
+      const aiModel = getModel({
+        ANTHROPIC_API_KEY: c.env.ANTHROPIC_API_KEY,
+        OPENAI_API_KEY: c.env.OPENAI_API_KEY,
+        XAI_API_KEY: c.env.XAI_API_KEY,
+      }, model)
+
+      console.log('✨ Model instance created, starting stream...')
+
+      // Convert UI messages to model messages (AI SDK v5 requirement)
+      const modelMessages = convertToModelMessages(messages)
+
+      const result = await streamText({
+        model: aiModel,
+        messages: modelMessages,
+        temperature: 0.7,
+        maxTokens: 2048,
+      })
+
+      console.log('📡 Stream created, returning UI message stream response...')
+
+      // Use Vercel AI SDK v5's UI message stream response (works with useChat hook)
+      return result.toUIMessageStreamResponse()
+    }
 
     // Handle Gemini via AI Gateway
     if (model === 'gemini-2.5-flash-lite') {
@@ -1250,47 +1300,8 @@ Response: ${JSON.stringify(responseData, null, 2)}`
   }
 })
 
-// AI Chat endpoint for external providers (Claude, GPT-4, Grok)
-app.post('/api/ai-chat', async (c) => {
-  try {
-    const { messages, model = 'claude-3-5-sonnet-20241022' } = await c.req.json()
-
-    console.log('AI Chat request for model:', model)
-    console.log('Messages:', messages)
-
-    // Import the getModel helper dynamically
-    const { getModel } = await import('../lib/ai-providers')
-
-    // Get the AI model instance using our provider helper
-    const aiModel = getModel({
-      ANTHROPIC_API_KEY: c.env.ANTHROPIC_API_KEY,
-      OPENAI_API_KEY: c.env.OPENAI_API_KEY,
-      XAI_API_KEY: c.env.XAI_API_KEY,
-    }, model)
-
-    console.log('Using AI SDK with model:', model)
-
-    // Use AI SDK with external provider
-    const result = await streamText({
-      model: aiModel,
-      messages: messages,
-      temperature: 0.7,
-      maxTokens: 2048,
-    })
-
-    console.log('AI SDK streamText result created')
-
-    // Return the data stream response directly (compatible with useChat hook)
-    return result.toDataStreamResponse()
-
-  } catch (error) {
-    console.error('AI Chat API error:', error)
-    return c.json({
-      error: 'Failed to process AI chat request',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, 500)
-  }
-})
+// Legacy /api/ai-chat endpoint has been removed
+// Use /api/v1/chat from src/server/routes/chat.ts instead (production-ready with auth + org context)
 
 // Mock data storage (in-memory for demo purposes)
 let mockUsers: any[] = [
@@ -1400,7 +1411,16 @@ app.openapi(routes.healthRoute, (c) => {
 app.route('/api/rag', ragRoutes)
 
 // Tasks routes with authentication and D1 database
-app.route('/', tasksApp)
+app.route('/api/tasks', tasksApp)
+
+// God admin routes (requires isGod = true)
+app.route('/api/god', godApp)
+
+// Organization management routes
+app.route('/api/organization', orgApp)
+
+// Chat API routes (v1) - replaces temporary /api/chat endpoint
+app.route('/api/v1/chat', chatApp)
 
 // TTS testing endpoint
 app.post('/api/tts-test', async (c) => {

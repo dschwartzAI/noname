@@ -74,6 +74,8 @@ name = "USER_SYS_DO"
 class_name = "UserSysDO"
 
 [env.development.vars]
+NODE_ENV = "development"
+DATABASE_URL = "postgresql://neondb_owner:npg_YBZ6UpWyojN4@ep-holy-dawn-afutxqyk.c-2.us-west-2.aws.neon.tech/neondb?sslmode=require"
 BETTER_AUTH_URL = "http://localhost:5173"
 BETTER_AUTH_SECRET = "CPmXy0XgIWaOICeanyyFhR5eFwyQgoSJ0LpGtgJrpHc="
 GOOGLE_CLIENT_ID = ""
@@ -84,6 +86,9 @@ GOOGLE_API_KEY = ""
 AI_GATEWAY_URL = ""
 ELEVENLABS_API_KEY = ""
 DEEPGRAM_API_KEY = ""
+ANTHROPIC_API_KEY = "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"
+OPENAI_API_KEY = "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"
+XAI_API_KEY = "xai-p2cV3glyRwrSOWdTxrGy4E46yQT9qq9VCRZl5L065nzuipKALDn4We3bfiAuTLH6WTQdyWc249Z8vLuG"
 
 # Assets and SPA configuration (disabled for development)
 # [assets]

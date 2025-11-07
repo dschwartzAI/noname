@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useChat } from 'ai/react'
+import { useChat } from '@ai-sdk/react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { AgentHeader } from '@/features/ai-chat/components/agent-header'
 import { mockConversations } from '@/features/ai-chat/data/mock-conversations'
 import { Button } from '@/components/ui/button'
@@ -9,20 +10,35 @@ import { Paperclip, Send, Mic, Loader2 } from 'lucide-react'
 function ConversationPage() {
   const { conversationId } = Route.useParams()
   const conversation = mockConversations.find((c) => c.id === conversationId)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [input, setInput] = useState('')
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading, error } = useChat({
-    api: '/api/ai-chat',
-    body: {
-      model: conversation?.agent.model || 'claude-3-5-sonnet-20241022',
-    },
-    initialMessages: [
+  // Stabilize initial messages
+  const initialMessages = useMemo(
+    () => [
       {
         id: '1',
-        role: 'assistant',
+        role: 'assistant' as const,
         content: conversation?.agent.greeting || 'How can I help you today?',
       },
     ],
+    [conversation?.agent.greeting]
+  )
+
+  const { messages, sendMessage, status, error } = useChat({
+    api: '/api/chat',
+    body: {
+      model: conversation?.agent.model || 'gpt-4o',
+    },
+    initialMessages,
   })
+
+  const isLoading = status === 'submitted' || status === 'streaming'
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
 
   if (!conversation) {
     return (
@@ -54,7 +70,9 @@ function ConversationPage() {
                   : 'bg-muted'
               }`}
             >
-              <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+              <p className="text-sm whitespace-pre-wrap">
+                {message.parts?.map((part) => part.type === 'text' ? part.text : '').join('') || message.content}
+              </p>
             </div>
           </div>
         ))}
@@ -76,22 +94,37 @@ function ConversationPage() {
             </div>
           </div>
         )}
+
+        {/* Auto-scroll anchor */}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Input Bar */}
       <div className="border-t p-4">
-        <form onSubmit={handleSubmit} className="flex items-end gap-2">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (input.trim()) {
+              sendMessage({ text: input })
+              setInput('')
+            }
+          }}
+          className="flex items-end gap-2"
+        >
           <Button type="button" variant="ghost" size="icon" className="flex-shrink-0">
             <Paperclip className="h-5 w-5" />
           </Button>
 
           <Textarea
             value={input}
-            onChange={handleInputChange}
+            onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
-                handleSubmit(e)
+                if (input.trim()) {
+                  sendMessage({ text: input })
+                  setInput('')
+                }
               }
             }}
             placeholder={`Message ${conversation.agent.name}`}
