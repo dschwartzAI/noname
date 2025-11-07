@@ -3,6 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { useSession } from '@/lib/auth-client';
 import { LogoUpload } from './_components/logo-upload';
+import { FaviconUpload } from './_components/favicon-upload';
 
 export const Route = createFileRoute('/_authenticated/admin/')({
   component: AdminPanel,
@@ -309,14 +310,27 @@ function SettingsTab() {
       </div>
 
       <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4">Branding</h3>
-        <div className="space-y-4">
+        <h3 className="text-lg font-semibold mb-6">Branding</h3>
+        <div className="space-y-8">
+          {/* Logo Section */}
           <div>
             <label className="text-sm font-medium mb-2 block">Logo</label>
             <p className="text-sm text-muted-foreground mb-4">
-              Upload your organization's logo. This will be displayed in the sidebar.
+              Upload your organization's logo. This will be displayed in the sidebar and throughout the app.
             </p>
             <LogoUpload />
+          </div>
+
+          {/* Divider */}
+          <div className="border-t" />
+
+          {/* Favicon Section */}
+          <div>
+            <label className="text-sm font-medium mb-2 block">Favicon</label>
+            <p className="text-sm text-muted-foreground mb-4">
+              Upload your browser tab icon. This appears in browser tabs and bookmarks.
+            </p>
+            <FaviconUpload />
           </div>
         </div>
       </Card>

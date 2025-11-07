@@ -58,21 +58,24 @@ logoApp.post('/upload', async (c) => {
 
     const formData = await c.req.formData();
     const file = formData.get('file') as File;
+    const type = (formData.get('type') as string) || 'logo'; // 'logo' or 'favicon'
 
     if (!file) {
       console.error('❌ No file in formData');
       return c.json({ error: 'No file provided' }, 400);
     }
-    console.log('✅ File received:', file.name, file.size, 'bytes');
+    console.log('✅ File received:', file.name, file.size, 'bytes', 'type:', type);
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
       return c.json({ error: 'Only image files are allowed' }, 400);
     }
 
-    // Validate file size (5MB max)
-    if (file.size > 5 * 1024 * 1024) {
-      return c.json({ error: 'File size must be less than 5MB' }, 400);
+    // Validate file size (5MB max for logos, 1MB for favicons)
+    const maxSize = type === 'favicon' ? 1 * 1024 * 1024 : 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      const maxSizeMB = type === 'favicon' ? '1MB' : '5MB';
+      return c.json({ error: `File size must be less than ${maxSizeMB}` }, 400);
     }
 
     const sqlClient = neon(c.env.DATABASE_URL);
@@ -93,11 +96,12 @@ logoApp.post('/upload', async (c) => {
       return c.json({ error: 'Only owners can update the logo' }, 403);
     }
 
-    // Generate unique filename
+    // Generate unique filename with type-specific folder
     const timestamp = Date.now();
     const extension = file.name.split('.').pop();
     const filename = `${membership.organizationId}-${timestamp}.${extension}`;
-    const key = `logos/${filename}`;
+    const folder = type === 'favicon' ? 'favicons' : 'logos';
+    const key = `${folder}/${filename}`;
     console.log('📝 Generated key:', key);
 
     // Upload to R2

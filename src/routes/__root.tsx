@@ -4,6 +4,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { NavigationProgress } from '@/components/navigation-progress'
 import { GeneralError } from '@/features/errors/general-error'
 import { NotFoundError } from '@/features/errors/not-found-error'
+import { DynamicFavicon } from '@/components/dynamic-favicon'
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient
@@ -11,6 +12,7 @@ export const Route = createRootRouteWithContext<{
   component: () => {
     return (
       <>
+        <DynamicFavicon />
         <NavigationProgress />
         <Outlet />
         <Toaster duration={5000} />

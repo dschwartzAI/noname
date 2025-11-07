@@ -83,6 +83,7 @@ export const organization = pgTable("organization", {
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
   logo: text("logo"),
+  favicon: text("favicon"),
   metadata: text("metadata"), // JSON string for custom branding, tier, etc.
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
