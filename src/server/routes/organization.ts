@@ -120,6 +120,7 @@ orgApp.patch('/:id', async (c) => {
     const updateData: any = {};
     if (updates.name) updateData.name = updates.name;
     if (updates.logo !== undefined) updateData.logo = updates.logo;
+    if (updates.favicon !== undefined) updateData.favicon = updates.favicon;
     if (updates.metadata) {
       // Merge with existing metadata
       const [currentOrg] = await db.select().from(schema.organization).where(eq(schema.organization.id, orgId)).limit(1);
