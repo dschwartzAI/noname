@@ -102,9 +102,8 @@ GOOGLE_API_KEY = ""
 AI_GATEWAY_URL = ""
 ELEVENLABS_API_KEY = ""
 DEEPGRAM_API_KEY = ""
-ANTHROPIC_API_KEY = "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"
-OPENAI_API_KEY = "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"
-XAI_API_KEY = "xai-p2cV3glyRwrSOWdTxrGy4E46yQT9qq9VCRZl5L065nzuipKALDn4We3bfiAuTLH6WTQdyWc249Z8vLuG"
+# AI API keys now stored in .dev.vars (local) and Cloudflare secrets (production)
+# Set production secrets with: wrangler secret put ANTHROPIC_API_KEY, etc.
 
 # Assets and SPA configuration (disabled for development)
 # [assets]
