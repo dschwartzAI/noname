@@ -8,6 +8,15 @@ importers:
 
   .:
     dependencies:
+      '@ai-sdk/anthropic':
+        specifier: ^2.0.41
+        version: 2.0.41(zod@4.1.12)
+      '@ai-sdk/openai':
+        specifier: ^2.0.64
+        version: 2.0.64(zod@4.1.12)
+      '@ai-sdk/react':
+        specifier: ^2.0.89
+        version: 2.0.89(react@19.2.0)(zod@4.1.12)
       '@cloudflare/ai-utils':
         specifier: ^1.0.1
         version: 1.0.1
@@ -20,6 +29,12 @@ importers:
       '@cloudflare/workers-types':
         specifier: ^4.20250828.0
         version: 4.20251014.0
+      '@composio/core':
+        specifier: ^0.2.3
+        version: 0.2.3(ws@8.18.0)(zod@4.1.12)
+      '@composio/vercel':
+        specifier: ^0.2.15
+        version: 0.2.15(@composio/core@0.2.3(ws@8.18.0)(zod@4.1.12))(ai@5.0.89(zod@4.1.12))
       '@hono/zod-openapi':
         specifier: ^1.1.0
         version: 1.1.4(hono@4.10.4)(zod@4.1.12)
@@ -81,10 +96,10 @@ importers:
         specifier: ^2.2.6
         version: 2.2.6(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@radix-ui/react-separator':
-        specifier: ^1.1.7
+        specifier: ^1.1.8
         version: 1.1.8(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@radix-ui/react-slot':
-        specifier: ^1.2.3
+        specifier: ^1.2.4
         version: 1.2.4(@types/react@19.2.2)(react@19.2.0)
       '@radix-ui/react-switch':
         specifier: ^1.2.6
@@ -114,17 +129,17 @@ importers:
         specifier: ^15.5.13
         version: 15.5.13
       ai:
-        specifier: ^3.4.33
-        version: 3.4.33(react@19.2.0)(solid-js@1.9.10)(sswr@2.2.0(svelte@5.43.3))(svelte@5.43.3)(vue@3.5.23(typescript@5.9.3))(zod@4.1.12)
+        specifier: ^5.0.89
+        version: 5.0.89(zod@4.1.12)
       axios:
         specifier: ^1.11.0
         version: 1.13.2
       better-auth:
         specifier: ^1.3.7
-        version: 1.3.34(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(solid-js@1.9.10)(svelte@5.43.3)(vue@3.5.23(typescript@5.9.3))
+        version: 1.3.34(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(solid-js@1.9.10)(svelte@5.43.3)
       better-auth-cloudflare:
         specifier: ^0.2.4
-        version: 0.2.8(@cloudflare/workers-types@4.20251014.0)(@neondatabase/serverless@1.0.2)(@opentelemetry/api@1.9.0)(@types/pg@8.15.6)(better-auth@1.3.34(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(solid-js@1.9.10)(svelte@5.43.3)(vue@3.5.23(typescript@5.9.3)))(kysely@0.28.8)(postgres@3.4.7)
+        version: 0.2.8(@cloudflare/workers-types@4.20251014.0)(@neondatabase/serverless@1.0.2)(@opentelemetry/api@1.9.0)(@types/pg@8.15.6)(better-auth@1.3.34(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(solid-js@1.9.10)(svelte@5.43.3))(kysely@0.28.8)(postgres@3.4.7)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -201,7 +216,7 @@ importers:
         specifier: ^2.0.7
         version: 2.0.7(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       streamdown:
-        specifier: ^1.1.6
+        specifier: ^1.4.0
         version: 1.4.0(@types/react@19.2.2)(react@19.2.0)
       tailwind-merge:
         specifier: ^3.3.1
@@ -309,14 +324,23 @@ importers:
 
 packages:
 
-  '@ai-sdk/provider-utils@1.0.22':
-    resolution: {integrity: sha512-YHK2rpj++wnLVc9vPGzGFP3Pjeld2MwhKinetA0zKXOoHAT/Jit5O8kZsxcSlJPu9wvcGT1UGZEjZrtO7PfFOQ==}
+  '@ai-sdk/anthropic@2.0.41':
+    resolution: {integrity: sha512-ZQebpyE6rM3JoeEyhJXUNDiRfVegw8ZrxT+rB8yurxI5JXDnlGpYQvSPmdR8TQfMbps4YkggfbcOwMeEZaTS+g==}
     engines: {node: '>=18'}
     peerDependencies:
-      zod: ^3.0.0
-    peerDependenciesMeta:
-      zod:
-        optional: true
+      zod: ^3.25.76 || ^4.1.8
+
+  '@ai-sdk/gateway@2.0.7':
+    resolution: {integrity: sha512-/AI5AKi4vOK9SEb8Z1dfXkhsJ5NAfWsoJQc96B/mzn2KIrjw5occOjIwD06scuhV9xWlghCoXJT1sQD9QH/tyg==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+
+  '@ai-sdk/openai@2.0.64':
+    resolution: {integrity: sha512-+1mqxn42uB32DPZ6kurSyGAmL3MgCaDpkYU7zNDWI4NLy3Zg97RxTsI1jBCGIqkEVvRZKJlIMYtb89OvMnq3AQ==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
 
   '@ai-sdk/provider-utils@2.2.8':
     resolution: {integrity: sha512-fqhG+4sCVv8x7nFzYnFo19ryhAa3w096Kmc3hWxMQfW/TubPOmt3A6tYZhl4mUfQWWQMsuSkLrtjlWuXBVSGQA==}
@@ -324,60 +348,28 @@ packages:
     peerDependencies:
       zod: ^3.23.8
 
-  '@ai-sdk/provider@0.0.26':
-    resolution: {integrity: sha512-dQkfBDs2lTYpKM8389oopPdQgIU007GQyCbuPPrV+K6MtSII3HBfE0stUIMXUb44L+LK1t6GXPP7wjSzjO6uKg==}
+  '@ai-sdk/provider-utils@3.0.16':
+    resolution: {integrity: sha512-lsWQY9aDXHitw7C1QRYIbVGmgwyT98TF3MfM8alNIXKpdJdi+W782Rzd9f1RyOfgRmZ08gJ2EYNDhWNK7RqpEA==}
     engines: {node: '>=18'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
 
   '@ai-sdk/provider@1.1.3':
     resolution: {integrity: sha512-qZMxYJ0qqX/RfnuIaab+zp8UAeJn/ygXXAffR5I4N0n1IrvA6qBsjc8hXLmBiMV2zoXlifkacF7sEFnYnjBcqg==}
     engines: {node: '>=18'}
 
-  '@ai-sdk/react@0.0.70':
-    resolution: {integrity: sha512-GnwbtjW4/4z7MleLiW+TOZC2M29eCg1tOUpuEiYFMmFNZK8mkrqM0PFZMo6UsYeUYMWqEOOcPOU9OQVJMJh7IQ==}
+  '@ai-sdk/provider@2.0.0':
+    resolution: {integrity: sha512-6o7Y2SeO9vFKB8lArHXehNuusnpddKPk7xqL7T2/b+OvXMRIXUO1rR4wcv1hAFUAT9avGZshty3Wlua/XA7TvA==}
+    engines: {node: '>=18'}
+
+  '@ai-sdk/react@2.0.89':
+    resolution: {integrity: sha512-r2uCqx042JOjNrSlDrjh7ufSIfU2BM6Lo4qe47KHkYuJjPfssxhLpJUCFLB01iV7Foyn/xpbq06Zr6WI4qUDgw==}
     engines: {node: '>=18'}
     peerDependencies:
       react: ^18 || ^19 || ^19.0.0-rc
-      zod: ^3.0.0
-    peerDependenciesMeta:
-      react:
-        optional: true
-      zod:
-        optional: true
-
-  '@ai-sdk/solid@0.0.54':
-    resolution: {integrity: sha512-96KWTVK+opdFeRubqrgaJXoNiDP89gNxFRWUp0PJOotZW816AbhUf4EnDjBjXTLjXL1n0h8tGSE9sZsRkj9wQQ==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      solid-js: ^1.7.7
-    peerDependenciesMeta:
-      solid-js:
-        optional: true
-
-  '@ai-sdk/svelte@0.0.57':
-    resolution: {integrity: sha512-SyF9ItIR9ALP9yDNAD+2/5Vl1IT6kchgyDH8xkmhysfJI6WrvJbtO1wdQ0nylvPLcsPoYu+cAlz1krU4lFHcYw==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      svelte: ^3.0.0 || ^4.0.0 || ^5.0.0
-    peerDependenciesMeta:
-      svelte:
-        optional: true
-
-  '@ai-sdk/ui-utils@0.0.50':
-    resolution: {integrity: sha512-Z5QYJVW+5XpSaJ4jYCCAVG7zIAuKOOdikhgpksneNmKvx61ACFaf98pmOd+xnjahl0pIlc/QIe6O4yVaJ1sEaw==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      zod: ^3.0.0
+      zod: ^3.25.76 || ^4.1.8
     peerDependenciesMeta:
       zod:
-        optional: true
-
-  '@ai-sdk/vue@0.0.59':
-    resolution: {integrity: sha512-+ofYlnqdc8c4F6tM0IKF0+7NagZRAiqBJpGDJ+6EYhDW8FHLUP/JFBgu32SjxSxC6IKFZxEnl68ZoP/Z38EMlw==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      vue: ^3.3.4
-    peerDependenciesMeta:
-      vue:
         optional: true
 
   '@antfu/install-pkg@1.1.0':
@@ -623,6 +615,25 @@ packages:
 
   '@cloudflare/workers-types@4.20251014.0':
     resolution: {integrity: sha512-tEW98J/kOa0TdylIUOrLKRdwkUw0rvvYVlo+Ce0mqRH3c8kSoxLzUH9gfCvwLe0M89z1RkzFovSKAW2Nwtyn3w==}
+
+  '@composio/client@0.1.0-alpha.38':
+    resolution: {integrity: sha512-+Gm5EQdFCu408YqPb9rKdVK7QD9eLS5wJTeYw1QH9eA6hfLmTBKVHFLc32tbLlY9nFwmClyF7KIB6y4NUfYcQw==}
+
+  '@composio/core@0.2.3':
+    resolution: {integrity: sha512-IvlfhVHdOGKZvduELw+AhAzoHps2OK/7waQsH2v+VMv59KsnmuFpMsB7Ykd2+rx2aNK1zj3qw/dPzMtqjGLjaw==}
+    peerDependencies:
+      zod: '>=3.25.76 <5'
+
+  '@composio/json-schema-to-zod@0.1.18':
+    resolution: {integrity: sha512-y/1AXznIZE92KTKmDCFa2S4/+WulfdrO1RH65fy8CG7sXJVxOExktUiQUrvatnZZ5LzXUJqke9W+fMxLBvm5jw==}
+    peerDependencies:
+      zod: '>=3.25.76 <4 || >=4.1 <5'
+
+  '@composio/vercel@0.2.15':
+    resolution: {integrity: sha512-o9SCrQUbdOdBs2gWwqv1R5CNsp8JPuFvc3T/7AsM3XbLEvyNyrHRMtcPpNBut+MDtpMwy828BAFVTnjKnJE9jg==}
+    peerDependencies:
+      '@composio/core': 0.2.3
+      ai: ^5.0.44
 
   '@cspotcode/source-map-support@0.8.1':
     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
@@ -2616,9 +2627,6 @@ packages:
   '@types/debug@4.1.12':
     resolution: {integrity: sha512-vIChWdVG3LG1SMxEvI/AK+FWJthlrqlTu7fbrlywTkkaONwk/UAGaULXRlf8vkzFBLVm0zkMdCquhL5aOjhXPQ==}
 
-  '@types/diff-match-patch@1.0.36':
-    resolution: {integrity: sha512-xFdR6tkm0MWvBfO8xXCSsinYxHcqkQUlcHeSpMC2ukzOb6lwQAfDmW+Qt0AvlGd8HpsS28qKsB+oPeJn9I39jg==}
-
   '@types/estree-jsx@1.0.5':
     resolution: {integrity: sha512-52CcUVNFyfb1A2ALocQw/Dd1BQFNmSdkuC3BkZ6iqhdMfQz7JWOFRuJFloOzjk+6WijU56m9oKXFAXc7o3Towg==}
 
@@ -2740,6 +2748,10 @@ packages:
   '@ungap/structured-clone@1.3.0':
     resolution: {integrity: sha512-WmoN8qaIAo7WTYWbAZuG8PYEhn5fkz7dZrqTBZ7dtt//lL2Gwms1IcnQ5yHqjDfX8Ft5j4YzDM23f87zBfDe9g==}
 
+  '@vercel/oidc@3.0.3':
+    resolution: {integrity: sha512-yNEQvPcVrK9sIe637+I0jD6leluPxzwJKx/Haw6F4H77CdDsszUn5V3o96LPziXkSNE2B83+Z3mjqGKBK/R6Gg==}
+    engines: {node: '>= 20'}
+
   '@vitejs/plugin-react-swc@4.2.1':
     resolution: {integrity: sha512-SIZ/XxeS2naLw4L2vVvpTyujM2OY+Rf+y6nWETqfoBrZpI3SFdyNJof3nQ8HbLhXJ1Eh9e9c0JGYC8GYPhLkCw==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -2757,20 +2769,6 @@ packages:
 
   '@vue/compiler-ssr@3.5.23':
     resolution: {integrity: sha512-Hld2xphbMjXs9Q9WKxPf2EqmE+Rq/FEDnK/wUBtmYq74HCV4XDdSCheAaB823OQXIIFGq9ig/RbAZkF9s4U0Ow==}
-
-  '@vue/reactivity@3.5.23':
-    resolution: {integrity: sha512-ji5w0qvrPyBmBx5Ldv4QGNsw0phgRreEvjt0iUf1lei2Sm8//9ZAi78uM2ZjsT5gk0YZilLuoRCIMvtuZlHMJw==}
-
-  '@vue/runtime-core@3.5.23':
-    resolution: {integrity: sha512-LMB0S6/G7mFJcpQeQaZrbsthFbWrIX8FVTzu5x9U3Ec8YW5MY1CGAnBBHNj+TPOBu3pIbtPpjrXtcaN04X+aBw==}
-
-  '@vue/runtime-dom@3.5.23':
-    resolution: {integrity: sha512-r/PYc8W9THzEL0UExpTkV+d31zO+Jid/RMZIDG6aS/NekOEUHuCJkJgftySWZw7JTJO/+q9Kxkg8p+i7Q7Q+ew==}
-
-  '@vue/server-renderer@3.5.23':
-    resolution: {integrity: sha512-NiWZsNCsXA20/VufcrW5u+Trt/PyFlpMmxaB2KERYM8eZgUoKUjXxJQb9ypq+LZ0Sp3XHJGNBR8DkhRnkKAMUw==}
-    peerDependencies:
-      vue: 3.5.23
 
   '@vue/shared@3.5.23':
     resolution: {integrity: sha512-0YZ1DYuC5o/YJPf6pFdt2KYxVGDxkDbH/1NYJnVJWUkzr8ituBEmFVQRNX2gCaAsFEjEDnLkWpgqlZA7htgS/g==}
@@ -2794,26 +2792,11 @@ packages:
     engines: {node: '>=0.4.0'}
     hasBin: true
 
-  ai@3.4.33:
-    resolution: {integrity: sha512-plBlrVZKwPoRTmM8+D1sJac9Bq8eaa2jiZlHLZIWekKWI1yMWYZvCCEezY9ASPwRhULYDJB2VhKOBUUeg3S5JQ==}
+  ai@5.0.89:
+    resolution: {integrity: sha512-8Nq+ZojGacQrupoJEQLrTDzT5VtR3gyp5AaqFSV3tzsAXlYQ9Igb7QE3yeoEdzOk5IRfDwWL7mDCUD+oBg1hDA==}
     engines: {node: '>=18'}
     peerDependencies:
-      openai: ^4.42.0
-      react: ^18 || ^19 || ^19.0.0-rc
-      sswr: ^2.1.0
-      svelte: ^3.0.0 || ^4.0.0 || ^5.0.0
-      zod: ^3.0.0
-    peerDependenciesMeta:
-      openai:
-        optional: true
-      react:
-        optional: true
-      sswr:
-        optional: true
-      svelte:
-        optional: true
-      zod:
-        optional: true
+      zod: ^3.25.76 || ^4.1.8
 
   ajv@6.12.6:
     resolution: {integrity: sha512-j3fVLgvTo527anyYyJOGTYJbG+vnnQYvE0m5mmkc1TK+nxAppkCLMIL0aZ4dblVCNoGShhm+kzE4ZUykBoMg4g==}
@@ -2958,10 +2941,6 @@ packages:
   chalk@4.1.2:
     resolution: {integrity: sha512-oKnbhFyRIXpUuez8iBMmyEa4nbj4IOQyuhc/wy9kY7/WVPcwIO9VA668Pu8RkO7+0G76SLROeyw9CpQ061i4mA==}
     engines: {node: '>=10'}
-
-  chalk@5.6.2:
-    resolution: {integrity: sha512-7NzBL0rN6fMUW+f7A6Io4h40qQlG+xGmtMxfbnH/K7TAtt8JQWVQK+6g0UXKMeVJoyV5EkkNsErQ8pVD3bLHbA==}
-    engines: {node: ^12.17.0 || ^14.13 || >=16.0.0}
 
   character-entities-html4@2.1.0:
     resolution: {integrity: sha512-1v7fgQRj6hnSwFpq1Eu0ynr/CDEw0rXo2B61qXrLNdHZmPKgb7fqS1a2JwF0rISo9q77jDI8VMEHoApn8qDoZA==}
@@ -3294,9 +3273,6 @@ packages:
   devlop@1.1.0:
     resolution: {integrity: sha512-RWmIqhcFf1lRYBvNmr7qTNuyCt/7/ns2jbpp1+PalgE/rDQcBT0fioSMUpJ93irlUhC5hrg4cYqe6U+0ImW0rA==}
 
-  diff-match-patch@1.0.5:
-    resolution: {integrity: sha512-IayShXAgj/QMXgB0IWmKx+rOPuGMhqm5w6jvFxmVenXKIzRqTAAsbBPT3kWQeGANj3jGgvcvv4yK6SxqYmikgw==}
-
   diff@8.0.2:
     resolution: {integrity: sha512-sSuxWU5j5SR9QQji/o2qMvqRNYRDOcBTgsJ/DeCf4iSN4gW+gNMXM7wFIP+fdXZxoNiAnHUTGjCr+TSWXdRDKg==}
     engines: {node: '>=0.3.1'}
@@ -3562,9 +3538,9 @@ packages:
   eventemitter3@5.0.1:
     resolution: {integrity: sha512-GWkBvjiSZK87ELrYOSESUYeVIc9mvLLf/nXalMOS5dYrgZq9o5OVkbZAVM06CVxYsCwH9BDZFPlQTlPA1j4ahA==}
 
-  eventsource-parser@1.1.2:
-    resolution: {integrity: sha512-v0eOBUbiaFojBu2s2NPBfYUoRR9GjcDNvCXVaqEf5vVfpIAh9f8RCo4vXTP8c63QRKCFwoLpMpTdPwwhEKVgzA==}
-    engines: {node: '>=14.18'}
+  eventsource-parser@3.0.6:
+    resolution: {integrity: sha512-Vo1ab+QXPzZ4tCa8SwIHJFaSzy4R6SHf7BY79rFBDf0idraZWAkYrDjDj8uWaSm3S2TK+hJ7/t1CEmZ7jXw+pg==}
+    engines: {node: '>=18.0.0'}
 
   exit-hook@2.2.1:
     resolution: {integrity: sha512-eNTPlAD67BmP31LDINZ3U7HSF8l57TxOY2PmBJ1shpCvpnxBF93mWCE8YHBnXs8qiUZJc9WDcWIeC3a2HIAMfw==}
@@ -3947,11 +3923,6 @@ packages:
   json5@2.2.3:
     resolution: {integrity: sha512-XmOWe7eyHYH14cLdVPoyg+GOH3rYX++KpzrylJwSW98t3Nk+U8XOl8FWKOgwtzdb8lXGf6zYwDUzeHMWfxasyg==}
     engines: {node: '>=6'}
-    hasBin: true
-
-  jsondiffpatch@0.6.0:
-    resolution: {integrity: sha512-3QItJOXp2AP1uv7waBkao5nCvhEv+QmJAd38Ybq7wNI74Q+BBmnLn4EDKz6yI9xGAIQoUF87qHt+kc1IVxB4zQ==}
-    engines: {node: ^18.0.0 || >=20.0.0}
     hasBin: true
 
   katex@0.16.25:
@@ -4347,6 +4318,18 @@ packages:
   oniguruma-to-es@4.3.3:
     resolution: {integrity: sha512-rPiZhzC3wXwE59YQMRDodUwwT9FZ9nNBwQQfsd1wfdtlKEyCdRV0avrTcSZ5xlIvGRVPd/cx6ZN45ECmS39xvg==}
 
+  openai@5.23.2:
+    resolution: {integrity: sha512-MQBzmTulj+MM5O8SKEk/gL8a7s5mktS9zUtAkU257WjvobGc9nKcBuVwjyEEcb9SI8a8Y2G/mzn3vm9n1Jlleg==}
+    hasBin: true
+    peerDependencies:
+      ws: ^8.18.0
+      zod: ^3.23.8
+    peerDependenciesMeta:
+      ws:
+        optional: true
+      zod:
+        optional: true
+
   openapi3-ts@4.5.0:
     resolution: {integrity: sha512-jaL+HgTq2Gj5jRcfdutgRGLosCy/hT8sQf6VOy+P+g36cZOjI1iukdPnijC+4CmeRzg/jEllJUboEic2FhxhtQ==}
 
@@ -4559,6 +4542,9 @@ packages:
   punycode@2.3.1:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
     engines: {node: '>=6'}
+
+  pusher-js@8.4.0:
+    resolution: {integrity: sha512-wp3HqIIUc1GRyu1XrP6m2dgyE9MoCsXVsWNlohj0rjSkLf+a0jLvEyVubdg58oMk7bhjBWnFClgp8jfAa6Ak4Q==}
 
   pvtsutils@1.3.6:
     resolution: {integrity: sha512-PLgQXQ6H2FWCaeRak8vvk1GW462lMxB5s3Jm673N82zI4vqtVUPuZdffdZbPDFRoU8kAhItWFtPCWiPpp4/EDg==}
@@ -4857,11 +4843,6 @@ packages:
   space-separated-tokens@2.0.2:
     resolution: {integrity: sha512-PEGlAwrG8yXGXRjW32fGbg66JAlOAwbObuqVoJpv/mRgoWDQfgH1wDPvtzWyUSNAXBGSk8h755YDbbcEy3SH2Q==}
 
-  sswr@2.2.0:
-    resolution: {integrity: sha512-clTszLPZkmycALTHD1mXGU+mOtA/MIoLgS1KGTTzFNVm9rytQVykgRaP+z1zl572cz0bTqj4rFVoC2N+IGK4Sg==}
-    peerDependencies:
-      svelte: ^4.0.0 || ^5.0.0
-
   stoppable@1.1.0:
     resolution: {integrity: sha512-KXDYZ9dszj6bzvnEMRYvxgeTHU74QBFL54XKtP3nyMuJ81CFYtABZ3bAzL2EdFUaEwJOBOgENyFj3R7oTzDyyw==}
     engines: {node: '>=4', npm: '>=6'}
@@ -4919,14 +4900,6 @@ packages:
     resolution: {integrity: sha512-wfHRmHWk/isGNMwlLGlZX5Gzz/uTgo0o2IRuTMcf4CPuPFJZlq0rDaKUx+ozB5nBOReNV1kiOyzMfj+MBMikLw==}
     peerDependencies:
       react: ^16.11.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
-
-  swrev@4.0.0:
-    resolution: {integrity: sha512-LqVcOHSB4cPGgitD1riJ1Hh4vdmITOp+BkmfmXRh4hSF/t7EnS4iD+SOTmq7w5pPm/SiPeto4ADbKS6dHUDWFA==}
-
-  swrv@1.1.0:
-    resolution: {integrity: sha512-pjllRDr2s0iTwiE5Isvip51dZGR7GjLH1gCSVyE8bQnbAx6xackXsFdojau+1O5u98yHF5V73HQGOFxKUXO9gQ==}
-    peerDependencies:
-      vue: '>=3.2.26 < 4'
 
   tailwind-merge@3.3.1:
     resolution: {integrity: sha512-gBXpgUm/3rp1lMZZrM/w7D8GKqshif0zAymAhbCyIt8KMe+0v9DQ7cdYLR4FHH/cKpdTXb+A/tKKU3eolfsI+g==}
@@ -4997,6 +4970,9 @@ packages:
 
   tw-animate-css@1.4.0:
     resolution: {integrity: sha512-7bziOlRqH0hJx80h/3mbicLW7o8qLsH5+RaLR2t+OHM3D0JlWGODQKQ4cxbK7WlvmUxpcj6Kgu6EKqjrGFe3QQ==}
+
+  tweetnacl@1.0.3:
+    resolution: {integrity: sha512-6rt+RN7aOi1nGMyC4Xa5DdYiukl2UWCbcJft7YhxReBGQD7OAM8Pbxw6YMo4r2diNEA8FEmu32YOn9rhaiE5yw==}
 
   type-check@0.4.0:
     resolution: {integrity: sha512-XleUoc9uwGXqjWwXaUTZAmzMcFZ5858QA2vvx1Ur5xIcixXIP+8LnFDgRplU30us6teqdlskFfu+ae4K79Ooew==}
@@ -5104,6 +5080,10 @@ packages:
     resolution: {integrity: sha512-0/A9rDy9P7cJ+8w1c9WD9V//9Wj15Ce2MPz8Ri6032usz+NfePxx5AcN3bN+r6ZL6jEo066/yNYB3tn4pQEx+A==}
     hasBin: true
 
+  uuid@13.0.0:
+    resolution: {integrity: sha512-XQegIaBTVUjSHliKqcnFqYypAd4S+WCYt5NIeRs6w/UAry7z8Y9j5ZwRRL4kzq9U3sD6v+85er9FvkEaBpji2w==}
+    hasBin: true
+
   uuid@8.3.2:
     resolution: {integrity: sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==}
     hasBin: true
@@ -5179,14 +5159,6 @@ packages:
 
   vscode-uri@3.0.8:
     resolution: {integrity: sha512-AyFQ0EVmsOZOlAnxoFOGOq1SQDWAB7C6aqMGS23svWAllfOaxbuFvcT8D1i8z3Gyn8fraVeZNNmN6e9bxxXkKw==}
-
-  vue@3.5.23:
-    resolution: {integrity: sha512-CfvZv/vI52xUhumUvHtD6iFIS78nGWfX4IJnHfBGhpqMI0CwDq2YEngXOeaBFMRmiArcqczuVrLxurvesTYT9w==}
-    peerDependencies:
-      typescript: '*'
-    peerDependenciesMeta:
-      typescript:
-        optional: true
 
   walk-up-path@4.0.0:
     resolution: {integrity: sha512-3hu+tD8YzSLGuFYtPRb48vdhKMi0KQV5sn+uWr8+7dMEq/2G/dtLrdDinkLjqq5TIbIBjYJ4Ax/n3YiaW7QM8A==}
@@ -5324,13 +5296,23 @@ packages:
 
 snapshots:
 
-  '@ai-sdk/provider-utils@1.0.22(zod@4.1.12)':
+  '@ai-sdk/anthropic@2.0.41(zod@4.1.12)':
     dependencies:
-      '@ai-sdk/provider': 0.0.26
-      eventsource-parser: 1.1.2
-      nanoid: 3.3.11
-      secure-json-parse: 2.7.0
-    optionalDependencies:
+      '@ai-sdk/provider': 2.0.0
+      '@ai-sdk/provider-utils': 3.0.16(zod@4.1.12)
+      zod: 4.1.12
+
+  '@ai-sdk/gateway@2.0.7(zod@4.1.12)':
+    dependencies:
+      '@ai-sdk/provider': 2.0.0
+      '@ai-sdk/provider-utils': 3.0.16(zod@4.1.12)
+      '@vercel/oidc': 3.0.3
+      zod: 4.1.12
+
+  '@ai-sdk/openai@2.0.64(zod@4.1.12)':
+    dependencies:
+      '@ai-sdk/provider': 2.0.0
+      '@ai-sdk/provider-utils': 3.0.16(zod@4.1.12)
       zod: 4.1.12
 
   '@ai-sdk/provider-utils@2.2.8(zod@4.1.12)':
@@ -5340,62 +5322,30 @@ snapshots:
       secure-json-parse: 2.7.0
       zod: 4.1.12
 
-  '@ai-sdk/provider@0.0.26':
+  '@ai-sdk/provider-utils@3.0.16(zod@4.1.12)':
     dependencies:
-      json-schema: 0.4.0
+      '@ai-sdk/provider': 2.0.0
+      '@standard-schema/spec': 1.0.0
+      eventsource-parser: 3.0.6
+      zod: 4.1.12
 
   '@ai-sdk/provider@1.1.3':
     dependencies:
       json-schema: 0.4.0
 
-  '@ai-sdk/react@0.0.70(react@19.2.0)(zod@4.1.12)':
+  '@ai-sdk/provider@2.0.0':
     dependencies:
-      '@ai-sdk/provider-utils': 1.0.22(zod@4.1.12)
-      '@ai-sdk/ui-utils': 0.0.50(zod@4.1.12)
+      json-schema: 0.4.0
+
+  '@ai-sdk/react@2.0.89(react@19.2.0)(zod@4.1.12)':
+    dependencies:
+      '@ai-sdk/provider-utils': 3.0.16(zod@4.1.12)
+      ai: 5.0.89(zod@4.1.12)
+      react: 19.2.0
       swr: 2.3.6(react@19.2.0)
       throttleit: 2.1.0
     optionalDependencies:
-      react: 19.2.0
       zod: 4.1.12
-
-  '@ai-sdk/solid@0.0.54(solid-js@1.9.10)(zod@4.1.12)':
-    dependencies:
-      '@ai-sdk/provider-utils': 1.0.22(zod@4.1.12)
-      '@ai-sdk/ui-utils': 0.0.50(zod@4.1.12)
-    optionalDependencies:
-      solid-js: 1.9.10
-    transitivePeerDependencies:
-      - zod
-
-  '@ai-sdk/svelte@0.0.57(svelte@5.43.3)(zod@4.1.12)':
-    dependencies:
-      '@ai-sdk/provider-utils': 1.0.22(zod@4.1.12)
-      '@ai-sdk/ui-utils': 0.0.50(zod@4.1.12)
-      sswr: 2.2.0(svelte@5.43.3)
-    optionalDependencies:
-      svelte: 5.43.3
-    transitivePeerDependencies:
-      - zod
-
-  '@ai-sdk/ui-utils@0.0.50(zod@4.1.12)':
-    dependencies:
-      '@ai-sdk/provider': 0.0.26
-      '@ai-sdk/provider-utils': 1.0.22(zod@4.1.12)
-      json-schema: 0.4.0
-      secure-json-parse: 2.7.0
-      zod-to-json-schema: 3.24.6(zod@4.1.12)
-    optionalDependencies:
-      zod: 4.1.12
-
-  '@ai-sdk/vue@0.0.59(vue@3.5.23(typescript@5.9.3))(zod@4.1.12)':
-    dependencies:
-      '@ai-sdk/provider-utils': 1.0.22(zod@4.1.12)
-      '@ai-sdk/ui-utils': 0.0.50(zod@4.1.12)
-      swrv: 1.1.0(vue@3.5.23(typescript@5.9.3))
-    optionalDependencies:
-      vue: 3.5.23(typescript@5.9.3)
-    transitivePeerDependencies:
-      - zod
 
   '@antfu/install-pkg@1.1.0':
     dependencies:
@@ -5702,6 +5652,32 @@ snapshots:
     optional: true
 
   '@cloudflare/workers-types@4.20251014.0': {}
+
+  '@composio/client@0.1.0-alpha.38': {}
+
+  '@composio/core@0.2.3(ws@8.18.0)(zod@4.1.12)':
+    dependencies:
+      '@composio/client': 0.1.0-alpha.38
+      '@composio/json-schema-to-zod': 0.1.18(zod@4.1.12)
+      '@types/json-schema': 7.0.15
+      chalk: 4.1.2
+      openai: 5.23.2(ws@8.18.0)(zod@4.1.12)
+      pusher-js: 8.4.0
+      semver: 7.7.3
+      uuid: 13.0.0
+      zod: 4.1.12
+      zod-to-json-schema: 3.24.6(zod@4.1.12)
+    transitivePeerDependencies:
+      - ws
+
+  '@composio/json-schema-to-zod@0.1.18(zod@4.1.12)':
+    dependencies:
+      zod: 4.1.12
+
+  '@composio/vercel@0.2.15(@composio/core@0.2.3(ws@8.18.0)(zod@4.1.12))(ai@5.0.89(zod@4.1.12))':
+    dependencies:
+      '@composio/core': 0.2.3(ws@8.18.0)(zod@4.1.12)
+      ai: 5.0.89(zod@4.1.12)
 
   '@cspotcode/source-map-support@0.8.1':
     dependencies:
@@ -7076,6 +7052,7 @@ snapshots:
   '@sveltejs/acorn-typescript@1.0.6(acorn@8.15.0)':
     dependencies:
       acorn: 8.15.0
+    optional: true
 
   '@swc/core-darwin-arm64@1.15.0':
     optional: true
@@ -7498,8 +7475,6 @@ snapshots:
     dependencies:
       '@types/ms': 2.1.0
 
-  '@types/diff-match-patch@1.0.36': {}
-
   '@types/estree-jsx@1.0.5':
     dependencies:
       '@types/estree': 1.0.8
@@ -7656,6 +7631,8 @@ snapshots:
 
   '@ungap/structured-clone@1.3.0': {}
 
+  '@vercel/oidc@3.0.3': {}
+
   '@vitejs/plugin-react-swc@4.2.1(vite@7.2.0(@types/node@24.10.0)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.20.6)(yaml@2.8.1))':
     dependencies:
       '@rolldown/pluginutils': 1.0.0-beta.46
@@ -7671,11 +7648,13 @@ snapshots:
       entities: 4.5.0
       estree-walker: 2.0.2
       source-map-js: 1.2.1
+    optional: true
 
   '@vue/compiler-dom@3.5.23':
     dependencies:
       '@vue/compiler-core': 3.5.23
       '@vue/shared': 3.5.23
+    optional: true
 
   '@vue/compiler-sfc@3.5.23':
     dependencies:
@@ -7688,35 +7667,16 @@ snapshots:
       magic-string: 0.30.21
       postcss: 8.5.6
       source-map-js: 1.2.1
+    optional: true
 
   '@vue/compiler-ssr@3.5.23':
     dependencies:
       '@vue/compiler-dom': 3.5.23
       '@vue/shared': 3.5.23
+    optional: true
 
-  '@vue/reactivity@3.5.23':
-    dependencies:
-      '@vue/shared': 3.5.23
-
-  '@vue/runtime-core@3.5.23':
-    dependencies:
-      '@vue/reactivity': 3.5.23
-      '@vue/shared': 3.5.23
-
-  '@vue/runtime-dom@3.5.23':
-    dependencies:
-      '@vue/reactivity': 3.5.23
-      '@vue/runtime-core': 3.5.23
-      '@vue/shared': 3.5.23
-      csstype: 3.1.3
-
-  '@vue/server-renderer@3.5.23(vue@3.5.23(typescript@5.9.3))':
-    dependencies:
-      '@vue/compiler-ssr': 3.5.23
-      '@vue/shared': 3.5.23
-      vue: 3.5.23(typescript@5.9.3)
-
-  '@vue/shared@3.5.23': {}
+  '@vue/shared@3.5.23':
+    optional: true
 
   acorn-jsx@5.3.2(acorn@8.15.0):
     dependencies:
@@ -7728,29 +7688,13 @@ snapshots:
 
   acorn@8.15.0: {}
 
-  ai@3.4.33(react@19.2.0)(solid-js@1.9.10)(sswr@2.2.0(svelte@5.43.3))(svelte@5.43.3)(vue@3.5.23(typescript@5.9.3))(zod@4.1.12):
+  ai@5.0.89(zod@4.1.12):
     dependencies:
-      '@ai-sdk/provider': 0.0.26
-      '@ai-sdk/provider-utils': 1.0.22(zod@4.1.12)
-      '@ai-sdk/react': 0.0.70(react@19.2.0)(zod@4.1.12)
-      '@ai-sdk/solid': 0.0.54(solid-js@1.9.10)(zod@4.1.12)
-      '@ai-sdk/svelte': 0.0.57(svelte@5.43.3)(zod@4.1.12)
-      '@ai-sdk/ui-utils': 0.0.50(zod@4.1.12)
-      '@ai-sdk/vue': 0.0.59(vue@3.5.23(typescript@5.9.3))(zod@4.1.12)
+      '@ai-sdk/gateway': 2.0.7(zod@4.1.12)
+      '@ai-sdk/provider': 2.0.0
+      '@ai-sdk/provider-utils': 3.0.16(zod@4.1.12)
       '@opentelemetry/api': 1.9.0
-      eventsource-parser: 1.1.2
-      json-schema: 0.4.0
-      jsondiffpatch: 0.6.0
-      secure-json-parse: 2.7.0
-      zod-to-json-schema: 3.24.6(zod@4.1.12)
-    optionalDependencies:
-      react: 19.2.0
-      sswr: 2.2.0(svelte@5.43.3)
-      svelte: 5.43.3
       zod: 4.1.12
-    transitivePeerDependencies:
-      - solid-js
-      - vue
 
   ajv@6.12.6:
     dependencies:
@@ -7778,7 +7722,8 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  aria-query@5.3.2: {}
+  aria-query@5.3.2:
+    optional: true
 
   asn1js@3.0.6:
     dependencies:
@@ -7800,7 +7745,8 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
-  axobject-query@4.1.0: {}
+  axobject-query@4.1.0:
+    optional: true
 
   babel-dead-code-elimination@1.0.10:
     dependencies:
@@ -7817,9 +7763,9 @@ snapshots:
 
   baseline-browser-mapping@2.8.25: {}
 
-  better-auth-cloudflare@0.2.8(@cloudflare/workers-types@4.20251014.0)(@neondatabase/serverless@1.0.2)(@opentelemetry/api@1.9.0)(@types/pg@8.15.6)(better-auth@1.3.34(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(solid-js@1.9.10)(svelte@5.43.3)(vue@3.5.23(typescript@5.9.3)))(kysely@0.28.8)(postgres@3.4.7):
+  better-auth-cloudflare@0.2.8(@cloudflare/workers-types@4.20251014.0)(@neondatabase/serverless@1.0.2)(@opentelemetry/api@1.9.0)(@types/pg@8.15.6)(better-auth@1.3.34(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(solid-js@1.9.10)(svelte@5.43.3))(kysely@0.28.8)(postgres@3.4.7):
     dependencies:
-      better-auth: 1.3.34(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(solid-js@1.9.10)(svelte@5.43.3)(vue@3.5.23(typescript@5.9.3))
+      better-auth: 1.3.34(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(solid-js@1.9.10)(svelte@5.43.3)
       drizzle-orm: 0.44.7(@cloudflare/workers-types@4.20251014.0)(@neondatabase/serverless@1.0.2)(@opentelemetry/api@1.9.0)(@types/pg@8.15.6)(kysely@0.28.8)(postgres@3.4.7)
       zod: 4.1.12
     transitivePeerDependencies:
@@ -7853,7 +7799,7 @@ snapshots:
       - sql.js
       - sqlite3
 
-  better-auth@1.3.34(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(solid-js@1.9.10)(svelte@5.43.3)(vue@3.5.23(typescript@5.9.3)):
+  better-auth@1.3.34(react-dom@19.2.0(react@19.2.0))(react@19.2.0)(solid-js@1.9.10)(svelte@5.43.3):
     dependencies:
       '@better-auth/core': 1.3.34(@better-auth/utils@0.3.0)(@better-fetch/fetch@1.1.18)(better-call@1.0.19)(jose@6.1.0)(kysely@0.28.8)(nanostores@1.0.1)
       '@better-auth/telemetry': 1.3.34(better-call@1.0.19)(jose@6.1.0)(kysely@0.28.8)(nanostores@1.0.1)
@@ -7874,7 +7820,6 @@ snapshots:
       react-dom: 19.2.0(react@19.2.0)
       solid-js: 1.9.10
       svelte: 5.43.3
-      vue: 3.5.23(typescript@5.9.3)
 
   better-call@1.0.19:
     dependencies:
@@ -7928,8 +7873,6 @@ snapshots:
     dependencies:
       ansi-styles: 4.3.0
       supports-color: 7.2.0
-
-  chalk@5.6.2: {}
 
   character-entities-html4@2.1.0: {}
 
@@ -8285,8 +8228,6 @@ snapshots:
     dependencies:
       dequal: 2.0.3
 
-  diff-match-patch@1.0.5: {}
-
   diff@8.0.2: {}
 
   dompurify@3.3.0:
@@ -8338,7 +8279,8 @@ snapshots:
       graceful-fs: 4.2.11
       tapable: 2.3.0
 
-  entities@4.5.0: {}
+  entities@4.5.0:
+    optional: true
 
   entities@6.0.1: {}
 
@@ -8514,7 +8456,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  esm-env@1.2.2: {}
+  esm-env@1.2.2:
+    optional: true
 
   espree@10.4.0:
     dependencies:
@@ -8531,6 +8474,7 @@ snapshots:
   esrap@2.1.2:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.5.5
+    optional: true
 
   esrecurse@4.3.0:
     dependencies:
@@ -8540,13 +8484,14 @@ snapshots:
 
   estree-util-is-identifier-name@3.0.0: {}
 
-  estree-walker@2.0.2: {}
+  estree-walker@2.0.2:
+    optional: true
 
   esutils@2.0.3: {}
 
   eventemitter3@5.0.1: {}
 
-  eventsource-parser@1.1.2: {}
+  eventsource-parser@3.0.6: {}
 
   exit-hook@2.2.1: {}
 
@@ -8914,6 +8859,7 @@ snapshots:
   is-reference@3.0.3:
     dependencies:
       '@types/estree': 1.0.8
+    optional: true
 
   isbot@5.1.32: {}
 
@@ -8942,12 +8888,6 @@ snapshots:
   json-stable-stringify-without-jsonify@1.0.1: {}
 
   json5@2.2.3: {}
-
-  jsondiffpatch@0.6.0:
-    dependencies:
-      '@types/diff-match-patch': 1.0.36
-      chalk: 5.6.2
-      diff-match-patch: 1.0.5
 
   katex@0.16.25:
     dependencies:
@@ -9054,7 +8994,8 @@ snapshots:
       pkg-types: 2.3.0
       quansync: 0.2.11
 
-  locate-character@3.0.0: {}
+  locate-character@3.0.0:
+    optional: true
 
   locate-path@6.0.0:
     dependencies:
@@ -9568,6 +9509,11 @@ snapshots:
       regex: 6.0.1
       regex-recursion: 6.0.2
 
+  openai@5.23.2(ws@8.18.0)(zod@4.1.12):
+    optionalDependencies:
+      ws: 8.18.0
+      zod: 4.1.12
+
   openapi3-ts@4.5.0:
     dependencies:
       yaml: 2.8.1
@@ -9738,6 +9684,10 @@ snapshots:
   proxy-from-env@1.1.0: {}
 
   punycode@2.3.1: {}
+
+  pusher-js@8.4.0:
+    dependencies:
+      tweetnacl: 1.0.3
 
   pvtsutils@1.3.6:
     dependencies:
@@ -10115,11 +10065,6 @@ snapshots:
 
   space-separated-tokens@2.0.2: {}
 
-  sswr@2.2.0(svelte@5.43.3):
-    dependencies:
-      svelte: 5.43.3
-      swrev: 4.0.0
-
   stoppable@1.1.0: {}
 
   streamdown@1.4.0(@types/react@19.2.2)(react@19.2.0):
@@ -10197,18 +10142,13 @@ snapshots:
       locate-character: 3.0.0
       magic-string: 0.30.21
       zimmerframe: 1.1.4
+    optional: true
 
   swr@2.3.6(react@19.2.0):
     dependencies:
       dequal: 2.0.3
       react: 19.2.0
       use-sync-external-store: 1.6.0(react@19.2.0)
-
-  swrev@4.0.0: {}
-
-  swrv@1.1.0(vue@3.5.23(typescript@5.9.3)):
-    dependencies:
-      vue: 3.5.23(typescript@5.9.3)
 
   tailwind-merge@3.3.1: {}
 
@@ -10261,6 +10201,8 @@ snapshots:
       tslib: 1.14.1
 
   tw-animate-css@1.4.0: {}
+
+  tweetnacl@1.0.3: {}
 
   type-check@0.4.0:
     dependencies:
@@ -10378,6 +10320,8 @@ snapshots:
 
   uuid@11.1.0: {}
 
+  uuid@13.0.0: {}
+
   uuid@8.3.2: {}
 
   vfile-location@5.0.3:
@@ -10444,16 +10388,6 @@ snapshots:
       vscode-languageserver-protocol: 3.17.5
 
   vscode-uri@3.0.8: {}
-
-  vue@3.5.23(typescript@5.9.3):
-    dependencies:
-      '@vue/compiler-dom': 3.5.23
-      '@vue/compiler-sfc': 3.5.23
-      '@vue/runtime-dom': 3.5.23
-      '@vue/server-renderer': 3.5.23(vue@3.5.23(typescript@5.9.3))
-      '@vue/shared': 3.5.23
-    optionalDependencies:
-      typescript: 5.9.3
 
   walk-up-path@4.0.0: {}
 
@@ -10561,7 +10495,8 @@ snapshots:
       cookie: 1.0.2
       youch-core: 0.3.3
 
-  zimmerframe@1.1.4: {}
+  zimmerframe@1.1.4:
+    optional: true
 
   zod-to-json-schema@3.24.6(zod@4.1.12):
     dependencies:

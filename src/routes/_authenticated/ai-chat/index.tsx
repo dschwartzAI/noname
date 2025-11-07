@@ -1,75 +1,70 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useChat, type Message } from '@ai-sdk/react'
-import { useEffect, useRef, useMemo, useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
-import { Send, Loader2, Bot, User } from 'lucide-react'
+import { useChat } from '@ai-sdk/react'
+import { useState } from 'react'
+import { Bot } from 'lucide-react'
+import {
+  Conversation,
+  ConversationContent,
+  ConversationEmptyState,
+  ConversationScrollButton,
+} from '@/components/ai-elements/conversation'
+import {
+  Message,
+  MessageContent,
+  MessageResponse,
+} from '@/components/ai-elements/message'
+import {
+  PromptInput,
+  PromptInputBody,
+  PromptInputTextarea,
+  PromptInputFooter,
+  PromptInputTools,
+  PromptInputButton,
+  PromptInputSubmit,
+  PromptInputSelect,
+  PromptInputSelectTrigger,
+  PromptInputSelectContent,
+  PromptInputSelectItem,
+  PromptInputSelectValue,
+} from '@/components/ai-elements/prompt-input'
+import { PaperclipIcon } from 'lucide-react'
+
+// Suggested prompts for empty state
+const SUGGESTED_PROMPTS = [
+  'What are the advantages of using Next.js?',
+  'Help me write an essay about Silicon Valley',
+  'Write code to implement a binary search tree',
+  'What is the capital of France?',
+]
+
+// Available AI models
+const MODELS = [
+  { value: 'gpt-4o', label: 'GPT-4o', provider: 'OpenAI' },
+  { value: 'gpt-4o-mini', label: 'GPT-4o Mini', provider: 'OpenAI' },
+  { value: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet', provider: 'Anthropic' },
+  { value: 'grok-2-latest', label: 'Grok 2', provider: 'xAI' },
+]
 
 function ChatPage() {
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const [input, setInput] = useState('')
-
-  // Stabilize initial messages to prevent re-renders from resetting conversation
-  const initialMessages = useMemo<Message[]>(
-    () => [
-      {
-        id: 'greeting-1',
-        role: 'assistant',
-        content: 'Hello there! How can I help you today?',
-      },
-    ],
-    []
-  )
+  const [selectedModel, setSelectedModel] = useState('gpt-4o')
 
   const { messages, sendMessage, status, error } = useChat({
     api: '/api/v1/chat',
     body: {
-      model: 'gpt-4o',
+      model: selectedModel,
     },
-    initialMessages,
     onResponse: (response) => {
       console.log('✅ Response received:', response.status, response.statusText)
-      console.log('📋 Response headers:', Object.fromEntries(response.headers.entries()))
-      console.log('📦 Response body type:', response.body?.constructor.name)
     },
-    onFinish: (message) => {
+    onFinish: ({ message }) => {
       console.log('🎉 Message finished:', message)
-      console.log('📝 Current messages array:', messages)
     },
     onError: (error) => {
       console.error('❌ Chat error:', error)
-      console.error('❌ Error details:', error.message, error.cause)
-    },
-    experimental_onChunk: (chunk) => {
-      console.log('📨 Chunk received:', chunk)
     },
   })
 
   const isLoading = status === 'submitted' || status === 'streaming'
-
-  // Log when messages change
-  useEffect(() => {
-    console.log('💬 Messages updated:', messages.length, messages)
-    if (messages.length > 0) {
-      console.log('🔍 First message details:', {
-        id: messages[0].id,
-        role: messages[0].role,
-        content: messages[0].content,
-        parts: messages[0].parts,
-        allKeys: Object.keys(messages[0])
-      })
-    }
-  }, [messages])
-
-  // Log loading state changes
-  useEffect(() => {
-    console.log('⏳ Loading state:', isLoading)
-  }, [isLoading])
-
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
 
   return (
     <div className="flex flex-col h-full">
@@ -86,108 +81,100 @@ function ChatPage() {
         </div>
       </div>
 
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex gap-4 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            {message.role === 'assistant' && (
-              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <Bot className="h-4 w-4 text-primary" />
-              </div>
-            )}
-            <div
-              className={`max-w-[70%] rounded-2xl px-4 py-3 ${
-                message.role === 'user'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted'
-              }`}
+      {/* Conversation Area with Auto-scroll */}
+      <Conversation className="flex-1">
+        <ConversationContent>
+          {messages.length === 0 ? (
+            <ConversationEmptyState
+              title="Hello there! How can I help you today?"
+              description=""
             >
-              <p className="text-sm whitespace-pre-wrap">
-                {message.parts?.map((part) => part.type === 'text' ? part.text : '').join('') || message.content}
-              </p>
-            </div>
-            {message.role === 'user' && (
-              <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                <User className="h-4 w-4 text-primary-foreground" />
+              <div className="flex flex-col items-center justify-center w-full max-w-2xl mx-auto space-y-8">
+                <h1 className="text-4xl font-bold text-center">
+                  Hello there! How can I help you today?
+                </h1>
+                <div className="grid grid-cols-2 gap-3 w-full">
+                  {SUGGESTED_PROMPTS.map((prompt, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        sendMessage({ text: prompt })
+                      }}
+                      className="p-4 text-left text-sm border rounded-xl hover:bg-muted/50 transition-colors"
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
               </div>
-            )}
-          </div>
-        ))}
+            </ConversationEmptyState>
+          ) : (
+            <>
+              {messages.map((message) => (
+                <Message key={message.id} from={message.role}>
+                  <MessageContent>
+                    <MessageResponse>
+                      {message.parts?.map((part) => part.type === 'text' ? part.text : '').join('') || message.content}
+                    </MessageResponse>
+                  </MessageContent>
+                </Message>
+              ))}
 
-        {/* Loading indicator */}
-        {isLoading && (
-          <div className="flex gap-4 justify-start">
-            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <Bot className="h-4 w-4 text-primary" />
-            </div>
-            <div className="max-w-[70%] rounded-2xl px-4 py-3 bg-muted">
-              <Loader2 className="h-4 w-4 animate-spin" />
-            </div>
-          </div>
-        )}
+              {error && (
+                <div className="p-4 rounded-lg bg-destructive/10 text-destructive text-sm">
+                  Error: {error.message}
+                </div>
+              )}
+            </>
+          )}
+        </ConversationContent>
+        <ConversationScrollButton />
+      </Conversation>
 
-        {/* Error message */}
-        {error && (
-          <div className="flex gap-4 justify-center">
-            <div className="max-w-[70%] rounded-2xl px-4 py-3 bg-destructive/10 text-destructive">
-              <p className="text-sm">Error: {error.message}</p>
-            </div>
-          </div>
-        )}
-
-        {/* Auto-scroll anchor */}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Input Bar */}
+      {/* Input Area */}
       <div className="border-t p-4">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            if (input.trim()) {
-              sendMessage({ text: input })
-              setInput('')
+        <PromptInput
+          onSubmit={(message, event) => {
+            if (message.text?.trim()) {
+              sendMessage({ text: message.text })
             }
           }}
-          className="flex items-end gap-2"
         >
-          <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault()
-                if (input.trim()) {
-                  sendMessage({ text: input })
-                  setInput('')
-                }
-              }
-            }}
-            placeholder="Message SovereignJK"
-            className="min-h-[60px] max-h-32 resize-none"
-            rows={1}
-            disabled={isLoading}
-          />
+          <PromptInputBody>
+            <PromptInputTextarea
+              placeholder="Send a message..."
+              disabled={isLoading}
+            />
+          </PromptInputBody>
 
-          <Button
-            type="submit"
-            size="icon"
-            className="flex-shrink-0"
-            disabled={isLoading || !input.trim()}
-          >
-            {isLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <Send className="h-5 w-5" />
-            )}
-          </Button>
-        </form>
-        <p className="text-xs text-muted-foreground text-center mt-2">
-          Press Enter to send, Shift+Enter for new line
-        </p>
+          <PromptInputFooter>
+            <PromptInputTools>
+              <PromptInputButton>
+                <PaperclipIcon className="h-4 w-4" />
+              </PromptInputButton>
+
+              <PromptInputSelect value={selectedModel} onValueChange={setSelectedModel}>
+                <PromptInputSelectTrigger>
+                  <PromptInputSelectValue>
+                    {MODELS.find(m => m.value === selectedModel)?.label}
+                  </PromptInputSelectValue>
+                </PromptInputSelectTrigger>
+                <PromptInputSelectContent>
+                  {MODELS.map((model) => (
+                    <PromptInputSelectItem key={model.value} value={model.value}>
+                      <div className="flex flex-col">
+                        <span>{model.label}</span>
+                        <span className="text-xs text-muted-foreground">{model.provider}</span>
+                      </div>
+                    </PromptInputSelectItem>
+                  ))}
+                </PromptInputSelectContent>
+              </PromptInputSelect>
+            </PromptInputTools>
+
+            <PromptInputSubmit status={status} />
+          </PromptInputFooter>
+        </PromptInput>
       </div>
     </div>
   )
