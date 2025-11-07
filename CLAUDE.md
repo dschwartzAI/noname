@@ -103,7 +103,9 @@ Before implementing ANY feature:
 ## Commands
 
 ### Development
-- `npm run dev` - Start development server with Vite (includes integrated Cloudflare Workers runtime)
+- `npm run dev` - Start both frontend (Vite) and backend (Wrangler) with auto-restart via `dev-servers.sh`
+- `npm run dev:frontend` - Start Vite frontend only (port 5174)
+- `npm run dev:backend` - Start Wrangler backend only (port 8788)
 - `npm run build` - Build for production (TypeScript compilation + Vite build)
 - `npm run preview` - Preview production build
 - `npm run lint` - Run ESLint
@@ -111,12 +113,35 @@ Before implementing ANY feature:
 - `npm run format:check` - Check code formatting
 - `npm run knip` - Find unused dependencies and exports
 
+### Development Server Management
+**Recommended**: Use `npm run dev` which runs `dev-servers.sh` with auto-restart on crashes.
+
+The `dev-servers.sh` script:
+- Starts both frontend (Vite on 5174) and backend (Wrangler on 8788)
+- Auto-restarts servers on crash (no manual intervention needed)
+- Runs servers in background with log files
+- Logs: `/tmp/vite.log` and `/tmp/wrangler.log`
+- Kill with: `pkill -f "wrangler dev" && pkill -f "vite"`
+
+**Important**: Frontend proxies `/api` requests to backend via `vite.config.ts` proxy configuration.
+
 ### Cloudflare Workers
 - `wrangler deploy` - Deploy to Cloudflare Workers
-- `wrangler d1 execute <DB_NAME> --file=<FILE>` - Execute SQL against D1 database
-- `wrangler d1 migrations apply <DB_NAME>` - Apply database migrations
+- `wrangler secret put <NAME>` - Add a single secret to production
+- `./add-secrets.sh` - Batch upload all secrets from `.dev.vars` to Cloudflare
+- `wrangler secret list` - List all secrets (values hidden)
+- `wrangler secret delete <NAME>` - Remove a secret
 
-**IMPORTANT**: Do NOT run `wrangler dev` separately. The `@cloudflare/vite-plugin` handles the Workers runtime integration directly in Vite.
+### Cloudflare R2 (Object Storage)
+- `wrangler r2 bucket create <BUCKET_NAME>` - Create new R2 bucket
+- `wrangler r2 bucket list` - List all R2 buckets
+- R2.dev URL format: `https://pub-<hash>.r2.dev/<key>` (automatically generated)
+
+**Organization**: Use folder structure in R2 for different asset types:
+- `logos/` - Organization logos
+- `favicons/` - Organization favicons  
+- `avatars/` - User avatars
+- `documents/` - User uploaded files
 
 ## Architecture
 
@@ -676,6 +701,71 @@ Types: feat, fix, docs, style, refactor, test, chore
 - [x] Database queries optimized (Drizzle ORM + D1 prepared statements)
 
 
+## Branding & Asset Management
+
+### Organization Branding Features
+
+This app supports per-organization customization for white-label multi-tenancy:
+
+#### Logo Management
+- **Location**: Admin > Settings > Branding > Logo
+- **Display**: Sidebar, app header, login pages
+- **Storage**: R2 bucket under `logos/` folder
+- **Size Limit**: 5MB max, square recommended
+- **Database**: `organization.logo` (TEXT field with R2 URL)
+
+#### Favicon Management
+- **Location**: Admin > Settings > Branding > Favicon
+- **Display**: Browser tabs, bookmarks
+- **Storage**: R2 bucket under `favicons/` folder
+- **Size Limit**: 1MB max, 32x32px or 64x64px recommended
+- **Database**: `organization.favicon` (TEXT field with R2 URL)
+- **Dynamic Updates**: `DynamicFavicon` component updates favicon without page reload
+
+#### Implementation Pattern: Reusable Image Upload
+
+When adding new image upload features:
+
+1. **Use `ImageUpload` component** (`src/routes/_authenticated/admin/_components/image-upload.tsx`)
+   - Handles file selection, preview, validation
+   - Type-safe with configurable field names
+   - Automatic R2 upload + database update
+
+2. **Create field-specific wrapper**:
+```typescript
+export function AvatarUpload() {
+  const { data: orgData } = useQuery({...});
+  
+  return (
+    <ImageUpload
+      currentImage={orgData.organization.avatar}
+      organizationId={orgData.organization.id}
+      fieldName="avatar"
+      label="Avatar"
+      description="Profile picture"
+      maxSizeMB={2}
+    />
+  );
+}
+```
+
+3. **Backend support**:
+   - Upload endpoint: `/api/organization/logo/upload` (handles all image types via `type` param)
+   - Update endpoint: PATCH `/api/organization/:id` must accept new field
+   - R2 folder structure: `${type}s/${orgId}-${timestamp}.${ext}`
+
+4. **Database**:
+   - Add TEXT column: `ALTER TABLE organization ADD COLUMN <field> TEXT;`
+   - Update schema: `database/better-auth-schema.ts`
+
+#### Asset Organization Best Practices
+
+- **Single R2 Bucket**: Use one `app-assets` bucket with folder organization
+- **Folder Structure**: `logos/`, `favicons/`, `avatars/`, `documents/`
+- **Naming Convention**: `${orgId}-${timestamp}.${extension}` for uniqueness
+- **Size Validation**: Enforce limits at upload time (logos: 5MB, favicons: 1MB)
+- **Type Validation**: Only allow image types for branding assets
+
 ## Project-Specific Instructions
 
 ### Cloudflare AI Showcase Features
@@ -818,3 +908,147 @@ This project uses 8 specialized agents for domain-specific tasks. Each agent pro
 - "How do I protect this?" → Security Engineer
 
 **For complete agent profiles, activation examples, and collaboration patterns, see [.claude/agents/README.md](.claude/agents/README.md)**
+
+---
+
+## 🔧 Troubleshooting Guide
+
+### Common Development Issues
+
+#### Backend API Returns 500 or Features Don't Work
+
+**Symptom**: API endpoints fail, features don't work as expected, or you see connection errors.
+
+**Cause**: Backend (Wrangler) is not running or crashed.
+
+**Solution**:
+```bash
+# Check if backend is running
+curl -s http://localhost:8788/ > /dev/null && echo "✅ Backend OK" || echo "❌ Backend down"
+
+# Restart dev servers
+npm run dev
+```
+
+**Prevention**: Use `npm run dev` which auto-restarts crashed servers via `dev-servers.sh`.
+
+#### Image Upload Succeeds But Data Not Saving
+
+**Symptom**: Toast shows "Upload successful" but data doesn't persist or display.
+
+**Cause**: Backend PATCH endpoint doesn't accept the new field.
+
+**Solution**:
+```typescript
+// In src/server/routes/organization.ts
+const updateData: any = {};
+if (updates.logo !== undefined) updateData.logo = updates.logo;
+if (updates.favicon !== undefined) updateData.favicon = updates.favicon; // ADD THIS
+if (updates.newField !== undefined) updateData.newField = updates.newField; // ADD NEW FIELDS
+```
+
+**Pattern**: Always update PATCH endpoint when adding new organization fields.
+
+#### Secrets Not Working After Update
+
+**Symptom**: API keys don't work after rotating them.
+
+**Cause**: Secrets in `.dev.vars` updated but not uploaded to Cloudflare.
+
+**Solution**:
+```bash
+# Re-upload all secrets from .dev.vars
+./add-secrets.sh
+
+# Verify secrets are uploaded
+npx wrangler secret list
+```
+
+**Remember**: 
+- `.dev.vars` = local development (auto-loaded)
+- Cloudflare Secrets = production (must upload via Wrangler)
+
+#### R2 Uploads Fail or Files Not Found
+
+**Symptom**: File upload returns 500 or uploaded files return 404.
+
+**Cause**: R2 bucket not configured or wrong bucket name.
+
+**Solution**:
+```bash
+# Check R2 configuration in wrangler.toml
+cat wrangler.toml | grep -A 3 "r2_buckets"
+
+# Verify bucket exists
+wrangler r2 bucket list
+
+# Create bucket if missing
+wrangler r2 bucket create app-assets
+```
+
+**Check**: 
+- `wrangler.toml` has correct `bucket_name`
+- `R2_PUBLIC_URL` is set (for serving files)
+- Backend code uses correct binding name (`c.env.R2_ASSETS`)
+
+#### Session Doesn't Persist After Restart
+
+**Symptom**: User logged out after restarting dev servers.
+
+**Cause**: Sessions stored in local KV, not remote Cloudflare KV.
+
+**Solution**: Already configured! Development uses remote KV with `remote = true` in `wrangler.toml`:
+```toml
+[[env.development.kv_namespaces]]
+binding = "SESSIONS"
+id = "ba789d2e87b7422baf321c2d7aa85c99"
+remote = true  # This persists sessions
+```
+
+#### Frontend Can't Reach Backend API
+
+**Symptom**: `/api/*` requests fail with connection refused or 404.
+
+**Cause**: Vite proxy not configured or wrong port.
+
+**Solution**: Check `vite.config.ts`:
+```typescript
+server: {
+  port: 5174,
+  proxy: {
+    '/api': {
+      target: 'http://localhost:8788',
+      changeOrigin: true,
+    },
+  },
+}
+```
+
+**Verify**: Backend is running on 8788, frontend on 5174.
+
+### Debug Logging
+
+When troubleshooting, add console logs to trace execution:
+
+```typescript
+// Backend (Hono)
+console.log('📤 Upload started', { userId: user.id, fileName: file.name });
+
+// Frontend (React)
+console.log('🔍 Component rendered', { orgId, currentLogo });
+```
+
+**Tip**: Use emoji prefixes for easy log scanning:
+- 📤 Upload operations
+- 🔍 Data fetching
+- ✅ Success states
+- ❌ Error states
+- 🔗 API calls
+
+### Getting Help
+
+When reporting issues:
+1. Check relevant log file: `/tmp/vite.log` or `/tmp/wrangler.log`
+2. Include error messages from browser console
+3. Verify all prerequisites (R2 bucket, secrets, KV namespaces)
+4. Test with curl to isolate frontend vs backend issues
