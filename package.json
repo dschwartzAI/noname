@@ -4,7 +4,7 @@
   "version": "2.1.0",
   "type": "module",
   "scripts": {
-    "dev": "cross-env VITE_LOG_FOCUS_MODE=quiet vite",
+    "dev": "./dev-servers.sh",
     "dev:frontend": "vite",
     "dev:backend": "wrangler dev --port 8788",
     "build": "tsc -b && vite build",

@@ -5,6 +5,6 @@ export const Route = createFileRoute('/_authenticated/')({
 })
 
 function HomePage() {
-  // Redirect to chat history as the home page
-  return <Navigate to="/chats" />
+  // Redirect to community as the home page
+  return <Navigate to="/community" />
 }

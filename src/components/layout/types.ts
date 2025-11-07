@@ -36,7 +36,7 @@ type NavGroup = {
 }
 
 type SidebarData = {
-  user: User
+  user?: User // Optional: user data comes from session, not sidebar data
   teams: Team[]
   navGroups: NavGroup[]
 }

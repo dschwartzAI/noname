@@ -12,6 +12,7 @@ import ragRoutes from './routes/rag'
 import { tasksApp } from './routes/tasks'
 import { godApp } from './routes/god'
 import { orgApp } from './routes/organization'
+import { logoApp } from './routes/logo'
 import userApp from './routes/user'
 import chatApp from './routes/chat'
 import { z } from '@hono/zod-openapi'
@@ -51,6 +52,8 @@ export interface Env {
   AI_CHAT_WEBSOCKET: DurableObjectNamespace;
   VOICE_AI_WEBSOCKET: DurableObjectNamespace;
   USER_SYS_DO: DurableObjectNamespace;
+  R2_ASSETS?: R2Bucket;
+  R2_PUBLIC_URL?: string;
   BETTER_AUTH_SECRET?: string;
   BETTER_AUTH_URL?: string;
   GOOGLE_CLIENT_ID?: string;
@@ -64,6 +67,30 @@ export interface Env {
   ANTHROPIC_API_KEY?: string;
   OPENAI_API_KEY?: string;
   XAI_API_KEY?: string;
+}
+
+interface R2Bucket {
+  get(key: string): Promise<R2ObjectBody | null>;
+  put(key: string, value: ArrayBuffer | ReadableStream, options?: R2PutOptions): Promise<R2Object>;
+  delete(key: string): Promise<void>;
+}
+
+interface R2PutOptions {
+  httpMetadata?: {
+    contentType?: string;
+  };
+}
+
+interface R2Object {
+  key: string;
+  size: number;
+  etag: string;
+}
+
+interface R2ObjectBody extends R2Object {
+  body: ReadableStream;
+  arrayBuffer(): Promise<ArrayBuffer>;
+  text(): Promise<string>;
 }
 
 const app = new OpenAPIHono<{ Bindings: Env }>()
@@ -1418,6 +1445,9 @@ app.route('/api/god', godApp)
 
 // Organization management routes
 app.route('/api/organization', orgApp)
+
+// Logo upload routes
+app.route('/api/organization/logo', logoApp)
 
 // Chat API routes (v1) - replaces temporary /api/chat endpoint
 app.route('/api/v1/chat', chatApp)

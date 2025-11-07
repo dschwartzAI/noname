@@ -1,11 +1,10 @@
 import { streamText } from 'ai';
-import { createCloudflareProvider } from '../../server/ai/provider';
-import { AI_MODELS } from '../../server/ai/models';
+import { getModel, MODELS } from '../../src/lib/ai-providers';
 import { requireAuth } from '../../server/middleware/auth';
 import type { Env } from '../../worker';
 
-export async function onRequestPost(context: { 
-  request: Request; 
+export async function onRequestPost(context: {
+  request: Request;
   env: Env;
 }) {
   // Check authentication
@@ -18,36 +17,22 @@ export async function onRequestPost(context: {
     }),
     set: () => {},
   } as any);
-  
+
   if (authResponse) return authResponse;
-  
+
   try {
-    const { messages, model = 'llama-3-8b', conversationId } = await context.request.json();
-    
-    // Check if AI is available
-    if (!context.env.AI) {
-      return new Response(JSON.stringify({ 
-        error: 'AI service not configured. Please configure AI binding in wrangler.toml' 
-      }), { 
-        status: 503,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-    
-    // Validate model
-    if (!AI_MODELS.chat[model as keyof typeof AI_MODELS.chat]) {
-      return new Response(JSON.stringify({ error: 'Invalid model' }), { 
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-    
-    // Initialize AI provider
-    const provider = createCloudflareProvider(context.env.AI);
-    
+    const { messages, model = MODELS.GPT_4O, conversationId } = await context.request.json();
+
+    // Get the AI model (supports GPT-4o, Claude, Grok)
+    const aiModel = getModel({
+      ANTHROPIC_API_KEY: context.env.ANTHROPIC_API_KEY,
+      OPENAI_API_KEY: context.env.OPENAI_API_KEY,
+      XAI_API_KEY: context.env.XAI_API_KEY,
+    }, model);
+
     // Generate response
     const result = await streamText({
-      model: provider(AI_MODELS.chat[model as keyof typeof AI_MODELS.chat]),
+      model: aiModel,
       messages,
       temperature: 0.7,
       maxTokens: 2048,

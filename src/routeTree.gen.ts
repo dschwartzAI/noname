@@ -24,12 +24,16 @@ import { Route as authForgotPasswordRouteImport } from './routes/(auth)/forgot-p
 import { Route as AuthenticatedSettingsRouteRouteImport } from './routes/_authenticated/settings/route'
 import { Route as AuthenticatedAiChatRouteRouteImport } from './routes/_authenticated/ai-chat/route'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
-import { Route as AuthenticatedChatsIndexRouteImport } from './routes/_authenticated/chats/index'
+import { Route as AuthenticatedGodIndexRouteImport } from './routes/_authenticated/god/index'
+import { Route as AuthenticatedCommunityIndexRouteImport } from './routes/_authenticated/community/index'
 import { Route as AuthenticatedAiChatIndexRouteImport } from './routes/_authenticated/ai-chat/index'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
 import { Route as AuthenticatedSettingsAppearanceRouteImport } from './routes/_authenticated/settings/appearance'
+import { Route as AuthenticatedOrganizationSettingsRouteImport } from './routes/_authenticated/organization/settings'
 import { Route as AuthenticatedErrorsErrorRouteImport } from './routes/_authenticated/errors/$error'
 import { Route as AuthenticatedAiChatBackupRouteImport } from './routes/_authenticated/ai-chat.backup'
 import { Route as AuthenticatedAiChatConversationIdRouteImport } from './routes/_authenticated/ai-chat/$conversationId'
+import { Route as AuthenticatedAdminGodDashboardRouteImport } from './routes/_authenticated/admin/god-dashboard'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
@@ -108,22 +112,39 @@ const AuthenticatedSettingsIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedSettingsRouteRoute,
   } as any)
-const AuthenticatedChatsIndexRoute = AuthenticatedChatsIndexRouteImport.update({
-  id: '/chats/',
-  path: '/chats/',
+const AuthenticatedGodIndexRoute = AuthenticatedGodIndexRouteImport.update({
+  id: '/god/',
+  path: '/god/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCommunityIndexRoute =
+  AuthenticatedCommunityIndexRouteImport.update({
+    id: '/community/',
+    path: '/community/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAiChatIndexRoute =
   AuthenticatedAiChatIndexRouteImport.update({
     id: '/',
     path: '/',
     getParentRoute: () => AuthenticatedAiChatRouteRoute,
   } as any)
+const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedSettingsAppearanceRoute =
   AuthenticatedSettingsAppearanceRouteImport.update({
     id: '/appearance',
     path: '/appearance',
     getParentRoute: () => AuthenticatedSettingsRouteRoute,
+  } as any)
+const AuthenticatedOrganizationSettingsRoute =
+  AuthenticatedOrganizationSettingsRouteImport.update({
+    id: '/organization/settings',
+    path: '/organization/settings',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedErrorsErrorRoute =
   AuthenticatedErrorsErrorRouteImport.update({
@@ -143,6 +164,12 @@ const AuthenticatedAiChatConversationIdRoute =
     path: '/$conversationId',
     getParentRoute: () => AuthenticatedAiChatRouteRoute,
   } as any)
+const AuthenticatedAdminGodDashboardRoute =
+  AuthenticatedAdminGodDashboardRouteImport.update({
+    id: '/admin/god-dashboard',
+    path: '/admin/god-dashboard',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/ai-chat': typeof AuthenticatedAiChatRouteRouteWithChildren
@@ -158,12 +185,16 @@ export interface FileRoutesByFullPath {
   '/500': typeof errors500Route
   '/503': typeof errors503Route
   '/': typeof AuthenticatedIndexRoute
+  '/admin/god-dashboard': typeof AuthenticatedAdminGodDashboardRoute
   '/ai-chat/$conversationId': typeof AuthenticatedAiChatConversationIdRoute
   '/ai-chat/backup': typeof AuthenticatedAiChatBackupRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
+  '/organization/settings': typeof AuthenticatedOrganizationSettingsRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
+  '/admin': typeof AuthenticatedAdminIndexRoute
   '/ai-chat/': typeof AuthenticatedAiChatIndexRoute
-  '/chats': typeof AuthenticatedChatsIndexRoute
+  '/community': typeof AuthenticatedCommunityIndexRoute
+  '/god': typeof AuthenticatedGodIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -178,12 +209,16 @@ export interface FileRoutesByTo {
   '/500': typeof errors500Route
   '/503': typeof errors503Route
   '/': typeof AuthenticatedIndexRoute
+  '/admin/god-dashboard': typeof AuthenticatedAdminGodDashboardRoute
   '/ai-chat/$conversationId': typeof AuthenticatedAiChatConversationIdRoute
   '/ai-chat/backup': typeof AuthenticatedAiChatBackupRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
+  '/organization/settings': typeof AuthenticatedOrganizationSettingsRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
+  '/admin': typeof AuthenticatedAdminIndexRoute
   '/ai-chat': typeof AuthenticatedAiChatIndexRoute
-  '/chats': typeof AuthenticatedChatsIndexRoute
+  '/community': typeof AuthenticatedCommunityIndexRoute
+  '/god': typeof AuthenticatedGodIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
 }
 export interface FileRoutesById {
@@ -202,12 +237,16 @@ export interface FileRoutesById {
   '/(errors)/500': typeof errors500Route
   '/(errors)/503': typeof errors503Route
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/_authenticated/admin/god-dashboard': typeof AuthenticatedAdminGodDashboardRoute
   '/_authenticated/ai-chat/$conversationId': typeof AuthenticatedAiChatConversationIdRoute
   '/_authenticated/ai-chat/backup': typeof AuthenticatedAiChatBackupRoute
   '/_authenticated/errors/$error': typeof AuthenticatedErrorsErrorRoute
+  '/_authenticated/organization/settings': typeof AuthenticatedOrganizationSettingsRoute
   '/_authenticated/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
+  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/ai-chat/': typeof AuthenticatedAiChatIndexRoute
-  '/_authenticated/chats/': typeof AuthenticatedChatsIndexRoute
+  '/_authenticated/community/': typeof AuthenticatedCommunityIndexRoute
+  '/_authenticated/god/': typeof AuthenticatedGodIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
 }
 export interface FileRouteTypes {
@@ -226,12 +265,16 @@ export interface FileRouteTypes {
     | '/500'
     | '/503'
     | '/'
+    | '/admin/god-dashboard'
     | '/ai-chat/$conversationId'
     | '/ai-chat/backup'
     | '/errors/$error'
+    | '/organization/settings'
     | '/settings/appearance'
+    | '/admin'
     | '/ai-chat/'
-    | '/chats'
+    | '/community'
+    | '/god'
     | '/settings/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -246,12 +289,16 @@ export interface FileRouteTypes {
     | '/500'
     | '/503'
     | '/'
+    | '/admin/god-dashboard'
     | '/ai-chat/$conversationId'
     | '/ai-chat/backup'
     | '/errors/$error'
+    | '/organization/settings'
     | '/settings/appearance'
+    | '/admin'
     | '/ai-chat'
-    | '/chats'
+    | '/community'
+    | '/god'
     | '/settings'
   id:
     | '__root__'
@@ -269,12 +316,16 @@ export interface FileRouteTypes {
     | '/(errors)/500'
     | '/(errors)/503'
     | '/_authenticated/'
+    | '/_authenticated/admin/god-dashboard'
     | '/_authenticated/ai-chat/$conversationId'
     | '/_authenticated/ai-chat/backup'
     | '/_authenticated/errors/$error'
+    | '/_authenticated/organization/settings'
     | '/_authenticated/settings/appearance'
+    | '/_authenticated/admin/'
     | '/_authenticated/ai-chat/'
-    | '/_authenticated/chats/'
+    | '/_authenticated/community/'
+    | '/_authenticated/god/'
     | '/_authenticated/settings/'
   fileRoutesById: FileRoutesById
 }
@@ -399,11 +450,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsIndexRouteImport
       parentRoute: typeof AuthenticatedSettingsRouteRoute
     }
-    '/_authenticated/chats/': {
-      id: '/_authenticated/chats/'
-      path: '/chats'
-      fullPath: '/chats'
-      preLoaderRoute: typeof AuthenticatedChatsIndexRouteImport
+    '/_authenticated/god/': {
+      id: '/_authenticated/god/'
+      path: '/god'
+      fullPath: '/god'
+      preLoaderRoute: typeof AuthenticatedGodIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/community/': {
+      id: '/_authenticated/community/'
+      path: '/community'
+      fullPath: '/community'
+      preLoaderRoute: typeof AuthenticatedCommunityIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/ai-chat/': {
@@ -413,12 +471,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAiChatIndexRouteImport
       parentRoute: typeof AuthenticatedAiChatRouteRoute
     }
+    '/_authenticated/admin/': {
+      id: '/_authenticated/admin/'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/settings/appearance': {
       id: '/_authenticated/settings/appearance'
       path: '/appearance'
       fullPath: '/settings/appearance'
       preLoaderRoute: typeof AuthenticatedSettingsAppearanceRouteImport
       parentRoute: typeof AuthenticatedSettingsRouteRoute
+    }
+    '/_authenticated/organization/settings': {
+      id: '/_authenticated/organization/settings'
+      path: '/organization/settings'
+      fullPath: '/organization/settings'
+      preLoaderRoute: typeof AuthenticatedOrganizationSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/errors/$error': {
       id: '/_authenticated/errors/$error'
@@ -440,6 +512,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/ai-chat/$conversationId'
       preLoaderRoute: typeof AuthenticatedAiChatConversationIdRouteImport
       parentRoute: typeof AuthenticatedAiChatRouteRoute
+    }
+    '/_authenticated/admin/god-dashboard': {
+      id: '/_authenticated/admin/god-dashboard'
+      path: '/admin/god-dashboard'
+      fullPath: '/admin/god-dashboard'
+      preLoaderRoute: typeof AuthenticatedAdminGodDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
   }
 }
@@ -483,16 +562,25 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAiChatRouteRoute: typeof AuthenticatedAiChatRouteRouteWithChildren
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
+  AuthenticatedAdminGodDashboardRoute: typeof AuthenticatedAdminGodDashboardRoute
   AuthenticatedErrorsErrorRoute: typeof AuthenticatedErrorsErrorRoute
-  AuthenticatedChatsIndexRoute: typeof AuthenticatedChatsIndexRoute
+  AuthenticatedOrganizationSettingsRoute: typeof AuthenticatedOrganizationSettingsRoute
+  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+  AuthenticatedCommunityIndexRoute: typeof AuthenticatedCommunityIndexRoute
+  AuthenticatedGodIndexRoute: typeof AuthenticatedGodIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAiChatRouteRoute: AuthenticatedAiChatRouteRouteWithChildren,
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
+  AuthenticatedAdminGodDashboardRoute: AuthenticatedAdminGodDashboardRoute,
   AuthenticatedErrorsErrorRoute: AuthenticatedErrorsErrorRoute,
-  AuthenticatedChatsIndexRoute: AuthenticatedChatsIndexRoute,
+  AuthenticatedOrganizationSettingsRoute:
+    AuthenticatedOrganizationSettingsRoute,
+  AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+  AuthenticatedCommunityIndexRoute: AuthenticatedCommunityIndexRoute,
+  AuthenticatedGodIndexRoute: AuthenticatedGodIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

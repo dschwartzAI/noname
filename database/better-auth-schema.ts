@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, jsonb } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -13,6 +13,20 @@ export const user = pgTable("user", {
     .notNull(),
   isAnonymous: boolean("is_anonymous"),
   isGod: boolean("is_god").default(false).notNull(), // Super admin flag for white-label management
+  // Profile fields
+  avatar_url: text("avatar_url"),
+  bio: text("bio"),
+  phone: text("phone"),
+  timezone: text("timezone"),
+  location: text("location"),
+  job_title: text("job_title"),
+  company: text("company"),
+  preferences: jsonb("preferences").$type<{
+    theme?: 'light' | 'dark' | 'system'
+    emailNotifications?: boolean
+    pushNotifications?: boolean
+    language?: string
+  }>().default({}),
 });
 
 export const session = pgTable("session", {
@@ -28,6 +42,7 @@ export const session = pgTable("session", {
   userId: text("user_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
+  activeOrganizationId: text("active_organization_id"), // Current active org for the session
 });
 
 export const account = pgTable("account", {
@@ -81,5 +96,6 @@ export const member = pgTable("member", {
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
   role: text("role").notNull(), // "owner", "admin", "member"
+  tierId: text("tier_id"), // Reference to tier in organization.metadata.tiers
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

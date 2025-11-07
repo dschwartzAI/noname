@@ -2,14 +2,22 @@ name = "shadcn-admin-cf-ai"
 main = "worker.ts"
 compatibility_date = "2024-12-30"
 compatibility_flags = ["nodejs_compat"]
+account_id = "ccc36365c26a2950cb7c944001e4355e"
 
 [[kv_namespaces]]
 binding = "KV"
 id = "d34df303acd8498ab4e74ec22f0b9b1d"
+preview_id = "ad823630802342cabb3e016b677e7802"
 
 [[kv_namespaces]]
 binding = "SESSIONS"
 id = "ba789d2e87b7422baf321c2d7aa85c99"
+preview_id = "13a4475b6efd447db6901fd90b1db49d"
+
+[[r2_buckets]]
+binding = "R2_ASSETS"
+bucket_name = "app-assets"
+remote = true
 
 # Vectorize - Vector database for RAG (Disabled for initial deployment)
 # [[vectorize]]
@@ -56,10 +64,17 @@ binding = "AI"
 [[env.development.kv_namespaces]]
 binding = "KV"
 id = "d34df303acd8498ab4e74ec22f0b9b1d"
+remote = true
 
 [[env.development.kv_namespaces]]
 binding = "SESSIONS"
 id = "ba789d2e87b7422baf321c2d7aa85c99"
+remote = true
+
+[[env.development.r2_buckets]]
+binding = "R2_LOGOS"
+bucket_name = "organization-logos"
+remote = true
 
 [[env.development.durable_objects.bindings]]
 name = "AI_CHAT_WEBSOCKET"
@@ -78,6 +93,7 @@ NODE_ENV = "development"
 DATABASE_URL = "postgresql://neondb_owner:npg_YBZ6UpWyojN4@ep-holy-dawn-afutxqyk.c-2.us-west-2.aws.neon.tech/neondb?sslmode=require"
 BETTER_AUTH_URL = "http://localhost:5173"
 BETTER_AUTH_SECRET = "CPmXy0XgIWaOICeanyyFhR5eFwyQgoSJ0LpGtgJrpHc="
+R2_PUBLIC_URL = "http://localhost:8788"
 GOOGLE_CLIENT_ID = ""
 GOOGLE_CLIENT_SECRET = ""
 GITHUB_CLIENT_ID = ""
@@ -126,6 +142,7 @@ new_sqlite_classes = ["UserSysDO"]
 [vars]
 BETTER_AUTH_URL = "https://shadcn-admin-cf-ai.dan-ccc.workers.dev"
 BETTER_AUTH_SECRET = "CPmXy0XgIWaOICeanyyFhR5eFwyQgoSJ0LpGtgJrpHc="
+R2_PUBLIC_URL = "https://pub-3386a206f401465e829025aa7e46c534.r2.dev"
 GOOGLE_CLIENT_ID = ""
 GOOGLE_CLIENT_SECRET = ""
 GITHUB_CLIENT_ID = ""

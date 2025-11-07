@@ -1,4 +1,5 @@
-import { Link, useSearch } from '@tanstack/react-router'
+import { Link, useSearch, useNavigate } from '@tanstack/react-router'
+import { useEffect } from 'react'
 import {
   Card,
   CardContent,
@@ -9,9 +10,29 @@ import {
 } from '@/components/ui/card'
 import { AuthLayout } from '../auth-layout'
 import { UserAuthForm } from './components/user-auth-form'
+import { useAuth } from '@/stores/auth-simple'
 
 export function SignIn() {
   const { redirect } = useSearch({ from: '/(auth)/sign-in' })
+  const { isAuthenticated, isLoading } = useAuth()
+  const navigate = useNavigate()
+
+  // Redirect authenticated users to the app
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      navigate({ to: redirect || '/ai-chat', replace: true })
+    }
+  }, [isAuthenticated, isLoading, redirect, navigate])
+
+  // Show nothing while checking auth status
+  if (isLoading) {
+    return null
+  }
+
+  // Don't show sign-in form if already authenticated
+  if (isAuthenticated) {
+    return null
+  }
 
   return (
     <AuthLayout>

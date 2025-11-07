@@ -96,18 +96,14 @@ function GodDashboard() {
 
       {/* Stats */}
       {stats && (
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card className="p-6">
-            <div className="text-2xl font-bold">{stats.totalPrograms}</div>
-            <p className="text-sm text-muted-foreground">Total Programs</p>
-          </Card>
+        <div className="grid gap-4 md:grid-cols-2">
           <Card className="p-6">
             <div className="text-2xl font-bold">{stats.totalUsers}</div>
             <p className="text-sm text-muted-foreground">Total Users</p>
           </Card>
           <Card className="p-6">
-            <div className="text-2xl font-bold">{stats.totalMembers}</div>
-            <p className="text-sm text-muted-foreground">Total Members</p>
+            <div className="text-2xl font-bold">{stats.totalOwners}</div>
+            <p className="text-sm text-muted-foreground">Total Owners</p>
           </Card>
         </div>
       )}

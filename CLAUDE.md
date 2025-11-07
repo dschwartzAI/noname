@@ -777,68 +777,44 @@ When implementing specific features, **always check these docs first**:
 
 ## 🤖 Specialized Agents
 
-This project uses specialized agents for specific tasks. When working on these areas, consult the relevant agent documentation:
+This project uses 8 specialized agents for domain-specific tasks. Each agent provides expert guidance and enforces best practices in their area.
 
-### Schema Architect Agent
-**File**: [.claude/agents/schema-architect.md](.claude/agents/schema-architect.md)
+📚 **Complete Agent Documentation**: See [.claude/agents/README.md](.claude/agents/README.md)
 
-**Expertise**: Database schema design, Drizzle ORM, multi-tenant isolation, pgvector embeddings
+### Quick Reference
 
-**When to use**:
-- Designing new database tables
-- Adding vector embeddings for RAG features
-- Creating or modifying schema files in `database/schema/`
-- Planning database migrations
-- Questions about Postgres features or indexes
+| Agent | Domain | Activation |
+|-------|--------|------------|
+| **Schema Architect** | Database Design | "schema", "database", "migration", "drizzle" |
+| **API Engineer** | Backend APIs | "api", "endpoint", "route", "middleware" |
+| **UI Builder** | Frontend Components | "ui", "component", "react", "form" |
+| **TypeScript Expert** | Type Safety | "type", "interface", "generic", "inference" |
+| **TanStack Router Expert** | Routing | "route", "navigation", "loader", "search params" |
+| **Performance Engineer** | Optimization | "performance", "optimize", "cache", "slow" |
+| **Security Engineer** | Security & Auth | "security", "auth", "validation", "tenant" |
+| **Test Automator** | Testing | "test", "playwright", "e2e", "mock" |
 
-**Key responsibilities**:
-- Ensures all tables have `tenantId` for multi-tenant isolation
-- Uses UUID primary keys (never auto-increment)
-- Adds proper indexes for performance
-- Defines Drizzle relations for type-safe queries
-- Implements pgvector columns for semantic search
+### How to Invoke Agents
 
-**Activation keywords**: "schema", "database", "table", "migration", "drizzle", "postgres"
+**Tier 1: Explicit Request (ALWAYS Honored)**
+```
+"Use the [Agent Name] to..."
+"Ask the [Agent Name] about..."
+"@agent-name: [task]"
+```
 
-### API Engineer Agent
-**File**: [.claude/agents/api-engineer.md](.claude/agents/api-engineer.md)
+**Tier 2: Context-Aware**
+- Working in `database/schema/` → Schema Architect
+- Working in `src/server/routes/` → API Engineer
+- Working in `src/routes/` → UI Builder
+- TypeScript errors → TypeScript Expert
 
-**Expertise**: Hono framework, REST API design, Cloudflare Workers, Zod validation, oRPC integration
+**Tier 3: Keywords**
+- Mention relevant keywords (see Quick Reference table)
 
-**When to use**:
-- Creating new API endpoints
-- Adding validation with Zod
-- Implementing middleware (auth, tenant context)
-- Streaming AI responses
-- Working with Cloudflare Workers runtime
+**Tier 4: Problem Recognition**
+- "How do I type this?" → TypeScript Expert
+- "This query is slow" → Performance Engineer
+- "How do I protect this?" → Security Engineer
 
-**Key responsibilities**:
-- Ensures tenant filtering in ALL database queries
-- Uses Zod validation with `.describe()` for oRPC auto-tool generation
-- Implements proper HTTP status codes
-- Handles errors gracefully
-- Integrates Vercel AI SDK for streaming
-
-**Activation keywords**: "api", "endpoint", "route", "worker", "hono", "middleware"
-
-### UI Builder Agent
-**File**: [.claude/agents/ui-builder.md](.claude/agents/ui-builder.md)
-
-**Expertise**: React 19, TanStack Router, Shadcn UI, Legend State v3, Vercel AI SDK UI components
-
-**When to use**:
-- Building UI components
-- Creating TanStack Router routes
-- Managing client state with Legend State
-- Implementing forms with React Hook Form
-- Using Vercel AI SDK chat components
-
-**Key responsibilities**:
-- Follows modular feature-based structure
-- Uses Shadcn UI components (no custom UI)
-- Implements responsive, accessible interfaces
-- Handles loading and error states
-- Integrates Legend State for reactive state management
-- Uses TanStack Query for server state
-
-**Activation keywords**: "component", "ui", "frontend", "page", "react", "route", "form"
+**For complete agent profiles, activation examples, and collaboration patterns, see [.claude/agents/README.md](.claude/agents/README.md)**

@@ -5,8 +5,6 @@ import {
   Users,
   MessageSquare,
   Command,
-  GalleryVerticalEnd,
-  AudioWaveform,
   Shield,
   Building2,
 } from 'lucide-react'
@@ -15,19 +13,9 @@ import { type SidebarData } from '../types'
 export const sidebarData: SidebarData = {
   teams: [
     {
-      name: 'Solo:OS',
+      name: 'SoloOS',
       logo: Command,
       plan: 'Professional',
-    },
-    {
-      name: 'Team Workspace',
-      logo: GalleryVerticalEnd,
-      plan: 'Team',
-    },
-    {
-      name: 'Agency',
-      logo: AudioWaveform,
-      plan: 'Enterprise',
     },
   ],
   navGroups: [
@@ -61,7 +49,7 @@ export const sidebarData: SidebarData = {
         },
         {
           title: 'Community',
-          url: '/chats',
+          url: '/community',
           icon: Users,
         },
         {

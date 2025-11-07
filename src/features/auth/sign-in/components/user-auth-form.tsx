@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/password-input'
-import { signIn } from '@/lib/auth-client'
+import { signIn, getSession } from '@/lib/auth-client'
 
 const formSchema = z.object({
   email: z.email({
@@ -71,11 +71,17 @@ export function UserAuthForm({
         }
       } else if (result.data?.user) {
         const user = result.data.user
-        
+
         toast.success(`Welcome back, ${user.email}!`)
-        
+
+        // Wait for session to be available before redirecting
+        // This ensures the AuthGuard sees the authenticated state
+        await getSession()
+
+        // Small delay to ensure session is fully propagated
+        await new Promise(resolve => setTimeout(resolve, 100))
+
         // Redirect to the stored location or default to dashboard
-        // Better Auth handles all session state automatically via cookies
         const targetPath = redirectTo || '/'
         navigate({ to: targetPath, replace: true })
       } else {

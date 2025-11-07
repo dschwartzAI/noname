@@ -31,6 +31,22 @@ export function createAuth(env: Env) {
     database: drizzleAdapter(db, {
       provider: 'pg',
     }),
+    // Allow all localhost origins in development
+    trustedOrigins: [
+      'http://localhost:5174',
+      'http://localhost:5175',
+      'http://localhost:5176',
+      'http://localhost:8788',
+    ],
+    user: {
+      additionalFields: {
+        isGod: {
+          type: 'boolean',
+          defaultValue: false,
+          required: false,
+        },
+      },
+    },
     emailAndPassword: {
       enabled: true,
       // Add required email verification config
@@ -66,11 +82,11 @@ export function createAuth(env: Env) {
       }),
     ],
     secret: env.BETTER_AUTH_SECRET || 'CPmXy0XgIWaOICeanyyFhR5eFwyQgoSJ0LpGtgJrpHc=',
-    baseURL: env.BETTER_AUTH_URL || 'http://localhost:5175',
+    baseURL: env.BETTER_AUTH_URL || 'http://localhost:5174',
     
     session: {
       cookieCache: {
-        enabled: true,
+        enabled: false, // Disabled - session data too large with org plugin
         maxAge: 60 * 60 * 24 * 7, // 7 days
       },
     },

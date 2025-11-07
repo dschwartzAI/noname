@@ -131,14 +131,15 @@ godApp.get('/stats', async (c) => {
     const sqlClient = neon(c.env.DATABASE_URL);
     const db = drizzle(sqlClient, { schema });
 
-    const [orgCount] = await db.select({ count: count() }).from(schema.organization);
     const [userCount] = await db.select({ count: count() }).from(schema.user);
-    const [memberCount] = await db.select({ count: count() }).from(schema.member);
+    const [ownerCount] = await db
+      .select({ count: count() })
+      .from(schema.member)
+      .where(eq(schema.member.role, 'owner'));
 
     return c.json({
-      totalPrograms: orgCount.count,
       totalUsers: userCount.count,
-      totalMembers: memberCount.count,
+      totalOwners: ownerCount.count,
     });
   } catch (error) {
     console.error('God API error:', error);

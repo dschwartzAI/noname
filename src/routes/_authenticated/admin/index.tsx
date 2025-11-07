@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
 import { useSession } from '@/lib/auth-client';
+import { LogoUpload } from './_components/logo-upload';
 
 export const Route = createFileRoute('/_authenticated/admin/')({
   component: AdminPanel,
@@ -19,21 +20,30 @@ function AdminPanel() {
     );
   }
 
+  // Check if user has access (owners or admins)
+  if (!user) {
+    return (
+      <div className="container mx-auto py-8">
+        <p>Please log in to access the admin panel.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto py-8 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Admin Panel</h1>
-          <p className="text-muted-foreground">Business metrics overview</p>
+          <h1 className="text-3xl font-bold">SoloOS Admin Panel</h1>
+          <p className="text-muted-foreground">Organization metrics and management</p>
         </div>
         <div className="flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">Total:</span>
-          <span className="font-semibold">465</span>
-          <span className="text-muted-foreground">Registered:</span>
-          <span className="font-semibold">414</span>
-          <span className="text-muted-foreground">Pending:</span>
-          <span className="font-semibold">51</span>
+          <span className="text-muted-foreground">Total Users:</span>
+          <span className="font-semibold">99</span>
+          <span className="text-muted-foreground">Active:</span>
+          <span className="font-semibold">87</span>
+          <span className="text-muted-foreground">Trial:</span>
+          <span className="font-semibold">10</span>
           <button className="ml-4 px-4 py-2 bg-primary text-primary-foreground rounded-md">
             Refresh
           </button>
@@ -42,10 +52,11 @@ function AdminPanel() {
 
       {/* Tabs */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 lg:w-auto">
+        <TabsList className="grid w-full grid-cols-4 lg:w-auto">
           <TabsTrigger value="overview">Dashboard</TabsTrigger>
           <TabsTrigger value="api-usage">API Usage</TabsTrigger>
           <TabsTrigger value="user-management">User Management</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
@@ -62,6 +73,11 @@ function AdminPanel() {
         <TabsContent value="user-management" className="space-y-6">
           <UserManagementTab />
         </TabsContent>
+
+        {/* Settings Tab */}
+        <TabsContent value="settings" className="space-y-6">
+          <SettingsTab />
+        </TabsContent>
       </Tabs>
     </div>
   );
@@ -70,94 +86,44 @@ function AdminPanel() {
 function OverviewTab() {
   return (
     <div className="space-y-6">
-      {/* Customers Section */}
+      {/* SoloOS Metrics */}
       <div>
-        <h2 className="text-lg font-semibold mb-4">Customers</h2>
-        <div className="grid gap-4 md:grid-cols-5">
+        <h2 className="text-lg font-semibold mb-4">SoloOS Customers & Members</h2>
+        <div className="grid gap-4 md:grid-cols-3">
           <Card className="p-6">
-            <div className="text-xs text-muted-foreground mb-1">SOLO:OS</div>
+            <div className="text-xs text-muted-foreground mb-1">TOTAL CUSTOMERS</div>
             <div className="text-3xl font-bold">99</div>
           </Card>
           <Card className="p-6">
-            <div className="text-xs text-muted-foreground mb-1">CLIENT IN 7</div>
-            <div className="text-3xl font-bold">175</div>
+            <div className="text-xs text-muted-foreground mb-1">ACTIVE MEMBERS</div>
+            <div className="text-3xl font-bold">87</div>
           </Card>
           <Card className="p-6">
-            <div className="text-xs text-muted-foreground mb-1">OFFER CHALLENGE</div>
-            <div className="text-3xl font-bold">0</div>
-          </Card>
-          <Card className="p-6">
-            <div className="text-xs text-muted-foreground mb-1">SYNDICATE</div>
-            <div className="text-3xl font-bold">93</div>
-          </Card>
-          <Card className="p-6">
-            <div className="text-xs text-muted-foreground mb-1">SOCIETY</div>
-            <div className="text-3xl font-bold">20</div>
+            <div className="text-xs text-muted-foreground mb-1">TOTAL USERS</div>
+            <div className="text-3xl font-bold">99</div>
           </Card>
         </div>
       </div>
 
-      {/* Clients Section */}
+      {/* Growth & Retention Section */}
       <div>
-        <h2 className="text-lg font-semibold mb-4">Clients</h2>
-        <div className="grid gap-4 md:grid-cols-5">
-          <Card className="p-6">
-            <div className="text-xs text-muted-foreground mb-1">SOLO:OS</div>
-            <div className="text-3xl font-bold">99</div>
-          </Card>
-          <Card className="p-6">
-            <div className="text-xs text-muted-foreground mb-1">CLIENT IN 7</div>
-            <div className="text-3xl font-bold">175</div>
-          </Card>
-          <Card className="p-6">
-            <div className="text-xs text-muted-foreground mb-1">OFFER CHALLENGE</div>
-            <div className="text-3xl font-bold">0</div>
-          </Card>
-          <Card className="p-6">
-            <div className="text-xs text-muted-foreground mb-1">SYNDICATE</div>
-            <div className="text-3xl font-bold">93</div>
-          </Card>
-          <Card className="p-6">
-            <div className="text-xs text-muted-foreground mb-1">SOCIETY</div>
-            <div className="text-3xl font-bold">20</div>
-          </Card>
-        </div>
-      </div>
-
-      {/* Conversion Section */}
-      <div>
-        <h2 className="text-lg font-semibold mb-4">Conversion</h2>
+        <h2 className="text-lg font-semibold mb-4">Growth & Retention</h2>
         <div className="grid gap-4 md:grid-cols-4">
           <Card className="p-6">
-            <div className="text-xs text-muted-foreground mb-1">TOTAL</div>
-            <div className="text-3xl font-bold">387</div>
+            <div className="text-xs text-muted-foreground mb-1">NEW THIS MONTH</div>
+            <div className="text-3xl font-bold">12</div>
           </Card>
           <Card className="p-6">
-            <div className="text-xs text-muted-foreground mb-1">CUSTOMERS</div>
-            <div className="text-3xl font-bold">274</div>
+            <div className="text-xs text-muted-foreground mb-1">ACTIVE RATE</div>
+            <div className="text-3xl font-bold">88%</div>
           </Card>
           <Card className="p-6">
-            <div className="text-xs text-muted-foreground mb-1">CLIENTS</div>
-            <div className="text-3xl font-bold">113</div>
+            <div className="text-xs text-muted-foreground mb-1">CHURNED</div>
+            <div className="text-3xl font-bold">3</div>
           </Card>
           <Card className="p-6">
-            <div className="text-xs text-muted-foreground mb-1">CTOC CONVERSION</div>
-            <div className="text-3xl font-bold">41%</div>
-          </Card>
-        </div>
-      </div>
-
-      {/* Ascension & Retention Section */}
-      <div>
-        <h2 className="text-lg font-semibold mb-4">Ascension & Retention</h2>
-        <div className="grid gap-4 md:grid-cols-2">
-          <Card className="p-6">
-            <div className="text-xs text-muted-foreground mb-1">UPGRADES</div>
-            <div className="text-3xl font-bold">0</div>
-          </Card>
-          <Card className="p-6">
-            <div className="text-xs text-muted-foreground mb-1">DOWNGRADES</div>
-            <div className="text-3xl font-bold">0</div>
+            <div className="text-xs text-muted-foreground mb-1">RETENTION</div>
+            <div className="text-3xl font-bold">97%</div>
           </Card>
         </div>
       </div>
@@ -283,39 +249,23 @@ function UserManagementTab() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold mb-4">Manage all user accounts and roles</h2>
-        <div className="grid gap-4 md:grid-cols-8">
+        <h2 className="text-lg font-semibold mb-4">SoloOS User Management</h2>
+        <div className="grid gap-4 md:grid-cols-4">
           <Card className="p-4">
             <div className="text-xs text-muted-foreground mb-1">Total Users</div>
-            <div className="text-2xl font-bold">416</div>
+            <div className="text-2xl font-bold">99</div>
           </Card>
           <Card className="p-4">
             <div className="text-xs text-muted-foreground mb-1">Admins</div>
-            <div className="text-2xl font-bold">4</div>
+            <div className="text-2xl font-bold">2</div>
           </Card>
           <Card className="p-4">
-            <div className="text-xs text-muted-foreground mb-1">Syndicate Users</div>
-            <div className="text-2xl font-bold">93</div>
+            <div className="text-xs text-muted-foreground mb-1">Active Members</div>
+            <div className="text-2xl font-bold">87</div>
           </Card>
           <Card className="p-4">
-            <div className="text-xs text-muted-foreground mb-1">Society Users</div>
-            <div className="text-2xl font-bold">20</div>
-          </Card>
-          <Card className="p-4">
-            <div className="text-xs text-muted-foreground mb-1">Client in 7</div>
-            <div className="text-2xl font-bold">175</div>
-          </Card>
-          <Card className="p-4">
-            <div className="text-xs text-muted-foreground mb-1">Test Drive</div>
-            <div className="text-2xl font-bold">16</div>
-          </Card>
-          <Card className="p-4">
-            <div className="text-xs text-muted-foreground mb-1">Expired Test Drive</div>
-            <div className="text-2xl font-bold">9</div>
-          </Card>
-          <Card className="p-4">
-            <div className="text-xs text-muted-foreground mb-1">SOLO:OS Users</div>
-            <div className="text-2xl font-bold">99</div>
+            <div className="text-xs text-muted-foreground mb-1">Trial Users</div>
+            <div className="text-2xl font-bold">10</div>
           </Card>
         </div>
       </div>
@@ -349,3 +299,28 @@ function UserManagementTab() {
     </div>
   );
 }
+
+function SettingsTab() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold">Organization Settings</h2>
+        <p className="text-muted-foreground">Customize your organization's branding and settings</p>
+      </div>
+
+      <Card className="p-6">
+        <h3 className="text-lg font-semibold mb-4">Branding</h3>
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium mb-2 block">Logo</label>
+            <p className="text-sm text-muted-foreground mb-4">
+              Upload your organization's logo. This will be displayed in the sidebar.
+            </p>
+            <LogoUpload />
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
