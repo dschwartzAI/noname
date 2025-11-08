@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, jsonb, index } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -125,6 +125,7 @@ export const conversation = pgTable("conversation", {
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
   title: text("title").notNull(), // Auto-generated from first message or user-set
+  toolId: text("tool_id"), // Reference to AI tool/agent (nullable for default chat)
   model: text("model").default("gpt-4o-mini"), // AI model used (gpt-4o, claude-3-5-sonnet, etc.)
   systemPrompt: text("system_prompt"), // Optional system prompt
   metadata: jsonb("metadata").$type<{
@@ -137,7 +138,14 @@ export const conversation = pgTable("conversation", {
     .defaultNow()
     .$onUpdate(() => new Date())
     .notNull(),
-});
+}, (table) => ({
+  // Index for loading user's conversations (most recent first)
+  userOrgUpdatedIdx: index("conversation_user_org_updated_idx")
+    .on(table.userId, table.organizationId, table.updatedAt.desc()),
+  // Index for organization-wide conversation queries
+  orgUpdatedIdx: index("conversation_org_updated_idx")
+    .on(table.organizationId, table.updatedAt.desc()),
+}));
 
 export const message = pgTable("message", {
   id: text("id").primaryKey(),
@@ -167,4 +175,11 @@ export const message = pgTable("message", {
     };
   }>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => ({
+  // Index for loading messages within a conversation (chronological order)
+  conversationCreatedIdx: index("message_conversation_created_idx")
+    .on(table.conversationId, table.createdAt.asc()),
+  // Index for organization-wide message queries (for analytics/search)
+  orgCreatedIdx: index("message_org_created_idx")
+    .on(table.organizationId, table.createdAt.desc()),
+}));
