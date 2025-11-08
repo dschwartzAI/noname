@@ -54,7 +54,11 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
 
   // Handle new chat navigation
   const handleNewChat = () => {
-    navigate({ to: '/ai-chat' })
+    // Force component remount by adding a unique timestamp search param
+    navigate({
+      to: '/ai-chat',
+      search: { new: Date.now().toString() }
+    })
   }
 
   // Filter navigation groups based on user role

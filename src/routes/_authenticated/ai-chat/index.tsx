@@ -48,14 +48,28 @@ const MODELS = [
 ]
 
 function ChatPage() {
+  const { new: newChatKey } = Route.useSearch()
   const [selectedModel, setSelectedModel] = useState('gpt-4o')
   const invalidateConversations = useInvalidateConversations()
 
   // Generate conversation ID upfront (like Vercel AI Chatbot pattern)
+  // Use newChatKey in dependency to regenerate ID when "New Chat" is clicked
   const [conversationId] = useState(() => nanoid())
 
+  // Force regenerate conversation ID when newChatKey changes (New Chat clicked)
+  const [currentChatKey, setCurrentChatKey] = useState(newChatKey || 'initial')
+  const [effectiveConversationId, setEffectiveConversationId] = useState(conversationId)
+
+  useEffect(() => {
+    if (newChatKey && newChatKey !== currentChatKey) {
+      // New chat triggered - generate fresh conversation ID
+      setEffectiveConversationId(nanoid())
+      setCurrentChatKey(newChatKey)
+    }
+  }, [newChatKey, currentChatKey])
+
   const { messages, sendMessage, status, error } = useChat({
-    id: conversationId, // Pass ID to useChat (Vercel pattern)
+    id: effectiveConversationId, // Pass ID to useChat (Vercel pattern)
     api: '/api/v1/chat',
     onFinish: async () => {
       // Refresh sidebar conversation list to show new conversation with generated title
@@ -105,7 +119,7 @@ function ChatPage() {
                           { text: prompt },
                           {
                             body: {
-                              conversationId,
+                              conversationId: effectiveConversationId,
                               model: selectedModel,
                             },
                           }
@@ -152,7 +166,7 @@ function ChatPage() {
                 { text: message.text },
                 {
                   body: {
-                    conversationId, // Dynamic value at request time
+                    conversationId: effectiveConversationId, // Dynamic value at request time
                     model: selectedModel, // Dynamic value at request time
                   },
                 }
@@ -202,4 +216,8 @@ function ChatPage() {
 
 export const Route = createFileRoute('/_authenticated/ai-chat/')({
   component: ChatPage,
+  // Allow search params to force remount on new chat
+  validateSearch: (search: Record<string, unknown>) => ({
+    new: search.new as string | undefined,
+  }),
 })
