@@ -60,10 +60,11 @@ godApp.get('/organizations', async (c) => {
       .groupBy(schema.organization.id)
       .orderBy(schema.organization.createdAt);
 
-    // Parse metadata and extract program name
+    // Parse metadata and extract program name and status
     const orgsWithMeta = orgs.map((org) => {
       const metadata = org.metadata ? JSON.parse(org.metadata) : null;
       const programName = metadata?.branding?.companyName || org.name;
+      const status = metadata?.status || 'active'; // Default to 'active' if not set
 
       return {
         id: org.id,
@@ -74,7 +75,7 @@ godApp.get('/organizations', async (c) => {
         logo: org.logo,
         memberCount: org.memberCount,
         createdAt: org.createdAt,
-        status: 'active', // TODO: Add status logic
+        status,
       };
     });
 
@@ -144,6 +145,75 @@ godApp.get('/stats', async (c) => {
   } catch (error) {
     console.error('God API error:', error);
     return c.json({ error: 'Failed to fetch stats' }, 500);
+  }
+});
+
+// PATCH /api/god/organizations/:id/status - Toggle organization status (active/suspended)
+godApp.patch('/organizations/:id/status', async (c) => {
+  try {
+    const orgId = c.req.param('id');
+    const { status } = await c.req.json();
+
+    if (!status || !['active', 'suspended'].includes(status)) {
+      return c.json({ error: 'Invalid status. Must be "active" or "suspended"' }, 400);
+    }
+
+    const sqlClient = neon(c.env.DATABASE_URL);
+    const db = drizzle(sqlClient, { schema });
+
+    // Get current org
+    const [org] = await db
+      .select()
+      .from(schema.organization)
+      .where(eq(schema.organization.id, orgId));
+
+    if (!org) {
+      return c.json({ error: 'Organization not found' }, 404);
+    }
+
+    // Update metadata with new status
+    const metadata = org.metadata ? JSON.parse(org.metadata) : {};
+    metadata.status = status;
+
+    await db
+      .update(schema.organization)
+      .set({ metadata: JSON.stringify(metadata) })
+      .where(eq(schema.organization.id, orgId));
+
+    return c.json({ message: 'Status updated', status });
+  } catch (error) {
+    console.error('God API error:', error);
+    return c.json({ error: 'Failed to update status' }, 500);
+  }
+});
+
+// DELETE /api/god/organizations/:id - Delete organization and all associated data
+godApp.delete('/organizations/:id', async (c) => {
+  try {
+    const orgId = c.req.param('id');
+
+    const sqlClient = neon(c.env.DATABASE_URL);
+    const db = drizzle(sqlClient, { schema });
+
+    // Check if org exists
+    const [org] = await db
+      .select()
+      .from(schema.organization)
+      .where(eq(schema.organization.id, orgId));
+
+    if (!org) {
+      return c.json({ error: 'Organization not found' }, 404);
+    }
+
+    // Delete organization (cascade will delete members)
+    await db
+      .delete(schema.organization)
+      .where(eq(schema.organization.id, orgId));
+
+    return c.json({ message: 'Organization deleted successfully' });
+  } catch (error) {
+    console.error('God API error:', error);
+    return c.json({ error: 'Failed to delete organization' }, 500);
   }
 });
 

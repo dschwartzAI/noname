@@ -29,6 +29,7 @@ import { ConversationNavGroup } from './conversation-nav-group'
 import { mockConversations } from '@/features/ai-chat/data/mock-conversations'
 import { AgentBuilder } from '@/features/ai-chat/components/agent-builder'
 import { ThemeSwitch } from '@/components/theme-switch'
+import { ImpersonationBanner } from '@/components/god/impersonation-banner'
 
 type AuthenticatedLayoutProps = {
   children?: React.ReactNode
@@ -110,6 +111,9 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
                 '@container/content'
               )}
             >
+              {/* God impersonation banner - shows when viewing as an owner */}
+              <ImpersonationBanner />
+
               <Header fixed className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <div className="ml-auto flex items-center gap-2">
                   <ThemeSwitch />
