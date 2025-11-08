@@ -114,3 +114,57 @@ export const ownerInvite = pgTable("owner_invite", {
     .references(() => user.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// AI Chat Tables
+export const conversation = pgTable("conversation", {
+  id: text("id").primaryKey(),
+  organizationId: text("organization_id")
+    .notNull()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  title: text("title").notNull(), // Auto-generated from first message or user-set
+  model: text("model").default("gpt-4o-mini"), // AI model used (gpt-4o, claude-3-5-sonnet, etc.)
+  systemPrompt: text("system_prompt"), // Optional system prompt
+  metadata: jsonb("metadata").$type<{
+    agentId?: string;
+    tags?: string[];
+    archived?: boolean;
+  }>().default({}),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
+export const message = pgTable("message", {
+  id: text("id").primaryKey(),
+  conversationId: text("conversation_id")
+    .notNull()
+    .references(() => conversation.id, { onDelete: "cascade" }),
+  organizationId: text("organization_id")
+    .notNull()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  role: text("role").notNull(), // "user" | "assistant" | "system" | "tool"
+  content: text("content").notNull(),
+  toolCalls: jsonb("tool_calls").$type<Array<{
+    id: string;
+    name: string;
+    arguments: Record<string, unknown>;
+  }>>(), // For future agent/tool integration
+  toolResults: jsonb("tool_results").$type<Array<{
+    toolCallId: string;
+    result: unknown;
+  }>>(), // Tool execution results
+  metadata: jsonb("metadata").$type<{
+    model?: string;
+    usage?: {
+      promptTokens: number;
+      completionTokens: number;
+      totalTokens: number;
+    };
+  }>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
