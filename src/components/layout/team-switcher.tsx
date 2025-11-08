@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import {
   SidebarMenu,
   SidebarMenuItem,
+  useSidebar,
 } from '@/components/ui/sidebar'
 
 type TeamSwitcherProps = {
@@ -17,6 +18,7 @@ type TeamSwitcherProps = {
 
 export function TeamSwitcher({ teams }: TeamSwitcherProps) {
   const { user } = useAuth()
+  const { open } = useSidebar()
   const activeTeam = teams[0] // Use first team as the active organization
 
   // Fetch organization data to get logo
@@ -33,8 +35,10 @@ export function TeamSwitcher({ teams }: TeamSwitcherProps) {
   const organization = orgData?.organization;
   const hasCustomLogo = !!organization?.logo;
 
-  // Determine user role badge
+  // Determine user role badge (only show when sidebar is open)
   const getRoleBadge = () => {
+    if (!open) return null // Hide badge when sidebar is collapsed
+
     if (user?.isGod) {
       return <Badge variant="gold">God</Badge>
     }
@@ -48,11 +52,11 @@ export function TeamSwitcher({ teams }: TeamSwitcherProps) {
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <div className='flex items-center gap-2 px-2 py-2'>
-          <div className='bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg overflow-hidden'>
+        <div className='flex items-center gap-2 px-1 py-1.5'>
+          <div className='bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 flex-shrink-0 items-center justify-center rounded-lg overflow-hidden'>
             {hasCustomLogo ? (
-              <img 
-                src={organization.logo} 
+              <img
+                src={organization.logo}
                 alt={organization.name || activeTeam.name}
                 className='h-full w-full object-contain'
               />
@@ -60,12 +64,14 @@ export function TeamSwitcher({ teams }: TeamSwitcherProps) {
               <activeTeam.logo className='size-4' />
             )}
           </div>
-          <div className='flex flex-1 items-center gap-2 text-start text-sm leading-tight'>
-            <span className='truncate font-semibold'>
-              {organization?.name || activeTeam.name}
-            </span>
-            {getRoleBadge()}
-          </div>
+          {open && (
+            <div className='flex flex-1 items-center gap-2 text-start text-sm leading-tight'>
+              <span className='truncate font-semibold'>
+                {organization?.name || activeTeam.name}
+              </span>
+              {getRoleBadge()}
+            </div>
+          )}
         </div>
       </SidebarMenuItem>
     </SidebarMenu>

@@ -49,15 +49,6 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   // Fetch real conversations from API
   const { data: conversations, isLoading: conversationsLoading, error: conversationsError } = useConversations()
 
-  // Log conversation loading state for debugging
-  useEffect(() => {
-    console.log('📊 Conversations state:', {
-      loading: conversationsLoading,
-      count: conversations?.length || 0,
-      error: conversationsError
-    })
-  }, [conversationsLoading, conversations, conversationsError])
-
   // Connect to UserSysDO for remote auth events
   useUserSysEvents(user?.id || null)
 

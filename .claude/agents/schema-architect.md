@@ -1,3 +1,8 @@
+---
+name: schema-architect
+description: Database schema designer specializing in multi-tenant Postgres with Drizzle ORM
+---
+
 # Schema Architect Agent
 
 ## Role

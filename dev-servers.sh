@@ -15,8 +15,18 @@ echo "🚀 Starting Wrangler backend..."
 (
   while true; do
     npm run dev:backend
-    echo "⚠️  Wrangler crashed, restarting in 2s..."
-    sleep 2
+    EXIT_CODE=$?
+    if [ $EXIT_CODE -eq 0 ]; then
+      echo "Backend exited normally"
+      break
+    fi
+    echo "⚠️  Wrangler crashed (exit code: $EXIT_CODE), cleaning up..."
+    # Kill any zombie wrangler/workerd processes
+    pkill -9 -f "wrangler dev" 2>/dev/null
+    pkill -9 workerd 2>/dev/null
+    lsof -ti:8788 | xargs kill -9 2>/dev/null
+    sleep 3
+    echo "Restarting backend..."
   done
 ) > /tmp/wrangler.log 2>&1 &
 BACKEND_PID=$!
@@ -36,8 +46,17 @@ echo "🚀 Starting Vite frontend..."
 (
   while true; do
     npm run dev:frontend
-    echo "⚠️  Vite crashed, restarting in 2s..."
+    EXIT_CODE=$?
+    if [ $EXIT_CODE -eq 0 ]; then
+      echo "Frontend exited normally"
+      break
+    fi
+    echo "⚠️  Vite crashed (exit code: $EXIT_CODE), cleaning up..."
+    # Kill any zombie vite processes
+    pkill -9 -f "vite" 2>/dev/null
+    lsof -ti:5174 | xargs kill -9 2>/dev/null
     sleep 2
+    echo "Restarting frontend..."
   done
 ) > /tmp/vite.log 2>&1 &
 FRONTEND_PID=$!

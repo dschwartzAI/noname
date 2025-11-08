@@ -1,3 +1,8 @@
+---
+name: ui-builder
+description: Frontend developer specializing in React 19, TanStack Router, Shadcn UI, and Legend State/MobX
+---
+
 # UI Builder Agent
 
 ## Role

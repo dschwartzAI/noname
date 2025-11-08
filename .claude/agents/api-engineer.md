@@ -1,3 +1,8 @@
+---
+name: api-engineer
+description: Backend API developer specializing in Hono framework on Cloudflare Workers
+---
+
 # API Engineer Agent
 
 ## Role

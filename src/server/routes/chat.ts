@@ -15,11 +15,12 @@ import { requireAuth } from '../middleware/auth'
 import { injectOrganization } from '../middleware/organization'
 import { neon } from '@neondatabase/serverless'
 import { drizzle } from 'drizzle-orm/neon-http'
-import { eq, and, desc, asc } from 'drizzle-orm'
+import { eq, and, desc, asc, sql } from 'drizzle-orm'
 import { getModel } from '@/lib/ai-providers'
 import { nanoid } from 'nanoid'
 import { z } from 'zod'
 import * as authSchema from '../../../database/better-auth-schema'
+import { memories } from '../../../database/schema/memories'
 import {
   chatRequestSchema,
   getConversationSchema,
@@ -84,7 +85,7 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
 
     // Initialize database connection
     const sqlClient = neon(c.env.DATABASE_URL)
-    const db = drizzle(sqlClient, { schema: authSchema })
+    const db = drizzle(sqlClient, { schema: { ...authSchema, memories } })
 
     // Step 1: Get or create conversation
     let currentConversationId = conversationId
@@ -155,17 +156,71 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
 
       console.log('✅ Created new conversation:', currentConversationId, 'with title:', title)
     } else {
-      // Verify user owns this conversation (tenant isolation)
-      const existingConv = await db.query.conversation.findFirst({
-        where: and(
-          eq(authSchema.conversation.id, currentConversationId),
-          eq(authSchema.conversation.organizationId, organizationId),
-          eq(authSchema.conversation.userId, user.id)
-        ),
-      })
+      // Check if conversation exists (using SQL builder to ensure proper column name mapping)
+      const [existingConv] = await db
+        .select()
+        .from(authSchema.conversation)
+        .where(
+          and(
+            eq(authSchema.conversation.id, currentConversationId),
+            eq(authSchema.conversation.organizationId, organizationId),
+            eq(authSchema.conversation.userId, user.id)
+          )
+        )
+        .limit(1)
 
+      // If conversation doesn't exist, create it (frontend generates ID upfront)
       if (!existingConv) {
-        return c.json({ error: 'Conversation not found or access denied' }, 404)
+        console.log('📝 Conversation ID provided but not found, creating new conversation:', currentConversationId)
+
+        // Extract first message for title generation
+        let firstMessage = message
+        if (!firstMessage && messagesArray && messagesArray.length > 0) {
+          const firstMsg = messagesArray[0]
+          if (firstMsg.parts && firstMsg.parts.length > 0) {
+            firstMessage = firstMsg.parts
+              .filter(part => part.type === 'text' && part.text)
+              .map(part => part.text)
+              .join('')
+          } else if (firstMsg.content) {
+            firstMessage = firstMsg.content
+          }
+        }
+
+        if (!firstMessage) {
+          firstMessage = 'New Chat'
+        }
+
+        // Generate title from first user message
+        let title = firstMessage.substring(0, 100)
+
+        if (c.env.OPENAI_API_KEY && firstMessage !== 'New Chat') {
+          try {
+            const titleModel = getModel({ OPENAI_API_KEY: c.env.OPENAI_API_KEY }, 'gpt-4o-mini')
+            const { text: generatedTitle } = await generateText({
+              model: titleModel,
+              prompt: `Generate a concise, descriptive 3-5 word title for a conversation that starts with: "${firstMessage}"\n\nReturn ONLY the title, no quotes.`,
+              maxTokens: 20,
+              temperature: 0.7,
+            })
+            title = generatedTitle.replace(/^["']|["']$/g, '').trim()
+          } catch (error) {
+            console.error('❌ Title generation failed, using fallback:', error)
+          }
+        }
+
+        await db.insert(authSchema.conversation).values({
+          id: currentConversationId,
+          organizationId,
+          userId: user.id,
+          title,
+          toolId: agentId,
+          model,
+          systemPrompt: null,
+          metadata: {},
+        })
+
+        console.log('✅ Created conversation from frontend ID:', currentConversationId, 'with title:', title)
       }
     }
 
@@ -206,6 +261,62 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
       console.log('⚠️ No user message to save')
     }
 
+    // Step 3: Fetch user memories for context injection (OPTIMIZED: First message only)
+    // Check if this is the first message in the conversation
+    const isFirstMessage = messagesArray ? messagesArray.length === 1 : true
+
+    let memoryContext = ''
+    if (isFirstMessage) {
+      // Only fetch memories on first message (saves 50-80% of tokens)
+      const userMemories = await db
+        .select()
+        .from(memories)
+        .where(
+          and(
+            eq(memories.userId, user.id),
+            eq(memories.organizationId, organizationId)
+          )
+        )
+        .orderBy(asc(memories.category), desc(memories.createdAt))
+
+      // Format memories by category
+      if (userMemories.length > 0) {
+        const categories = {
+          business_info: 'Business Information',
+          target_audience: 'Target Audience',
+          offers: 'Offers & Services',
+          current_projects: 'Current Projects',
+          challenges: 'Challenges & Pain Points',
+          goals: 'Goals & Objectives',
+          personal_info: 'Personal Context',
+        }
+
+        let formatted = '\n\n═══ USER BUSINESS CONTEXT ═══\n'
+
+        for (const [categoryKey, categoryLabel] of Object.entries(categories)) {
+          const categoryMemories = userMemories.filter(m => m.category === categoryKey)
+          if (categoryMemories.length > 0) {
+            formatted += `\n${categoryLabel}:\n`
+            categoryMemories.forEach(mem => {
+              formatted += `  • ${mem.key}: ${mem.value}\n`
+            })
+          }
+        }
+
+        formatted += '\n═══════════════════════════════'
+        memoryContext = formatted
+      }
+    }
+
+    // Conditional logging based on memory state
+    if (memoryContext && isFirstMessage) {
+      console.log('💭 Injected business context (first message of conversation)')
+    } else if (isFirstMessage) {
+      console.log('ℹ️  No business memories found for this user')
+    } else {
+      console.log('⏭️  Skipping memory injection (not first message - using conversation history)')
+    }
+
     // Get AI model instance
     const aiModel = getModel({
       ANTHROPIC_API_KEY: c.env.ANTHROPIC_API_KEY,
@@ -224,7 +335,18 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
 
     // Convert UI messages to model messages (AI SDK v5 requirement)
     // UI messages have 'parts' array, model messages have 'content' string
-    const messages = convertToModelMessages(uiMessages)
+    let messages = convertToModelMessages(uiMessages)
+
+    // Prepend system message with memory context if we have memories
+    if (memoryContext) {
+      messages = [
+        {
+          role: 'system',
+          content: `You are a helpful AI assistant. You have access to the user's business context which will help you provide more personalized and relevant responses.${memoryContext}`,
+        },
+        ...messages,
+      ]
+    }
 
     console.log('📝 Converted messages:', JSON.stringify(messages, null, 2))
 
@@ -235,38 +357,221 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
       temperature: 0.7,
       maxTokens: 2048,
       onFinish: async ({ text, finishReason, usage }) => {
-        console.log('✅ AI response complete:', {
-          finishReason,
-          usage,
-          textLength: text.length,
-        })
+        try {
+          console.log('✅ AI response complete:', {
+            finishReason,
+            usage,
+            textLength: text.length,
+          })
 
-        // Save AI response to database
-        const assistantMessageId = nanoid()
-        await db.insert(authSchema.message).values({
-          id: assistantMessageId,
-          conversationId: currentConversationId!,
-          organizationId,
-          role: 'assistant',
-          content: text,
-          toolCalls: null,
-          toolResults: null,
-          metadata: {
-            model,
-            usage: {
-              promptTokens: usage.promptTokens,
-              completionTokens: usage.completionTokens,
-              totalTokens: usage.totalTokens,
+          // 1. Save AI response to database
+          const assistantMessageId = nanoid()
+          await db.insert(authSchema.message).values({
+            id: assistantMessageId,
+            conversationId: currentConversationId!,
+            organizationId,
+            role: 'assistant',
+            content: text,
+            toolCalls: null,
+            toolResults: null,
+            metadata: {
+              model,
+              usage: {
+                promptTokens: usage.promptTokens,
+                completionTokens: usage.completionTokens,
+                totalTokens: usage.totalTokens,
+              },
             },
-          },
-        })
+          })
 
-        // Update conversation's updatedAt timestamp for sorting
-        await db.update(authSchema.conversation)
-          .set({ updatedAt: new Date() })
-          .where(eq(authSchema.conversation.id, currentConversationId!))
+          // Update conversation's updatedAt timestamp for sorting
+          await db.update(authSchema.conversation)
+            .set({ updatedAt: new Date() })
+            .where(eq(authSchema.conversation.id, currentConversationId!))
 
-        console.log('✅ Saved AI message:', assistantMessageId)
+          console.log('💾 Saved assistant message:', assistantMessageId)
+
+          // 2. AUTO-EXTRACT MEMORIES (after 3+ messages)
+          const messageCountResult = await db
+            .select({ count: sql<number>`cast(count(*) as integer)` })
+            .from(authSchema.message)
+            .where(eq(authSchema.message.conversationId, currentConversationId!))
+
+          const messageCount = messageCountResult[0].count
+
+          // Trigger extraction after 3+ messages
+          if (messageCount >= 3) {
+            console.log('🧠 Starting memory auto-extraction...')
+
+            // Get recent conversation history for context
+            const recentMessages = await db
+              .select()
+              .from(authSchema.message)
+              .where(eq(authSchema.message.conversationId, currentConversationId!))
+              .orderBy(desc(authSchema.message.createdAt))
+              .limit(10) // Last 10 messages for context
+
+            // Build conversation context
+            const conversationContext = recentMessages
+              .reverse()
+              .map(m => `${m.role.toUpperCase()}: ${m.content}`)
+              .join('\n\n')
+
+            // Extraction prompt
+            const extractionPrompt = `Analyze this conversation and extract any NEW facts about the user that should be remembered long-term.
+
+CONVERSATION HISTORY:
+${conversationContext}
+
+EXTRACTION RULES:
+1. Only extract factual information explicitly stated by the USER (not AI responses or assumptions)
+2. Focus primarily on business context, but may include relevant personal context if naturally mentioned
+3. Categories:
+   - business_info: Business type, industry, company name, business model
+   - target_audience: Who they serve, customer demographics, ideal client profile
+   - offers: Products, services, pricing, packages, programs
+   - current_projects: What they're actively working on (can be multiple projects)
+   - challenges: Pain points, obstacles, problems they face (both immediate and general)
+   - goals: Business objectives, targets, aspirations, what they want to achieve
+   - personal_info: Family, hobbies, interests, personal preferences (ONLY if naturally mentioned, NOT intrusive)
+
+4. Be specific and concise in values
+5. Only extract if explicitly mentioned by user
+6. For "personal_info" - ONLY extract if the user volunteers this information naturally (family members, hobbies they mention). DO NOT extract sensitive information or probe for personal details.
+
+OUTPUT FORMAT (JSON only, no explanation):
+{
+  "memories": [
+    {
+      "category": "business_info",
+      "key": "Business Type",
+      "value": "Real estate coaching"
+    },
+    {
+      "category": "current_projects",
+      "key": "Q2 Initiative",
+      "value": "Launching new agent onboarding program"
+    },
+    {
+      "category": "challenges",
+      "key": "Lead Generation",
+      "value": "Struggling to generate qualified leads for high-ticket coaching"
+    },
+    {
+      "category": "personal_info",
+      "key": "Hobby",
+      "value": "Enjoys hiking on weekends"
+    }
+  ]
+}
+
+If no business facts found, return: {"memories": []}
+
+RESPOND WITH ONLY VALID JSON, NO MARKDOWN, NO EXPLANATION:`
+
+            // Make extraction call (use same model as chat)
+            const extractionResult = await generateText({
+              model: aiModel,
+              prompt: extractionPrompt,
+              temperature: 0.1, // Low temperature for consistent, accurate extraction
+            })
+
+            console.log('🔍 Raw extraction result:', extractionResult.text)
+
+            // Parse extraction result
+            let extractedMemories: Array<{ category: string; key: string; value: string }> = []
+            try {
+              // Clean up response (remove markdown code blocks if present)
+              let cleanedText = extractionResult.text.trim()
+              cleanedText = cleanedText.replace(/```json\n?/g, '')
+              cleanedText = cleanedText.replace(/```\n?/g, '')
+              cleanedText = cleanedText.trim()
+
+              const parsed = JSON.parse(cleanedText)
+              extractedMemories = parsed.memories || []
+            } catch (parseError) {
+              console.error('❌ Failed to parse extraction result:', parseError)
+              console.error('Raw text was:', extractionResult.text)
+            }
+
+            if (extractedMemories.length > 0) {
+              console.log(`✨ Extracted ${extractedMemories.length} potential memories`)
+
+              // 3. CHECK FOR DUPLICATES & SAVE
+              for (const memory of extractedMemories) {
+                // Validate category
+                const validCategories = [
+                  'business_info',
+                  'target_audience',
+                  'offers',
+                  'current_projects',
+                  'challenges',
+                  'goals',
+                  'personal_info'
+                ]
+
+                if (!validCategories.includes(memory.category)) {
+                  console.warn(`⚠️  Skipping invalid category: ${memory.category}`)
+                  continue
+                }
+
+                // Check if similar memory already exists (same user, org, category, key)
+                const [existing] = await db
+                  .select()
+                  .from(memories)
+                  .where(
+                    and(
+                      eq(memories.userId, user.id),
+                      eq(memories.organizationId, organizationId),
+                      eq(memories.category, memory.category),
+                      eq(memories.key, memory.key)
+                    )
+                  )
+                  .limit(1)
+
+                if (existing) {
+                  // Update if value changed
+                  if (existing.value !== memory.value) {
+                    await db
+                      .update(memories)
+                      .set({
+                        value: memory.value,
+                        source: 'auto',
+                        updatedAt: new Date(),
+                      })
+                      .where(eq(memories.id, existing.id))
+
+                    console.log(`🔄 Updated memory: [${memory.category}] ${memory.key} = ${memory.value}`)
+                  } else {
+                    console.log(`⏭️  Memory unchanged: [${memory.category}] ${memory.key}`)
+                  }
+                } else {
+                  // Insert new memory
+                  await db.insert(memories).values({
+                    id: nanoid(),
+                    userId: user.id,
+                    organizationId: organizationId,
+                    key: memory.key,
+                    value: memory.value,
+                    category: memory.category,
+                    source: 'auto', // Mark as auto-extracted
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                  })
+
+                  console.log(`💾 Saved new memory: [${memory.category}] ${memory.key} = ${memory.value}`)
+                }
+              }
+            } else {
+              console.log('⏭️  No new business facts to extract from this conversation')
+            }
+          } else {
+            console.log(`⏭️  Skipping extraction (only ${messageCount} messages, need 3+)`)
+          }
+
+        } catch (error) {
+          console.error('❌ Error in onFinish:', error)
+        }
       },
     })
 

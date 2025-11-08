@@ -7,6 +7,7 @@ import {
   Command,
   Shield,
   Building2,
+  GraduationCap,
 } from 'lucide-react'
 import { type SidebarData } from '../types'
 
@@ -44,8 +45,8 @@ export const sidebarData: SidebarData = {
         },
         {
           title: 'Syndicate',
-          url: '#',
-          icon: ArrowUpRight,
+          url: '/syndicate',
+          icon: GraduationCap,
         },
         {
           title: 'Community',

@@ -72,7 +72,6 @@ export function useConversations() {
     queryFn: async () => {
       try {
         const result = await fetchConversations()
-        console.log('✅ Fetched conversations:', result.length)
         return result
       } catch (error) {
         console.error('❌ Failed to fetch conversations:', error)

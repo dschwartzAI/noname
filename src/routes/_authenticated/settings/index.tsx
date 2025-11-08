@@ -5,6 +5,6 @@ export const Route = createFileRoute('/_authenticated/settings/')({
 })
 
 function SettingsIndex() {
-  // Redirect to appearance settings as default
-  return <Navigate to="/settings/appearance" />
+  // Redirect to profile settings as default
+  return <Navigate to="/settings/profile" />
 }

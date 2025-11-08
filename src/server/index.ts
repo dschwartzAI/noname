@@ -9,13 +9,19 @@ import { UserSysDO } from './durable-objects/user-sys-do'
 import { createAuth } from '../../server/auth/config'
 import * as routes from './routes'
 import ragRoutes from './routes/rag'
-import { tasksApp } from './routes/tasks'
+// Temporarily disabled - uses old D1 schema
+// import { tasksApp } from './routes/tasks'
 import { godApp } from './routes/god'
 import { orgApp } from './routes/organization'
 import { logoApp } from './routes/logo'
 import userApp from './routes/user'
 import chatApp from './routes/chat'
 import invitesApp from './routes/invites'
+import memoriesApp from './routes/memories'
+// Temporarily disabled - incompatible import paths
+// import coursesApp from './routes/courses'
+// import calendarApp from './routes/calendar'
+// import messageBoardApp from './routes/message-board'
 import { z } from '@hono/zod-openapi'
 // import { runWithTools } from '@cloudflare/ai-utils'
 
@@ -1440,8 +1446,8 @@ app.openapi(routes.healthRoute, (c) => {
 // RAG system routes
 app.route('/api/rag', ragRoutes)
 
-// Tasks routes with authentication and D1 database
-app.route('/api/tasks', tasksApp)
+// Tasks routes with authentication and D1 database (temporarily disabled - uses old D1 schema)
+// app.route('/api/tasks', tasksApp)
 
 // God admin routes (requires isGod = true)
 app.route('/api/god', godApp)
@@ -1461,6 +1467,14 @@ app.route('/api/v1/chat', chatApp)
 // TEMPORARY: Also mount at old path for browser cache compatibility
 // TODO: Remove this after users have cleared their cache
 app.route('/api/chat', chatApp)
+
+// Memory management routes
+app.route('/api/v1/memories', memoriesApp)
+
+// LMS routes (Syndicate) - Temporarily disabled due to import path issues
+// app.route('/api/v1/courses', coursesApp)
+// app.route('/api/v1/calendar', calendarApp)
+// app.route('/api/v1/board', messageBoardApp)
 
 // TTS testing endpoint
 app.post('/api/tts-test', async (c) => {

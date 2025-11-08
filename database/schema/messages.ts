@@ -7,15 +7,15 @@
 
 import { pgTable, text, uuid, timestamp, integer, boolean, index } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
-import { tenants } from './tenants';
+import { organization } from '../better-auth-schema';
 import { conversations } from './conversations';
 
 export const messages = pgTable('messages', {
   id: uuid('id').primaryKey().defaultRandom(),
 
   // Multi-tenancy
-  tenantId: uuid('tenant_id')
-    .references(() => tenants.id, { onDelete: 'cascade' })
+  organizationId: text('organization_id')
+    .references(() => organization.id, { onDelete: 'cascade' })
     .notNull(),
 
   // Parent conversation
@@ -57,7 +57,7 @@ export const messages = pgTable('messages', {
   updatedAt: timestamp('updated_at').defaultNow().notNull().$onUpdate(() => new Date()),
 }, (table) => ({
   // Indexes for performance
-  tenantIdx: index('messages_tenant_idx').on(table.tenantId),
+  orgIdx: index('messages_org_idx').on(table.organizationId),
   conversationIdx: index('messages_conversation_idx').on(table.conversationId),
   parentIdx: index('messages_parent_idx').on(table.parentMessageId),
   roleIdx: index('messages_role_idx').on(table.role),
@@ -71,9 +71,9 @@ export const messages = pgTable('messages', {
 
 // Self-referencing relation for message branching
 export const messagesRelations = relations(messages, ({ one, many }) => ({
-  tenant: one(tenants, {
-    fields: [messages.tenantId],
-    references: [tenants.id],
+  organization: one(organization, {
+    fields: [messages.organizationId],
+    references: [organization.id],
   }),
   conversation: one(conversations, {
     fields: [messages.conversationId],

@@ -1,3 +1,8 @@
+---
+name: typescript-expert
+description: Expert TypeScript developer specializing in advanced type system usage, type-safe patterns, and zero any types
+---
+
 # TypeScript Expert Agent
 
 ## Role

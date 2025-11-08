@@ -7,20 +7,19 @@
 
 import { pgTable, text, uuid, timestamp, jsonb, boolean, index } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import { tenants } from './tenants';
-import { users } from './auth';
+import { organization, user } from '../better-auth-schema';
 
 export const conversations = pgTable('conversations', {
   id: uuid('id').primaryKey().defaultRandom(),
 
   // Multi-tenancy
-  tenantId: uuid('tenant_id')
-    .references(() => tenants.id, { onDelete: 'cascade' })
+  organizationId: text('organization_id')
+    .references(() => organization.id, { onDelete: 'cascade' })
     .notNull(),
 
   // Owner
-  userId: uuid('user_id')
-    .references(() => users.id, { onDelete: 'cascade' })
+  userId: text('user_id')
+    .references(() => user.id, { onDelete: 'cascade' })
     .notNull(),
 
   // Content
@@ -59,23 +58,23 @@ export const conversations = pgTable('conversations', {
   lastMessageAt: timestamp('last_message_at'),
 }, (table) => ({
   // Indexes for performance
-  tenantIdx: index('conversations_tenant_idx').on(table.tenantId),
+  orgIdx: index('conversations_org_idx').on(table.organizationId),
   userIdx: index('conversations_user_idx').on(table.userId),
   agentIdx: index('conversations_agent_idx').on(table.agentId),
   lastMessageIdx: index('conversations_last_message_idx').on(table.lastMessageAt),
   // Compound index for user's conversations
-  userTenantIdx: index('conversations_user_tenant_idx').on(table.userId, table.tenantId),
+  userOrgIdx: index('conversations_user_org_idx').on(table.userId, table.organizationId),
 }));
 
 // Relations for Drizzle queries
 export const conversationsRelations = relations(conversations, ({ one, many }) => ({
-  tenant: one(tenants, {
-    fields: [conversations.tenantId],
-    references: [tenants.id],
+  organization: one(organization, {
+    fields: [conversations.organizationId],
+    references: [organization.id],
   }),
-  user: one(users, {
+  user: one(user, {
     fields: [conversations.userId],
-    references: [users.id],
+    references: [user.id],
   }),
   // Note: agents relation will be added when agents schema is imported
   messages: many('messages' as any), // Forward reference to messages

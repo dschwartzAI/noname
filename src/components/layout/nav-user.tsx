@@ -25,7 +25,6 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar'
 import { SignOutDialog } from '@/components/sign-out-dialog'
-import { SettingsDialog } from '@/components/settings-dialog'
 
 type NavUserProps = {
   user?: {
@@ -40,7 +39,6 @@ type NavUserProps = {
 export function NavUser({ user }: NavUserProps) {
   const { isMobile } = useSidebar()
   const [signOutOpen, setSignOutOpen] = useDialogState()
-  const [settingsOpen, setSettingsOpen] = useDialogState()
 
   // Handle missing user data with fallbacks
   const displayName = user?.name || 'User'
@@ -109,9 +107,11 @@ export function NavUser({ user }: NavUserProps) {
                     Leads
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
-                  <Settings />
-                  Settings
+                <DropdownMenuItem asChild>
+                  <Link to='/settings/profile'>
+                    <Settings />
+                    Settings
+                  </Link>
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
@@ -125,7 +125,6 @@ export function NavUser({ user }: NavUserProps) {
       </SidebarMenu>
 
       <SignOutDialog open={!!signOutOpen} onOpenChange={setSignOutOpen} />
-      <SettingsDialog open={!!settingsOpen} onOpenChange={setSettingsOpen} />
     </>
   )
 }

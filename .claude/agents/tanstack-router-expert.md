@@ -1,3 +1,8 @@
+---
+name: tanstack-router-expert
+description: Routing specialist for TanStack Router - type-safe, file-based routing system
+---
+
 # TanStack Router Expert Agent
 
 ## Role

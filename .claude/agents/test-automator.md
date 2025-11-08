@@ -1,3 +1,8 @@
+---
+name: test-automator
+description: Expert test automation engineer specializing in robust test frameworks, CI/CD integration, and comprehensive test coverage
+---
+
 # Test Automator Agent
 
 ## Role

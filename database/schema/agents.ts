@@ -7,20 +7,19 @@
 
 import { pgTable, text, uuid, timestamp, jsonb, boolean, integer, index } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import { tenants } from './tenants';
-import { users } from './auth';
+import { organization, user } from '../better-auth-schema';
 
 export const agents = pgTable('agents', {
   id: text('id').primaryKey(), // Custom ID format: 'agent_abc123'
 
   // Multi-tenancy
-  tenantId: uuid('tenant_id')
-    .references(() => tenants.id, { onDelete: 'cascade' })
+  organizationId: text('organization_id')
+    .references(() => organization.id, { onDelete: 'cascade' })
     .notNull(),
 
   // Creator
-  createdBy: uuid('created_by')
-    .references(() => users.id, { onDelete: 'set null' }),
+  createdBy: text('created_by')
+    .references(() => user.id, { onDelete: 'set null' }),
 
   // Basic info
   name: text('name').notNull(),
@@ -91,25 +90,25 @@ export const agents = pgTable('agents', {
   updatedAt: timestamp('updated_at').defaultNow().notNull().$onUpdate(() => new Date()),
 }, (table) => ({
   // Indexes for performance
-  tenantIdx: index('agents_tenant_idx').on(table.tenantId),
+  orgIdx: index('agents_org_idx').on(table.organizationId),
   creatorIdx: index('agents_creator_idx').on(table.createdBy),
   publishedIdx: index('agents_published_idx').on(table.published),
   systemIdx: index('agents_system_idx').on(table.isSystem),
   tierIdx: index('agents_tier_idx').on(table.tier),
-  // Compound index for tenant's published agents
-  tenantPublishedIdx: index('agents_tenant_published_idx')
-    .on(table.tenantId, table.published),
+  // Compound index for organization's published agents
+  orgPublishedIdx: index('agents_org_published_idx')
+    .on(table.organizationId, table.published),
 }));
 
 // Relations for Drizzle queries
 export const agentsRelations = relations(agents, ({ one, many }) => ({
-  tenant: one(tenants, {
-    fields: [agents.tenantId],
-    references: [tenants.id],
+  organization: one(organization, {
+    fields: [agents.organizationId],
+    references: [organization.id],
   }),
-  creator: one(users, {
+  creator: one(user, {
     fields: [agents.createdBy],
-    references: [users.id],
+    references: [user.id],
   }),
   // Conversations using this agent (forward reference)
   conversations: many('conversations' as any),

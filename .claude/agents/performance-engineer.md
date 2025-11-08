@@ -1,3 +1,8 @@
+---
+name: performance-engineer
+description: Expert performance engineer specializing in system optimization, bottleneck identification, and scalability engineering
+---
+
 # Performance Engineer Agent
 
 ## Role
