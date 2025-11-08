@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Outlet, useNavigate, useParams } from '@tanstack/react-router'
 import { Settings2 } from 'lucide-react'
 import { getCookie } from '@/lib/cookies'
@@ -26,10 +26,11 @@ import { NavGroup } from './nav-group'
 import { NavUser } from './nav-user'
 import { TeamSwitcher } from './team-switcher'
 import { ConversationNavGroup } from './conversation-nav-group'
-import { mockConversations } from '@/features/ai-chat/data/mock-conversations'
 import { AgentBuilder } from '@/features/ai-chat/components/agent-builder'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { ImpersonationBanner } from '@/components/god/impersonation-banner'
+import { useConversations } from '@/hooks/use-conversations'
+import { Skeleton } from '@/components/ui/skeleton'
 
 type AuthenticatedLayoutProps = {
   children?: React.ReactNode
@@ -44,6 +45,18 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
 
   // Get active conversation ID from URL params
   const activeConversationId = 'conversationId' in params ? params.conversationId : undefined
+
+  // Fetch real conversations from API
+  const { data: conversations, isLoading: conversationsLoading, error: conversationsError } = useConversations()
+
+  // Log conversation loading state for debugging
+  useEffect(() => {
+    console.log('📊 Conversations state:', {
+      loading: conversationsLoading,
+      count: conversations?.length || 0,
+      error: conversationsError
+    })
+  }, [conversationsLoading, conversations, conversationsError])
 
   // Connect to UserSysDO for remote auth events
   useUserSysEvents(user?.id || null)
@@ -85,11 +98,19 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
                 <SidebarSeparator className="my-2" />
 
                 {/* Chat history */}
-                <ConversationNavGroup
-                  conversations={mockConversations}
-                  activeConversationId={activeConversationId}
-                  onNewChat={handleNewChat}
-                />
+                {conversationsLoading ? (
+                  <div className="px-3 py-2 space-y-2">
+                    <Skeleton className="h-8 w-full" />
+                    <Skeleton className="h-6 w-3/4" />
+                    <Skeleton className="h-6 w-2/3" />
+                  </div>
+                ) : (
+                  <ConversationNavGroup
+                    conversations={conversations || []}
+                    activeConversationId={activeConversationId}
+                    onNewChat={handleNewChat}
+                  />
+                )}
               </SidebarContent>
               <SidebarFooter>
                 <NavUser user={user} />

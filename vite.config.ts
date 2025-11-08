@@ -6,7 +6,7 @@ import tailwindcss from '@tailwindcss/vite'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   appType: 'spa',
   plugins: [
     tanstackRouter({
@@ -15,10 +15,11 @@ export default defineConfig({
     }),
     react(),
     tailwindcss(),
-    cloudflare({
+    // Only use cloudflare plugin in production build, not in dev mode
+    ...(mode === 'production' ? [cloudflare({
       inspectorPort: false,
       persistState: true,
-    }),
+    })] : []),
   ],
   resolve: {
     alias: {
@@ -50,4 +51,4 @@ export default defineConfig({
       },
     },
   },
-})
+}))

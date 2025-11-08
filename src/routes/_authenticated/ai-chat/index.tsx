@@ -1,7 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useChat } from '@ai-sdk/react'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Bot } from 'lucide-react'
+import { nanoid } from 'nanoid'
+import { useInvalidateConversations } from '@/hooks/use-conversations'
 import {
   Conversation,
   ConversationContent,
@@ -47,17 +49,17 @@ const MODELS = [
 
 function ChatPage() {
   const [selectedModel, setSelectedModel] = useState('gpt-4o')
+  const invalidateConversations = useInvalidateConversations()
+
+  // Generate conversation ID upfront (like Vercel AI Chatbot pattern)
+  const [conversationId] = useState(() => nanoid())
 
   const { messages, sendMessage, status, error } = useChat({
+    id: conversationId, // Pass ID to useChat (Vercel pattern)
     api: '/api/v1/chat',
-    body: {
-      model: selectedModel,
-    },
-    onResponse: (response) => {
-      console.log('✅ Response received:', response.status, response.statusText)
-    },
-    onFinish: ({ message }) => {
-      console.log('🎉 Message finished:', message)
+    onFinish: async () => {
+      // Refresh sidebar conversation list to show new conversation with generated title
+      invalidateConversations()
     },
     onError: (error) => {
       console.error('❌ Chat error:', error)
@@ -98,7 +100,16 @@ function ChatPage() {
                     <button
                       key={idx}
                       onClick={() => {
-                        sendMessage({ text: prompt })
+                        // Pass conversationId and model dynamically (AI SDK v5 pattern)
+                        sendMessage(
+                          { text: prompt },
+                          {
+                            body: {
+                              conversationId,
+                              model: selectedModel,
+                            },
+                          }
+                        )
                       }}
                       className="p-4 text-left text-sm border rounded-xl hover:bg-muted/50 transition-colors"
                     >
@@ -136,7 +147,16 @@ function ChatPage() {
         <PromptInput
           onSubmit={(message, event) => {
             if (message.text?.trim()) {
-              sendMessage({ text: message.text })
+              // Pass conversationId and model dynamically at request time (AI SDK v5 pattern)
+              sendMessage(
+                { text: message.text },
+                {
+                  body: {
+                    conversationId, // Dynamic value at request time
+                    model: selectedModel, // Dynamic value at request time
+                  },
+                }
+              )
             }
           }}
         >

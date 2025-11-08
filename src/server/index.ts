@@ -216,7 +216,8 @@ app.all('/api/auth/*', async (c) => {
   }
 })
 
-// Chat API endpoint
+// DEPRECATED: Old implementation (commented out)
+/*
 app.post('/api/chat', async (c) => {
   try {
     const { messages, model = 'gpt-4o' } = await c.req.json()
@@ -435,6 +436,7 @@ Always prefer simple, working diagrams over complex ones that might fail to rend
     return c.json({ error: 'Failed to process chat request' }, 500)
   }
 })
+*/
 
 // Define tools for function calling
 const tools = {
@@ -1455,6 +1457,10 @@ app.route('/api/organization/logo', logoApp)
 
 // Chat API routes (v1) - replaces temporary /api/chat endpoint
 app.route('/api/v1/chat', chatApp)
+
+// TEMPORARY: Also mount at old path for browser cache compatibility
+// TODO: Remove this after users have cleared their cache
+app.route('/api/chat', chatApp)
 
 // TTS testing endpoint
 app.post('/api/tts-test', async (c) => {
