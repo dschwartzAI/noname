@@ -261,60 +261,50 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
       console.log('⚠️ No user message to save')
     }
 
-    // Step 3: Fetch user memories for context injection (OPTIMIZED: First message only)
-    // Check if this is the first message in the conversation
-    const isFirstMessage = messagesArray ? messagesArray.length === 1 : true
-
-    let memoryContext = ''
-    if (isFirstMessage) {
-      // Only fetch memories on first message (saves 50-80% of tokens)
-      const userMemories = await db
-        .select()
-        .from(memories)
-        .where(
-          and(
-            eq(memories.userId, user.id),
-            eq(memories.organizationId, organizationId)
-          )
+    // Step 3: Fetch user memories for context injection (ALWAYS - not just first message)
+    // IMPORTANT: Always inject memories so AI has access to user context throughout conversation
+    const userMemories = await db
+      .select()
+      .from(memories)
+      .where(
+        and(
+          eq(memories.userId, user.id),
+          eq(memories.organizationId, organizationId)
         )
-        .orderBy(asc(memories.category), desc(memories.createdAt))
+      )
+      .orderBy(asc(memories.category), desc(memories.createdAt))
 
-      // Format memories by category
-      if (userMemories.length > 0) {
-        const categories = {
-          business_info: 'Business Information',
-          target_audience: 'Target Audience',
-          offers: 'Offers & Services',
-          current_projects: 'Current Projects',
-          challenges: 'Challenges & Pain Points',
-          goals: 'Goals & Objectives',
-          personal_info: 'Personal Context',
-        }
-
-        let formatted = '\n\n═══ USER BUSINESS CONTEXT ═══\n'
-
-        for (const [categoryKey, categoryLabel] of Object.entries(categories)) {
-          const categoryMemories = userMemories.filter(m => m.category === categoryKey)
-          if (categoryMemories.length > 0) {
-            formatted += `\n${categoryLabel}:\n`
-            categoryMemories.forEach(mem => {
-              formatted += `  • ${mem.key}: ${mem.value}\n`
-            })
-          }
-        }
-
-        formatted += '\n═══════════════════════════════'
-        memoryContext = formatted
+    // Format memories by category
+    let memoryContext = ''
+    if (userMemories.length > 0) {
+      const categories = {
+        business_info: 'Business Information',
+        target_audience: 'Target Audience',
+        offers: 'Offers & Services',
+        current_projects: 'Current Projects',
+        challenges: 'Challenges & Pain Points',
+        goals: 'Goals & Objectives',
+        personal_info: 'Personal Context',
       }
-    }
 
-    // Conditional logging based on memory state
-    if (memoryContext && isFirstMessage) {
-      console.log('💭 Injected business context (first message of conversation)')
-    } else if (isFirstMessage) {
-      console.log('ℹ️  No business memories found for this user')
+      let formatted = '\n\n═══ USER BUSINESS CONTEXT ═══\n'
+
+      for (const [categoryKey, categoryLabel] of Object.entries(categories)) {
+        const categoryMemories = userMemories.filter(m => m.category === categoryKey)
+        if (categoryMemories.length > 0) {
+          formatted += `\n${categoryLabel}:\n`
+          categoryMemories.forEach(mem => {
+            formatted += `  • ${mem.key}: ${mem.value}\n`
+          })
+        }
+      }
+
+      formatted += '\n═══════════════════════════════'
+      memoryContext = formatted
+
+      console.log(`💭 Injected ${userMemories.length} memories into context`)
     } else {
-      console.log('⏭️  Skipping memory injection (not first message - using conversation history)')
+      console.log('ℹ️  No business memories found for this user')
     }
 
     // Get AI model instance
