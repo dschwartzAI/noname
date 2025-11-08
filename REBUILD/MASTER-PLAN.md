@@ -12,14 +12,16 @@
 ### Current Status
 ```
 Phase 0: Foundation          ████████████████████ 100% ✅ COMPLETE
+Phase 0C: Conversation       ████████████████████ 100% ✅ COMPLETE
 Phase 1: God Tier            █████████████░░░░░░░  67% 🔄 IN PROGRESS
-Phase 2: Agent Builder       ░░░░░░░░░░░░░░░░░░░░   0% ⏳ NEXT
+Phase 1B: Memory System      ░░░░░░░░░░░░░░░░░░░░   0% ⏳ NEXT (3hrs)
+Phase 2: Agent Builder       ░░░░░░░░░░░░░░░░░░░░   0% 📅 PLANNED
 Phase 3: LMS System          ░░░░░░░░░░░░░░░░░░░░   0% 📅 PLANNED
 Phase 4: Calendar            ░░░░░░░░░░░░░░░░░░░░   0% 📅 PLANNED
 Phase 5: Community Chat      ░░░░░░░░░░░░░░░░░░░░   0% 📅 PLANNED
 Phase 6: Artifacts Polish    ░░░░░░░░░░░░░░░░░░░░   0% 📅 PLANNED
 
-Overall Progress: ████░░░░░░░░░░░░░░░░ 22% (Week 1 of 18)
+Overall Progress: ████░░░░░░░░░░░░░░░░ 24% (Week 1 of 18)
 ```
 
 ### Key Milestones
@@ -366,10 +368,25 @@ With Phase 1 at 67% complete (God Dashboard ✅, Owner Invites ✅, Impersonatio
 | R2 Logo Upload | 0 | 🔥 | ✅ Complete | 1d | None | 0 | Logos upload + display |
 | R2 Favicon Upload | 0 | 🚀 | ✅ Complete | 1d | R2 Logo | 0 | Favicons dynamic |
 | Dev Server Auto-restart | 0 | 🚀 | ✅ Complete | 0.5d | None | 0 | Servers restart on crash |
+| **Phase 0C: Conversation History** | | | | | | | |
+| Conversation Table Schema | 0C | 🔥 | ✅ Complete | 1h | Neon | 1 | Conversations persist in DB |
+| Message Table Schema | 0C | 🔥 | ✅ Complete | 1h | Conversation Table | 1 | Messages saved with history |
+| Conversation List API | 0C | 🔥 | ✅ Complete | 2h | Message Table | 1 | API returns user conversations |
+| AI SDK v5 Integration | 0C | 🔥 | ✅ Complete | 3h | Conversation API | 1 | useChat persists to DB |
+| Sidebar Conversation Nav | 0C | 🔥 | ✅ Complete | 2h | Conversation API | 1 | Sidebar shows conversations |
+| Title Auto-generation | 0C | 🚀 | ✅ Complete | 1h | AI SDK Integration | 1 | Conversations auto-titled |
+| Rename/Delete Actions | 0C | 🚀 | ✅ Complete | 2h | Sidebar Nav | 2 | CRUD operations working |
+| Archive (Soft Delete) | 0C | 🚀 | ✅ Complete | 1h | Delete Actions | 2 | Archived conversations filtered |
 | **Phase 1: God Tier** | | | | | | | |
 | God Dashboard | 1 | 🔥 | ✅ Complete | 3d | None | 1 | View all orgs with metrics |
 | Impersonation | 1 | 🔥 | ⏳ Not Started | 3d | God Dashboard | 1-2 | Switch org context |
 | Owner Invites | 1 | 🔥 | ✅ Complete | 4d | Email service | 1 | Send invite, auto-create org |
+| **Phase 1B: Memory System** | | | | | | | |
+| Memories Table Migration | 1B | 🔥 | ⏳ Next | 0.25h | Conversation History | 2 | Memories table exists in Neon |
+| Memory API Endpoints | 1B | 🔥 | ⏳ Next | 1h | Memories Table | 2 | CRUD endpoints working |
+| Inject Memories into Chat | 1B | 🔥 | ⏳ Next | 0.5h | Memory API | 2 | AI sees user context |
+| Memory Management UI | 1B | 🚀 | ⏳ Next | 1.5h | Memory API | 2 | Settings page functional |
+| Memory E2E Testing | 1B | 🚀 | ⏳ Next | 0.25h | Memory UI | 2 | Full flow validated |
 | **Phase 2: Agents** | | | | | | | |
 | Agent Builder UI | 2 | 🔥 | ⏳ Next | 10d | Phase 1 | 4-5 | Create custom agents |
 | Tool Builder (oRPC) | 2 | 🚀 | ⏳ Next | 7d | Agent Builder | 5-6 | Custom tools working |
@@ -400,7 +417,7 @@ With Phase 1 at 67% complete (God Dashboard ✅, Owner Invites ✅, Impersonatio
 | Artifact Gallery | 6 | ⏳ | 📅 Planned | 2d | None | 18 | Browse all artifacts |
 
 **Legend**: 🔥 HIGH | 🚀 MEDIUM | ⏳ LOW
-**Total Features**: 36 | **Complete**: 5 (14%) | **In Progress**: 0 | **Remaining**: 31
+**Total Features**: 48 | **Complete**: 15 (31%) | **Next**: 5 (Phase 1B) | **Remaining**: 28
 
 ---
 
@@ -422,6 +439,52 @@ With Phase 1 at 67% complete (God Dashboard ✅, Owner Invites ✅, Impersonatio
 - ✅ Secrets management (`.dev.vars` + `add-secrets.sh`)
 
 **Reference**: [`nov7-update.md`](./nov7-update.md#phase-0-foundation--complete)
+
+---
+
+### Phase 0C: Conversation History ✅ COMPLETE
+
+**Duration**: 2 days (Nov 5-7)
+**Status**: ✅ 100% Complete
+
+**Goal**: Enable persistent AI chat conversations with full message history and sidebar navigation
+
+**What Was Built**:
+- ✅ Database schema: `conversation` and `message` tables with multi-tenant isolation
+- ✅ Conversation list API with pagination and organization scoping
+- ✅ Vercel AI SDK v5 integration with persistent conversation IDs
+- ✅ Sidebar navigation showing all user conversations
+- ✅ Auto-generated conversation titles using GPT-4o-mini
+- ✅ Rename conversation functionality (PATCH endpoint + modal UI)
+- ✅ Archive/delete conversations (soft delete with metadata flag)
+- ✅ Fixed infinite render loop with useRef pattern
+- ✅ Cache invalidation with TanStack Query for real-time updates
+
+**Technical Highlights**:
+- **AI SDK v5 Pattern**: Used `useChat` with `id` parameter for conversation persistence
+- **Multi-tenant Isolation**: All queries filter by `organizationId` AND `userId`
+- **Soft Delete**: Archived conversations stored with `metadata.archived = true`
+- **Type Safety**: Zod schemas for all API validation
+- **Performance**: Post-fetch filtering (can be optimized with DB column later)
+
+**Success Criteria** (All Met):
+- [x] Conversations persist across page refreshes
+- [x] Sidebar shows conversation history with titles
+- [x] Users can rename conversations
+- [x] Users can delete conversations (soft delete)
+- [x] Archived conversations filtered from list
+- [x] New chat button creates fresh conversation
+- [x] Multi-tenant: users only see their org's conversations
+- [x] Auto-navigation when deleting active conversation
+
+**Files Modified**:
+- `database/migrations/0002_*.sql` - Conversation and message tables
+- `src/server/routes/chat.ts` - CRUD endpoints for conversations
+- `src/routes/_authenticated/ai-chat/` - Chat UI components
+- `src/components/layout/conversation-nav-item.tsx` - Sidebar item with actions
+- `src/hooks/use-conversations.ts` - Data fetching hook
+
+**Reference**: [`Nov-7-Conversation-History-Fix.md`](./Nov-7-Conversation-History-Fix.md)
 
 ---
 
@@ -456,7 +519,102 @@ With Phase 1 at 67% complete (God Dashboard ✅, Owner Invites ✅, Impersonatio
 
 ---
 
-### Phase 2: Agent & Tool Builder ⏳ NEXT
+### Phase 1B: Simple Memory System ⏳ NEXT
+
+**Duration**: 3 hours
+**Status**: ⏳ 0% (After Phase 0C conversation history)
+
+**Goal**: Enable AI to remember user business context across all conversations
+
+**Why This Matters**:
+- AI remembers user's business type, target audience, offers, challenges, and goals
+- Context automatically included in every conversation
+- No external dependencies or monthly costs
+- Multi-tenant ready from day one
+
+**Implementation Steps**:
+
+**Step 1: Database Migration** (15 minutes)
+```sql
+-- Create memories table
+CREATE TABLE memories (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  organization_id TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  key TEXT NOT NULL,
+  value TEXT NOT NULL,
+  category TEXT NOT NULL,
+  source TEXT DEFAULT 'manual',
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX idx_memories_user_org ON memories(user_id, organization_id);
+CREATE INDEX idx_memories_category ON memories(category);
+```
+
+**Step 2: Memory API Endpoints** (1 hour)
+- `GET /api/memories` - List all memories grouped by category
+- `POST /api/memories` - Add new memory
+- `PATCH /api/memories/:id` - Update memory
+- `DELETE /api/memories/:id` - Remove memory
+- Auto-scope to current user/organization via middleware
+
+**Step 3: Inject Memories into AI Chat** (30 minutes)
+```typescript
+// Before calling AI model:
+const memories = await db.query.memories.findMany({
+  where: and(
+    eq(memories.userId, userId),
+    eq(memories.organizationId, orgId)
+  ),
+  orderBy: [asc(memories.category), desc(memories.createdAt)]
+});
+
+// Format memory context
+const memoryContext = `\n\nUSER BUSINESS CONTEXT:\n${formatMemoriesByCategory(memories)}`;
+
+// Append to system prompt
+const systemPrompt = `${tool.systemPrompt}${memoryContext}`;
+```
+
+**Step 4: Memory Management UI** (1.5 hours)
+Create `/settings/memory` page with:
+- Tabs for 5 categories: Business Info, Target Audience, Offers, Challenges, Goals
+- Memory cards with inline edit/delete
+- Add Memory dialog with category selection
+- Quick Start template (optional) for common memories
+
+**Step 5: Testing** (15 minutes)
+1. Add memories in settings
+2. Start new chat
+3. Verify AI references business context
+4. Update memory, verify next chat uses updated context
+
+**Success Criteria**:
+- [x] Memories table created in Neon Postgres
+- [ ] CRUD API endpoints working
+- [ ] AI system prompt includes memories
+- [ ] Settings page allows memory management
+- [ ] Multi-tenant: users only see their org's memories
+- [ ] Memory changes reflect immediately in next chat
+
+**Technical Stack**:
+- Neon Postgres + Drizzle ORM
+- Existing auth + organization middleware
+- Shadcn UI (Tabs, Card, Dialog, Input, Textarea)
+- TanStack Query for data fetching
+
+**Future Enhancement** (Phase 2B):
+- Add semantic search with pgvector
+- Only inject top 5 relevant memories (not all)
+- More efficient, better context management
+
+**Reference**: [`memory-build.md`](./memory-build.md)
+
+---
+
+### Phase 2: Agent & Tool Builder 📅 PLANNED
 
 **Duration**: Weeks 4-7
 **Status**: ⏳ 0% (Starts Week 4)
