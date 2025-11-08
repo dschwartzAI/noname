@@ -91,7 +91,7 @@ class_name = "UserSysDO"
 [env.development.vars]
 NODE_ENV = "development"
 DATABASE_URL = "postgresql://neondb_owner:npg_YBZ6UpWyojN4@ep-holy-dawn-afutxqyk.c-2.us-west-2.aws.neon.tech/neondb?sslmode=require"
-BETTER_AUTH_URL = "http://localhost:5173"
+BETTER_AUTH_URL = "http://localhost:5174"
 BETTER_AUTH_SECRET = "CPmXy0XgIWaOICeanyyFhR5eFwyQgoSJ0LpGtgJrpHc="
 R2_PUBLIC_URL = "http://localhost:8788"
 GOOGLE_CLIENT_ID = ""

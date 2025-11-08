@@ -1,13 +1,15 @@
 import { createFileRoute, Navigate, useNavigate } from '@tanstack/react-router';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useSession } from '@/lib/auth-client';
 import { useState, useMemo } from 'react';
-import { Search, Eye, Ban, Trash2, Mail } from 'lucide-react';
+import { Search, Eye, Ban, Trash2, Mail, UserPlus, Send, X, CheckCircle, Clock, XCircle, Filter } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +26,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
 import { startImpersonation } from '@/stores/impersonation';
 
 export const Route = createFileRoute('/_authenticated/admin/god-dashboard')({
@@ -34,8 +46,12 @@ function GodDashboard() {
   const { data: session, isPending } = useSession();
   const user = session?.user;
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<('active' | 'suspended' | 'deleted')[]>(['active', 'suspended', 'deleted']);
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<{show: boolean; orgId: string; orgName: string}>({
     show: false,
     orgId: '',
@@ -81,7 +97,7 @@ function GodDashboard() {
     },
   });
 
-  const { data: stats } = useQuery({
+  const { data: stats, refetch: refetchStats } = useQuery({
     queryKey: ['god-stats'],
     queryFn: async () => {
       const res = await fetch('/api/god/stats');
@@ -89,6 +105,87 @@ function GodDashboard() {
       return res.json();
     },
   });
+
+  const { data: invites, refetch: refetchInvites } = useQuery({
+    queryKey: ['god-invites'],
+    queryFn: async () => {
+      const res = await fetch('/api/god/invites');
+      if (!res.ok) throw new Error('Failed to fetch invites');
+      return res.json();
+    },
+  });
+
+  const inviteMutation = useMutation({
+    mutationFn: async (email: string) => {
+      const res = await fetch('/api/god/invites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to send invite');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast.success('Invite sent successfully!');
+      setInviteDialogOpen(false);
+      setInviteEmail('');
+      refetchInvites();
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to send invite');
+    },
+  });
+
+  const resendInviteMutation = useMutation({
+    mutationFn: async (inviteId: string) => {
+      const res = await fetch(`/api/god/invites/${inviteId}/resend`, {
+        method: 'POST',
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to resend invite');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast.success('Invite resent successfully!');
+      refetchInvites();
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to resend invite');
+    },
+  });
+
+  const revokeInviteMutation = useMutation({
+    mutationFn: async (inviteId: string) => {
+      const res = await fetch(`/api/god/invites/${inviteId}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to revoke invite');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast.success('Invite revoked successfully!');
+      refetchInvites();
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to revoke invite');
+    },
+  });
+
+  const handleSendInvite = () => {
+    if (!inviteEmail || !inviteEmail.includes('@')) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+    inviteMutation.mutate(inviteEmail);
+  };
 
   const createTestOrg = async () => {
     setCreating(true);
@@ -108,11 +205,17 @@ function GodDashboard() {
     }
   };
 
-  // Filter organizations based on search query
+  // Filter organizations based on search query and status filter
   const filteredOrgs = useMemo(() => {
     if (!orgs?.organizations) return [];
 
     return orgs.organizations.filter((org: any) => {
+      // Filter by status (only show orgs with status in the filter array)
+      if (!statusFilter.includes(org.status)) {
+        return false;
+      }
+
+      // Filter by search query
       const searchLower = searchQuery.toLowerCase();
       return (
         org.programName?.toLowerCase().includes(searchLower) ||
@@ -120,7 +223,13 @@ function GodDashboard() {
         org.ownerEmail?.toLowerCase().includes(searchLower)
       );
     });
-  }, [orgs, searchQuery]);
+  }, [orgs, searchQuery, statusFilter]);
+
+  // Filter invites to only show pending and expired (hide used/claimed)
+  const pendingInvites = useMemo(() => {
+    if (!invites?.invites) return [];
+    return invites.invites.filter((invite: any) => invite.status !== 'used');
+  }, [invites]);
 
   const handleViewAsOwner = (orgId: string, orgName: string) => {
     // Start impersonation
@@ -161,12 +270,14 @@ function GodDashboard() {
         throw new Error('Failed to delete organization');
       }
 
-      // Close dialog and refetch
+      // Close dialog and refetch both orgs and stats
       setDeleteConfirm({ show: false, orgId: '', orgName: '' });
       refetch();
+      refetchStats();
+      toast.success('Organization deleted successfully');
     } catch (error) {
       console.error('Error deleting organization:', error);
-      alert('Failed to delete organization');
+      toast.error('Failed to delete organization');
     }
   };
 
@@ -177,30 +288,44 @@ function GodDashboard() {
           <h1 className="text-3xl font-bold">God Dashboard</h1>
           <p className="text-muted-foreground">Manage all coaching apps</p>
         </div>
-        <Button onClick={createTestOrg} disabled={creating}>
-          {creating ? 'Creating...' : 'Create Test App'}
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => setInviteDialogOpen(true)} variant="outline">
+            <UserPlus className="mr-2 h-4 w-4" />
+            Invite Owner
+          </Button>
+          <Button onClick={createTestOrg} disabled={creating}>
+            {creating ? 'Creating...' : 'Create Test App'}
+          </Button>
+        </div>
       </div>
 
-      {/* Stats */}
-      {stats && (
-        <div className="grid gap-4 md:grid-cols-2">
-          <Card className="p-6">
-            <div className="text-2xl font-bold">{stats.totalUsers}</div>
-            <p className="text-sm text-muted-foreground">Total Users</p>
-          </Card>
-          <Card className="p-6">
-            <div className="text-2xl font-bold">{stats.totalOwners}</div>
-            <p className="text-sm text-muted-foreground">Total Owners</p>
-          </Card>
-        </div>
-      )}
+      <Tabs defaultValue="overview" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="invites">Invites</TabsTrigger>
+        </TabsList>
 
-      {/* Coaching Apps Table */}
-      <Card>
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-6">
+          {/* Stats */}
+          {stats && (
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card className="p-6">
+                <div className="text-2xl font-bold">{stats.totalMembers}</div>
+                <p className="text-sm text-muted-foreground">Total Members</p>
+              </Card>
+              <Card className="p-6">
+                <div className="text-2xl font-bold">{stats.totalOwners}</div>
+                <p className="text-sm text-muted-foreground">Total Owners</p>
+              </Card>
+            </div>
+          )}
+
+          {/* Coaching Apps Table */}
+          <Card>
         <div className="p-6 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">Coaching Apps</h2>
+            <h2 className="text-xl font-semibold">Owners</h2>
             <div className="flex items-center gap-2">
               <div className="relative">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -211,9 +336,65 @@ function GodDashboard() {
                   className="pl-8 w-[300px]"
                 />
               </div>
-              <Button variant="outline" size="icon" disabled>
-                <Mail className="h-4 w-4" />
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Filter className="mr-2 h-4 w-4" />
+                    Status: {statusFilter.length === 3 ? 'All' : statusFilter.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(', ')}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem
+                    onSelect={(e) => e.preventDefault()}
+                    onClick={() => {
+                      const allStatuses: ('active' | 'suspended' | 'deleted')[] = ['active', 'suspended', 'deleted'];
+                      setStatusFilter(statusFilter.length === 3 ? [] : allStatuses);
+                    }}
+                  >
+                    <Checkbox checked={statusFilter.length === 3} className="mr-2" />
+                    All
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setStatusFilter(prev =>
+                        prev.includes('active')
+                          ? prev.filter(s => s !== 'active')
+                          : [...prev, 'active']
+                      );
+                    }}
+                  >
+                    <Checkbox checked={statusFilter.includes('active')} className="mr-2" />
+                    Active
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setStatusFilter(prev =>
+                        prev.includes('suspended')
+                          ? prev.filter(s => s !== 'suspended')
+                          : [...prev, 'suspended']
+                      );
+                    }}
+                  >
+                    <Checkbox checked={statusFilter.includes('suspended')} className="mr-2" />
+                    Suspended
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setStatusFilter(prev =>
+                        prev.includes('deleted')
+                          ? prev.filter(s => s !== 'deleted')
+                          : [...prev, 'deleted']
+                      );
+                    }}
+                  >
+                    <Checkbox checked={statusFilter.includes('deleted')} className="mr-2" />
+                    Deleted
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
@@ -301,6 +482,98 @@ function GodDashboard() {
           )}
         </div>
       </Card>
+        </TabsContent>
+
+        {/* Invites Tab */}
+        <TabsContent value="invites">
+          <Card>
+        <div className="p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold">Owner Invites</h2>
+              <p className="text-sm text-muted-foreground">Track and manage pending invitations</p>
+            </div>
+          </div>
+
+          {pendingInvites.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No pending invites. Click "Invite Owner" to send a new invite.
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Sent By</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead>Expires</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pendingInvites.map((invite: any) => (
+                  <TableRow key={invite.id}>
+                    <TableCell className="font-medium">{invite.email}</TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          invite.status === 'used' ? 'default' :
+                          invite.status === 'expired' ? 'secondary' :
+                          'outline'
+                        }
+                      >
+                        {invite.status === 'pending' && <Clock className="mr-1 h-3 w-3" />}
+                        {invite.status === 'used' && <CheckCircle className="mr-1 h-3 w-3" />}
+                        {invite.status === 'expired' && <XCircle className="mr-1 h-3 w-3" />}
+                        {invite.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      <div>{invite.createdBy?.name}</div>
+                      <div className="text-xs text-muted-foreground">{invite.createdBy?.email}</div>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {new Date(invite.createdAt).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {new Date(invite.expiresAt).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {invite.status === 'pending' ? (
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => resendInviteMutation.mutate(invite.id)}
+                            disabled={resendInviteMutation.isPending}
+                          >
+                            <Send className="mr-1 h-3 w-3" />
+                            Resend
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => revokeInviteMutation.mutate(invite.id)}
+                            disabled={revokeInviteMutation.isPending}
+                          >
+                            <X className="mr-1 h-3 w-3" />
+                            Revoke
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">Expired</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </div>
+      </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteConfirm.show} onOpenChange={(show) =>
@@ -322,6 +595,44 @@ function GodDashboard() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Invite Owner Dialog */}
+      <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Invite New Owner</DialogTitle>
+            <DialogDescription>
+              Send an invitation to create a new white-label coaching app. The recipient will receive an email with setup instructions.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email Address</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="coach@example.com"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSendInvite();
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInviteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSendInvite} disabled={inviteMutation.isPending}>
+              {inviteMutation.isPending ? 'Sending...' : 'Send Invite'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

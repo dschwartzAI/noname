@@ -34,6 +34,7 @@ import { Route as AuthenticatedErrorsErrorRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAiChatBackupRouteImport } from './routes/_authenticated/ai-chat.backup'
 import { Route as AuthenticatedAiChatConversationIdRouteImport } from './routes/_authenticated/ai-chat/$conversationId'
 import { Route as AuthenticatedAdminGodDashboardRouteImport } from './routes/_authenticated/admin/god-dashboard'
+import { Route as authSignupTokenRouteImport } from './routes/(auth)/signup.$token'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
@@ -170,6 +171,11 @@ const AuthenticatedAdminGodDashboardRoute =
     path: '/admin/god-dashboard',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const authSignupTokenRoute = authSignupTokenRouteImport.update({
+  id: '/(auth)/signup/$token',
+  path: '/signup/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/ai-chat': typeof AuthenticatedAiChatRouteRouteWithChildren
@@ -185,6 +191,7 @@ export interface FileRoutesByFullPath {
   '/500': typeof errors500Route
   '/503': typeof errors503Route
   '/': typeof AuthenticatedIndexRoute
+  '/signup/$token': typeof authSignupTokenRoute
   '/admin/god-dashboard': typeof AuthenticatedAdminGodDashboardRoute
   '/ai-chat/$conversationId': typeof AuthenticatedAiChatConversationIdRoute
   '/ai-chat/backup': typeof AuthenticatedAiChatBackupRoute
@@ -209,6 +216,7 @@ export interface FileRoutesByTo {
   '/500': typeof errors500Route
   '/503': typeof errors503Route
   '/': typeof AuthenticatedIndexRoute
+  '/signup/$token': typeof authSignupTokenRoute
   '/admin/god-dashboard': typeof AuthenticatedAdminGodDashboardRoute
   '/ai-chat/$conversationId': typeof AuthenticatedAiChatConversationIdRoute
   '/ai-chat/backup': typeof AuthenticatedAiChatBackupRoute
@@ -237,6 +245,7 @@ export interface FileRoutesById {
   '/(errors)/500': typeof errors500Route
   '/(errors)/503': typeof errors503Route
   '/_authenticated/': typeof AuthenticatedIndexRoute
+  '/(auth)/signup/$token': typeof authSignupTokenRoute
   '/_authenticated/admin/god-dashboard': typeof AuthenticatedAdminGodDashboardRoute
   '/_authenticated/ai-chat/$conversationId': typeof AuthenticatedAiChatConversationIdRoute
   '/_authenticated/ai-chat/backup': typeof AuthenticatedAiChatBackupRoute
@@ -265,6 +274,7 @@ export interface FileRouteTypes {
     | '/500'
     | '/503'
     | '/'
+    | '/signup/$token'
     | '/admin/god-dashboard'
     | '/ai-chat/$conversationId'
     | '/ai-chat/backup'
@@ -289,6 +299,7 @@ export interface FileRouteTypes {
     | '/500'
     | '/503'
     | '/'
+    | '/signup/$token'
     | '/admin/god-dashboard'
     | '/ai-chat/$conversationId'
     | '/ai-chat/backup'
@@ -316,6 +327,7 @@ export interface FileRouteTypes {
     | '/(errors)/500'
     | '/(errors)/503'
     | '/_authenticated/'
+    | '/(auth)/signup/$token'
     | '/_authenticated/admin/god-dashboard'
     | '/_authenticated/ai-chat/$conversationId'
     | '/_authenticated/ai-chat/backup'
@@ -341,6 +353,7 @@ export interface RootRouteChildren {
   errors404Route: typeof errors404Route
   errors500Route: typeof errors500Route
   errors503Route: typeof errors503Route
+  authSignupTokenRoute: typeof authSignupTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -520,6 +533,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminGodDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/(auth)/signup/$token': {
+      id: '/(auth)/signup/$token'
+      path: '/signup/$token'
+      fullPath: '/signup/$token'
+      preLoaderRoute: typeof authSignupTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -598,6 +618,7 @@ const rootRouteChildren: RootRouteChildren = {
   errors404Route: errors404Route,
   errors500Route: errors500Route,
   errors503Route: errors503Route,
+  authSignupTokenRoute: authSignupTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

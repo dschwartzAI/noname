@@ -15,6 +15,7 @@ import { orgApp } from './routes/organization'
 import { logoApp } from './routes/logo'
 import userApp from './routes/user'
 import chatApp from './routes/chat'
+import invitesApp from './routes/invites'
 import { z } from '@hono/zod-openapi'
 // import { runWithTools } from '@cloudflare/ai-utils'
 
@@ -1442,6 +1443,9 @@ app.route('/api/tasks', tasksApp)
 
 // God admin routes (requires isGod = true)
 app.route('/api/god', godApp)
+
+// Public invite routes (no auth required)
+app.route('/api/invites', invitesApp)
 
 // Organization management routes
 app.route('/api/organization', orgApp)

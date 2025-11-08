@@ -100,3 +100,17 @@ export const member = pgTable("member", {
   tierId: text("tier_id"), // Reference to tier in organization.metadata.tiers
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// Owner Invites - God tier functionality
+export const ownerInvite = pgTable("owner_invite", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull(),
+  token: text("token").notNull().unique(),
+  organizationPreset: text("organization_preset"), // JSON string for pre-configured org settings
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdBy: text("created_by")
+    .notNull()
+    .references(() => user.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
