@@ -7,18 +7,35 @@
 
 import { z } from 'zod'
 
-// Message format from Vercel AI SDK
+// Message format from Vercel AI SDK v5 (supports both legacy and new format)
 const aiMessageSchema = z.object({
   role: z.enum(['user', 'assistant', 'system', 'function', 'data', 'tool']),
-  content: z.string(),
+
+  // Legacy format (AI SDK v4 and earlier)
+  content: z.string().optional(),
+
+  // AI SDK v5 format with parts array
+  parts: z.array(z.object({
+    type: z.string(),
+    text: z.string().optional(),
+    image: z.string().optional(),
+    toolCallId: z.string().optional(),
+    toolName: z.string().optional(),
+    args: z.any().optional(),
+    result: z.any().optional(),
+  })).optional(),
+
   id: z.string().optional(),
   name: z.string().optional(),
   function_call: z.any().optional(),
   tool_calls: z.any().optional(),
-})
+}).refine(
+  (data) => data.content !== undefined || (data.parts && data.parts.length > 0),
+  { message: 'Message must have either content (string) or parts (array with at least one item)' }
+)
 
 export const chatRequestSchema = z.object({
-  conversationId: z.string().uuid().optional()
+  conversationId: z.string().optional()
     .describe('Optional conversation ID - creates new conversation if not provided'),
 
   // Accept EITHER single message (custom API) OR messages array (Vercel AI SDK)
@@ -31,7 +48,7 @@ export const chatRequestSchema = z.object({
   model: z.string().default('gpt-4o')
     .describe('AI model to use: gpt-4o, gpt-4o-mini, claude-3-5-sonnet, claude-3-5-haiku, grok-beta, grok-2-latest'),
 
-  agentId: z.string().uuid().optional()
+  agentId: z.string().optional()
     .describe('Optional agent ID for custom agent configuration (system prompt, tools, parameters)'),
 
   temperature: z.number().min(0).max(2).optional()
@@ -45,7 +62,7 @@ export const chatRequestSchema = z.object({
 )
 
 export const getConversationSchema = z.object({
-  conversationId: z.string().uuid()
+  conversationId: z.string()
     .describe('Conversation ID to retrieve'),
 })
 
@@ -81,7 +98,7 @@ export const updateConversationSchema = z.object({
 })
 
 export const archiveConversationSchema = z.object({
-  conversationId: z.string().uuid()
+  conversationId: z.string()
     .describe('Conversation ID to archive'),
 })
 
@@ -89,12 +106,12 @@ export const archiveConversationSchema = z.object({
 export const conversationIdParamSchema = archiveConversationSchema
 
 export const deleteMessageSchema = z.object({
-  messageId: z.string().uuid()
+  messageId: z.string()
     .describe('Message ID to delete'),
 })
 
 export const branchConversationSchema = z.object({
-  messageId: z.string().uuid()
+  messageId: z.string()
     .describe('Message ID to branch from (creates alternate conversation path)'),
 
   newMessage: z.string().min(1).max(10000)
