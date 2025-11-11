@@ -2,6 +2,7 @@ export interface Agent {
   id: string
   name: string
   avatar?: string
+  icon?: string | null
   greeting: string
   model?: string
 }

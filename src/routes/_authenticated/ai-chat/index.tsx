@@ -1,9 +1,11 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useChat } from '@ai-sdk/react'
 import { useState, useRef, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Bot } from 'lucide-react'
 import { nanoid } from 'nanoid'
 import { useInvalidateConversations } from '@/hooks/use-conversations'
+import { getAgentIconSrc, getAgentEmoji } from '@/features/ai-chat/utils/get-agent-icon'
 import {
   Conversation,
   ConversationContent,
@@ -49,8 +51,22 @@ const MODELS = [
 
 function ChatPage() {
   const { new: newChatKey, conversationId: urlConversationId, agentId } = Route.useSearch()
+  const navigate = useNavigate()
   const [selectedModel, setSelectedModel] = useState('gpt-4o')
   const invalidateConversations = useInvalidateConversations()
+
+  // Fetch agent details if agentId is provided
+  const { data: agentData } = useQuery({
+    queryKey: ['agent', agentId],
+    queryFn: async () => {
+      if (!agentId) return null
+      const response = await fetch(`/api/v1/agents/${agentId}`)
+      if (!response.ok) return null
+      const data = await response.json()
+      return data.agent
+    },
+    enabled: !!agentId,
+  })
 
   // Generate conversation ID upfront (like Vercel AI Chatbot pattern)
   // Use newChatKey in dependency to regenerate ID when "New Chat" is clicked
@@ -60,11 +76,17 @@ function ChatPage() {
   const [currentChatKey, setCurrentChatKey] = useState(newChatKey || 'initial')
   const [effectiveConversationId, setEffectiveConversationId] = useState(conversationId)
 
+  // Track if we've navigated to this conversation URL yet
+  const hasNavigatedRef = useRef(false)
+
   useEffect(() => {
     if (newChatKey && newChatKey !== currentChatKey) {
       // New chat triggered - generate fresh conversation ID
-      setEffectiveConversationId(nanoid())
+      const newId = nanoid()
+      setEffectiveConversationId(newId)
       setCurrentChatKey(newChatKey)
+      // Reset navigation flag for new conversation
+      hasNavigatedRef.current = false
     }
   }, [newChatKey, currentChatKey])
 
@@ -74,6 +96,15 @@ function ChatPage() {
     onFinish: async () => {
       // Refresh sidebar conversation list to show new conversation with generated title
       invalidateConversations()
+
+      // Navigate to conversation URL after first message (makes it show as active in sidebar)
+      if (!hasNavigatedRef.current && !urlConversationId) {
+        hasNavigatedRef.current = true
+        navigate({
+          to: '/ai-chat/$conversationId',
+          params: { conversationId: effectiveConversationId },
+        })
+      }
     },
     onError: (error) => {
       console.error('❌ Chat error:', error)
@@ -87,12 +118,25 @@ function ChatPage() {
       {/* Header */}
       <div className="border-b p-4">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <Bot className="h-6 w-6 text-primary" />
+          {/* Agent Icon */}
+          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden flex-shrink-0">
+            {agentData && getAgentIconSrc(agentData) ? (
+              <img
+                src={getAgentIconSrc(agentData)!}
+                alt={agentData.name}
+                className="w-full h-full object-cover"
+              />
+            ) : agentData && getAgentEmoji(agentData) ? (
+              <span className="text-xl">{getAgentEmoji(agentData)}</span>
+            ) : (
+              <Bot className="h-6 w-6 text-primary" />
+            )}
           </div>
           <div>
-            <h2 className="font-semibold">SovereignJK</h2>
-            <p className="text-xs text-muted-foreground">How can I help?</p>
+            <h2 className="font-semibold">{agentData?.name || 'AI Assistant'}</h2>
+            <p className="text-xs text-muted-foreground">
+              {agentData?.description || 'How can I help?'}
+            </p>
           </div>
         </div>
       </div>

@@ -21,6 +21,7 @@ import { nanoid } from 'nanoid'
 import { z } from 'zod'
 import * as authSchema from '../../../database/better-auth-schema'
 import { memories } from '../../../database/schema/memories'
+import { agents } from '../../../database/schema/agents'
 import {
   chatRequestSchema,
   getConversationSchema,
@@ -684,7 +685,7 @@ chatApp.get('/', zValidator('query', listConversationsSchema), async (c) => {
     console.log('📋 List conversations:', { userId: user.id, organizationId, limit, offset, archived })
 
     const sqlClient = neon(c.env.DATABASE_URL)
-    const db = drizzle(sqlClient, { schema: authSchema })
+    const db = drizzle(sqlClient, { schema: { ...authSchema, agents } })
 
     // Build where conditions for tenant isolation and archive filter
     const conditions = [
@@ -692,12 +693,28 @@ chatApp.get('/', zValidator('query', listConversationsSchema), async (c) => {
       eq(authSchema.conversation.userId, user.id),
     ]
 
-    const conversations = await db.query.conversation.findMany({
-      where: and(...conditions),
-      orderBy: [desc(authSchema.conversation.updatedAt)],
-      limit,
-      offset,
-    })
+    const conversations = await db
+      .select({
+        id: authSchema.conversation.id,
+        title: authSchema.conversation.title,
+        model: authSchema.conversation.model,
+        toolId: authSchema.conversation.toolId,
+        createdAt: authSchema.conversation.createdAt,
+        updatedAt: authSchema.conversation.updatedAt,
+        // Join with agents table to get agent info
+        agent: {
+          id: agents.id,
+          name: agents.name,
+          icon: agents.icon,
+          avatar: agents.avatar,
+        },
+      })
+      .from(authSchema.conversation)
+      .leftJoin(agents, eq(authSchema.conversation.toolId, agents.id))
+      .where(and(...conditions))
+      .orderBy(desc(authSchema.conversation.updatedAt))
+      .limit(limit)
+      .offset(offset)
 
     // Filter archived conversations based on query param
     const filteredConversations = archived
@@ -717,6 +734,13 @@ chatApp.get('/', zValidator('query', listConversationsSchema), async (c) => {
         toolId: conv.toolId,
         createdAt: conv.createdAt,
         updatedAt: conv.updatedAt,
+        // Include agent info for UI display (null-safe check for left join)
+        agent: conv.agent?.id ? {
+          id: conv.agent.id,
+          name: conv.agent.name!,
+          icon: conv.agent.icon,
+          avatar: conv.agent.avatar,
+        } : null,
       })),
       pagination: {
         limit,

@@ -15,6 +15,15 @@ interface APIConversation {
   toolId: string | null
   createdAt: string
   updatedAt: string
+  agent: {
+    id: string
+    name: string
+    icon: string | null
+    avatar: {
+      source: 'emoji' | 'url' | 'upload'
+      value: string
+    } | null
+  } | null
 }
 
 interface ConversationsResponse {
@@ -44,9 +53,17 @@ async function fetchConversations(): Promise<Conversation[]> {
   return data.conversations.map((conv) => ({
     id: conv.id,
     title: conv.title,
-    agent: {
-      id: conv.toolId || 'default',
-      name: conv.model, // Use model name as agent name
+    agent: conv.agent ? {
+      id: conv.agent.id,
+      name: conv.agent.name,
+      avatar: conv.agent.avatar?.value,
+      icon: conv.agent.icon,
+      greeting: '',
+      model: conv.model,
+    } : {
+      // Fallback for conversations without agent (shouldn't happen but good for safety)
+      id: 'default',
+      name: conv.model,
       avatar: undefined,
       greeting: '',
       model: conv.model,

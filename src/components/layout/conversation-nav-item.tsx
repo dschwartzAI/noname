@@ -28,6 +28,7 @@ import {
 import { useInvalidateConversations } from '@/hooks/use-conversations'
 import type { Conversation } from '@/features/ai-chat/types'
 import { cn } from '@/lib/utils'
+import { getAgentIconSrc, getAgentEmoji } from '@/features/ai-chat/utils/get-agent-icon'
 
 interface ConversationNavItemProps {
   conversation: Conversation
@@ -105,13 +106,18 @@ export function ConversationNavItem({ conversation, isActive }: ConversationNavI
             className="flex items-center gap-2"
           >
             {/* Agent Avatar */}
-            {state === 'expanded' && (
-              <Avatar className="h-5 w-5 flex-shrink-0">
-                <AvatarImage src={conversation.agent.avatar} />
-                <AvatarFallback className="text-[10px]">
-                  {conversation.agent.name[0]}
-                </AvatarFallback>
-              </Avatar>
+            {state === 'expanded' && conversation.agent && (
+              <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden flex-shrink-0">
+                {getAgentIconSrc(conversation.agent) ? (
+                  <img
+                    src={getAgentIconSrc(conversation.agent)!}
+                    alt={conversation.agent.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-[10px]">{getAgentEmoji(conversation.agent) || conversation.agent.name[0]}</span>
+                )}
+              </div>
             )}
 
             {/* Title */}

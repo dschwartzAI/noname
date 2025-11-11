@@ -8,6 +8,7 @@
 import { pgTable, text, uuid, timestamp, jsonb, boolean, index } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { organization, user } from '../better-auth-schema';
+import { agents } from './agents';
 
 export const conversations = pgTable('conversations', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -76,7 +77,10 @@ export const conversationsRelations = relations(conversations, ({ one, many }) =
     fields: [conversations.userId],
     references: [user.id],
   }),
-  // Note: agents relation will be added when agents schema is imported
+  agent: one(agents, {
+    fields: [conversations.agentId],
+    references: [agents.id],
+  }),
   messages: many('messages' as any), // Forward reference to messages
 }));
 
