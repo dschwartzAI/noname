@@ -6,6 +6,7 @@ import { Bot } from 'lucide-react'
 import { PaperclipIcon } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useInvalidateConversations } from '@/hooks/use-conversations'
+import { getAgentIconSrc, getAgentEmoji } from '@/features/ai-chat/utils/get-agent-icon'
 import {
   Conversation,
   ConversationContent,
@@ -82,6 +83,19 @@ function ConversationPage() {
     retry: 1,
   })
 
+  // Fetch agent details if conversation has a toolId
+  const { data: agentData } = useQuery({
+    queryKey: ['agent', data?.conversation.toolId],
+    queryFn: async () => {
+      if (!data?.conversation.toolId) return null
+      const response = await fetch(`/api/v1/agents/${data.conversation.toolId}`)
+      if (!response.ok) return null
+      const agentResponse = await response.json()
+      return agentResponse.agent
+    },
+    enabled: !!data?.conversation.toolId,
+  })
+
   // Get model from conversation data, with fallback
   const [selectedModel, setSelectedModel] = useState(data?.conversation.model || 'gpt-4o')
 
@@ -127,6 +141,7 @@ function ConversationPage() {
   return <ConversationChat
     conversationId={conversationId}
     data={data}
+    agentData={agentData}
     selectedModel={selectedModel}
     setSelectedModel={setSelectedModel}
     invalidateConversations={invalidateConversations}
@@ -136,12 +151,14 @@ function ConversationPage() {
 function ConversationChat({
   conversationId,
   data,
+  agentData,
   selectedModel,
   setSelectedModel,
   invalidateConversations
 }: {
   conversationId: string
   data: ConversationData
+  agentData: any
   selectedModel: string
   setSelectedModel: (model: string) => void
   invalidateConversations: () => void
@@ -208,13 +225,24 @@ function ConversationChat({
       {/* Header */}
       <div className="border-b p-4">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <Bot className="h-6 w-6 text-primary" />
+          {/* Agent Icon */}
+          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden flex-shrink-0">
+            {agentData && getAgentIconSrc(agentData) ? (
+              <img
+                src={getAgentIconSrc(agentData)!}
+                alt={agentData.name}
+                className="w-full h-full object-cover"
+              />
+            ) : agentData && getAgentEmoji(agentData) ? (
+              <span className="text-xl">{getAgentEmoji(agentData)}</span>
+            ) : (
+              <Bot className="h-6 w-6 text-primary" />
+            )}
           </div>
           <div>
             <h2 className="font-semibold">{data.conversation.title || 'Conversation'}</h2>
             <p className="text-xs text-muted-foreground">
-              {data.conversation.model}
+              {agentData?.description || data.conversation.model}
             </p>
           </div>
         </div>
@@ -247,13 +275,14 @@ function ConversationChat({
         <PromptInput
           onSubmit={(message, event) => {
             if (message.text?.trim()) {
-              // Pass conversationId and model dynamically at request time (AI SDK v5 pattern)
+              // Pass conversationId, model, and agentId dynamically at request time (AI SDK v5 pattern)
               sendMessage(
                 { text: message.text },
                 {
                   body: {
                     conversationId, // Dynamic value at request time
                     model: selectedModel, // Dynamic value at request time
+                    agentId: data.conversation.toolId, // Pass agent/tool ID from conversation
                   },
                 }
               )
@@ -273,7 +302,8 @@ function ConversationChat({
                 <PaperclipIcon className="h-4 w-4" />
               </PromptInputButton>
 
-              <PromptInputSelect value={selectedModel} onValueChange={setSelectedModel}>
+              {/* Model selector commented out - using agent's default model */}
+              {/* <PromptInputSelect value={selectedModel} onValueChange={setSelectedModel}>
                 <PromptInputSelectTrigger>
                   <PromptInputSelectValue>
                     {MODELS.find(m => m.value === selectedModel)?.label}
@@ -289,7 +319,7 @@ function ConversationChat({
                     </PromptInputSelectItem>
                   ))}
                 </PromptInputSelectContent>
-              </PromptInputSelect>
+              </PromptInputSelect> */}
             </PromptInputTools>
 
             <PromptInputSubmit status={status} />

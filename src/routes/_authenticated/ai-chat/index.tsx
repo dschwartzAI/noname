@@ -233,7 +233,8 @@ function ChatPage() {
                 <PaperclipIcon className="h-4 w-4" />
               </PromptInputButton>
 
-              <PromptInputSelect value={selectedModel} onValueChange={setSelectedModel}>
+              {/* Model selector commented out - using agent's default model */}
+              {/* <PromptInputSelect value={selectedModel} onValueChange={setSelectedModel}>
                 <PromptInputSelectTrigger>
                   <PromptInputSelectValue>
                     {MODELS.find(m => m.value === selectedModel)?.label}
@@ -249,7 +250,7 @@ function ChatPage() {
                     </PromptInputSelectItem>
                   ))}
                 </PromptInputSelectContent>
-              </PromptInputSelect>
+              </PromptInputSelect> */}
             </PromptInputTools>
 
             <PromptInputSubmit status={status} />
