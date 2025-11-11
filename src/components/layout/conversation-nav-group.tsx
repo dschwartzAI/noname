@@ -18,17 +18,16 @@ import {
 import { ConversationNavItem } from './conversation-nav-item'
 import { groupConversationsByTime } from '@/features/ai-chat/utils/time-grouping'
 import type { Conversation } from '@/features/ai-chat/types'
+import { ToolSelector } from './tool-selector'
 
 interface ConversationNavGroupProps {
   conversations: Conversation[]
   activeConversationId?: string
-  onNewChat: () => void
 }
 
 export function ConversationNavGroup({
   conversations,
   activeConversationId,
-  onNewChat,
 }: ConversationNavGroupProps) {
   const { state } = useSidebar()
   const grouped = groupConversationsByTime(conversations)
@@ -52,10 +51,14 @@ export function ConversationNavGroup({
           <History className="h-4 w-4 mr-2" />
           History
           {state === 'expanded' && (
-            <SidebarGroupAction onClick={onNewChat} title="New Chat">
-              <Plus className="h-4 w-4" />
-              <span className="sr-only">New Chat</span>
-            </SidebarGroupAction>
+            <ToolSelector
+              trigger={
+                <SidebarGroupAction title="New Chat">
+                  <Plus className="h-4 w-4" />
+                  <span className="sr-only">New Chat</span>
+                </SidebarGroupAction>
+              }
+            />
           )}
         </SidebarGroupLabel>
         {state === 'expanded' && (
@@ -73,10 +76,14 @@ export function ConversationNavGroup({
         <History className="h-4 w-4 mr-2" />
         History
         {state === 'expanded' && (
-          <SidebarGroupAction onClick={onNewChat} title="New Chat">
-            <Plus className="h-4 w-4" />
-            <span className="sr-only">New Chat</span>
-          </SidebarGroupAction>
+          <ToolSelector
+            trigger={
+              <SidebarGroupAction title="New Chat">
+                <Plus className="h-4 w-4" />
+                <span className="sr-only">New Chat</span>
+              </SidebarGroupAction>
+            }
+          />
         )}
       </SidebarGroupLabel>
 

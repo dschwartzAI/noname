@@ -18,6 +18,8 @@ import userApp from './routes/user'
 import chatApp from './routes/chat'
 import invitesApp from './routes/invites'
 import memoriesApp from './routes/memories'
+import agentsApp from './routes/agents'
+import { agentIconApp } from './routes/agent-icon'
 // Temporarily disabled - incompatible import paths
 // import coursesApp from './routes/courses'
 // import calendarApp from './routes/calendar'
@@ -1470,6 +1472,10 @@ app.route('/api/chat', chatApp)
 
 // Memory management routes
 app.route('/api/v1/memories', memoriesApp)
+
+// Agent management routes
+app.route('/api/v1/agents', agentsApp)
+app.route('/api/agents/icon', agentIconApp)
 
 // LMS routes (Syndicate) - Temporarily disabled due to import path issues
 // app.route('/api/v1/courses', coursesApp)

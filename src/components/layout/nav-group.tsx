@@ -32,6 +32,7 @@ import {
   type NavLink,
   type NavGroup as NavGroupProps,
 } from './types'
+import { ToolSelector } from './tool-selector'
 
 export function NavGroup({ title, items }: NavGroupProps) {
   const { state, isMobile } = useSidebar()
@@ -64,6 +65,26 @@ function NavBadge({ children }: { children: ReactNode }) {
 
 function SidebarMenuLink({ item, href }: { item: NavLink; href: string }) {
   const { setOpenMobile } = useSidebar()
+
+  // Special handling for "New Chat" - open ToolSelector instead of navigating
+  if (item.title === 'New Chat') {
+    return (
+      <SidebarMenuItem>
+        <ToolSelector
+          trigger={
+            <SidebarMenuButton
+              tooltip={item.title}
+            >
+              {item.icon && <item.icon />}
+              <span>{item.title}</span>
+              {item.badge && <NavBadge>{item.badge}</NavBadge>}
+            </SidebarMenuButton>
+          }
+        />
+      </SidebarMenuItem>
+    )
+  }
+
   return (
     <SidebarMenuItem>
       <SidebarMenuButton

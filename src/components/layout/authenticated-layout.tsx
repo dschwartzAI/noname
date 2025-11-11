@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Outlet, useNavigate, useParams } from '@tanstack/react-router'
+import { useState } from 'react'
+import { Outlet, useParams } from '@tanstack/react-router'
 import { Settings2 } from 'lucide-react'
 import { getCookie } from '@/lib/cookies'
 import { cn } from '@/lib/utils'
@@ -39,7 +39,6 @@ type AuthenticatedLayoutProps = {
 export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   const defaultOpen = getCookie('sidebar_state') !== 'false'
   const { user } = useAuth()
-  const navigate = useNavigate()
   const params = useParams({ strict: false })
   const [agentBuilderOpen, setAgentBuilderOpen] = useState(false)
 
@@ -51,15 +50,6 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
 
   // Connect to UserSysDO for remote auth events
   useUserSysEvents(user?.id || null)
-
-  // Handle new chat navigation
-  const handleNewChat = () => {
-    // Force component remount by adding a unique timestamp search param
-    navigate({
-      to: '/ai-chat',
-      search: { new: Date.now().toString() }
-    })
-  }
 
   // Filter navigation groups based on user role
   const filteredNavGroups = sidebarData.navGroups.map((group) => ({
@@ -103,7 +93,6 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
                   <ConversationNavGroup
                     conversations={conversations || []}
                     activeConversationId={activeConversationId}
-                    onNewChat={handleNewChat}
                   />
                 )}
               </SidebarContent>

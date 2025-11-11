@@ -48,7 +48,7 @@ const MODELS = [
 ]
 
 function ChatPage() {
-  const { new: newChatKey } = Route.useSearch()
+  const { new: newChatKey, conversationId: urlConversationId, agentId } = Route.useSearch()
   const [selectedModel, setSelectedModel] = useState('gpt-4o')
   const invalidateConversations = useInvalidateConversations()
 
@@ -114,13 +114,14 @@ function ChatPage() {
                     <button
                       key={idx}
                       onClick={() => {
-                        // Pass conversationId and model dynamically (AI SDK v5 pattern)
+                        // Pass conversationId, model, and agentId dynamically (AI SDK v5 pattern)
                         sendMessage(
                           { text: prompt },
                           {
                             body: {
                               conversationId: effectiveConversationId,
                               model: selectedModel,
+                              agentId: agentId,
                             },
                           }
                         )
@@ -161,13 +162,14 @@ function ChatPage() {
         <PromptInput
           onSubmit={(message, event) => {
             if (message.text?.trim()) {
-              // Pass conversationId and model dynamically at request time (AI SDK v5 pattern)
+              // Pass conversationId, model, and agentId dynamically at request time (AI SDK v5 pattern)
               sendMessage(
                 { text: message.text },
                 {
                   body: {
                     conversationId: effectiveConversationId, // Dynamic value at request time
                     model: selectedModel, // Dynamic value at request time
+                    agentId: agentId, // Selected agent ID from URL
                   },
                 }
               )
@@ -216,8 +218,10 @@ function ChatPage() {
 
 export const Route = createFileRoute('/_authenticated/ai-chat/')({
   component: ChatPage,
-  // Allow search params to force remount on new chat
+  // Allow search params for new chat, conversation ID, and agent selection
   validateSearch: (search: Record<string, unknown>) => ({
     new: search.new as string | undefined,
+    conversationId: search.conversationId as string | undefined,
+    agentId: search.agentId as string | undefined,
   }),
 })
