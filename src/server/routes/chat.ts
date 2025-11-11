@@ -699,6 +699,7 @@ chatApp.get('/', zValidator('query', listConversationsSchema), async (c) => {
         title: authSchema.conversation.title,
         model: authSchema.conversation.model,
         toolId: authSchema.conversation.toolId,
+        metadata: authSchema.conversation.metadata, // Include metadata for archive filtering
         createdAt: authSchema.conversation.createdAt,
         updatedAt: authSchema.conversation.updatedAt,
         // Join with agents table to get agent info
