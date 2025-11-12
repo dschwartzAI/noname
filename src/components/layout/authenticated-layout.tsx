@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Outlet, useParams } from '@tanstack/react-router'
-import { Settings2 } from 'lucide-react'
+import { Wrench } from 'lucide-react'
 import { getCookie } from '@/lib/cookies'
 import { cn } from '@/lib/utils'
 import { LayoutProvider } from '@/context/layout-provider'
@@ -9,6 +9,12 @@ import { AuthGuard } from '@/components/auth/auth-guard'
 import { useUserSysEvents } from '@/hooks/use-user-sys-events'
 import { useAuth } from '@/stores/auth-simple'
 import { Button } from '@/components/ui/button'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import {
   SidebarContent,
   SidebarFooter,
@@ -144,15 +150,26 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
               <Header fixed className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <div className="ml-auto flex items-center gap-2">
                   <ThemeSwitch />
-                  <AgentBuilder
-                    open={agentBuilderOpen}
-                    onOpenChange={setAgentBuilderOpen}
-                    trigger={
-                      <Button variant="ghost" size="icon">
-                        <Settings2 className="h-5 w-5" />
-                      </Button>
-                    }
-                  />
+                  <TooltipProvider delayDuration={300}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div>
+                          <AgentBuilder
+                            open={agentBuilderOpen}
+                            onOpenChange={setAgentBuilderOpen}
+                            trigger={
+                              <Button variant="ghost" size="icon">
+                                <Wrench className="h-5 w-5" />
+                              </Button>
+                            }
+                          />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Build your tools</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
               </Header>
               {children ?? <Outlet />}

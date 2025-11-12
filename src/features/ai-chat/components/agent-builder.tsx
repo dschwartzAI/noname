@@ -218,12 +218,6 @@ export function AgentBuilder({ open, onOpenChange, trigger, onSuccess }: AgentBu
     }
   }
 
-  const handleDeleteClick = (agent: Agent, e: React.MouseEvent) => {
-    e.stopPropagation() // Prevent opening the edit form
-    setAgentToDelete({ id: agent.id, name: agent.name })
-    setDeleteDialogOpen(true)
-  }
-
   const handleDeleteConfirm = async () => {
     if (!agentToDelete) return
 
@@ -242,9 +236,11 @@ export function AgentBuilder({ open, onOpenChange, trigger, onSuccess }: AgentBu
       // Invalidate query to refresh list
       queryClient.invalidateQueries({ queryKey: ['agents'] })
 
-      // Close dialog
+      // Close dialog and return to list
       setDeleteDialogOpen(false)
       setAgentToDelete(null)
+      setView('list')
+      setSelectedAgentId(null)
 
       alert(`Tool "${agentToDelete.name}" deleted successfully`)
 
@@ -295,54 +291,40 @@ export function AgentBuilder({ open, onOpenChange, trigger, onSuccess }: AgentBu
               {agentsData && agentsData.agents.length > 0 && (
                 <div className="space-y-2">
                   {agentsData.agents.map((agent) => (
-                    <div
+                    <button
                       key={agent.id}
-                      className="relative w-full p-4 border rounded-lg hover:bg-muted/50 transition-colors group"
+                      onClick={() => {
+                        setSelectedAgentId(agent.id)
+                        setView('form')
+                      }}
+                      className="w-full p-4 border rounded-lg hover:bg-muted/50 transition-colors text-left"
                     >
-                      <button
-                        onClick={() => {
-                          setSelectedAgentId(agent.id)
-                          setView('form')
-                        }}
-                        className="w-full text-left"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden flex-shrink-0">
-                            {getAgentIconSrc(agent) ? (
-                              <img
-                                src={getAgentIconSrc(agent)!}
-                                alt={agent.name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <span className="text-xl">{getAgentEmoji(agent) || '🤖'}</span>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium">{agent.name}</div>
-                            {agent.description && (
-                              <div className="text-xs text-muted-foreground truncate">
-                                {agent.description}
-                              </div>
-                            )}
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {agent.model}
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden flex-shrink-0">
+                          {getAgentIconSrc(agent) ? (
+                            <img
+                              src={getAgentIconSrc(agent)!}
+                              alt={agent.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-xl">{getAgentEmoji(agent) || '🤖'}</span>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium">{agent.name}</div>
+                          {agent.description && (
+                            <div className="text-xs text-muted-foreground truncate">
+                              {agent.description}
                             </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Pencil className="h-4 w-4 text-muted-foreground" />
+                          )}
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {agent.model}
                           </div>
                         </div>
-                      </button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={(e) => handleDeleteClick(agent, e)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
+                        <Pencil className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      </div>
+                    </button>
                   ))}
                 </div>
               )}
@@ -463,7 +445,7 @@ export function AgentBuilder({ open, onOpenChange, trigger, onSuccess }: AgentBu
               )}
 
               {/* Submit */}
-              <div className="pt-4">
+              <div className="pt-4 space-y-2">
                 <Button
                   className="w-full"
                   onClick={handleSubmit}
@@ -471,6 +453,22 @@ export function AgentBuilder({ open, onOpenChange, trigger, onSuccess }: AgentBu
                 >
                   {isSubmitting ? 'Saving...' : selectedAgentId ? 'Update Tool' : 'Create Tool'}
                 </Button>
+
+                {/* Delete Button (only show when editing) */}
+                {selectedAgentId && (
+                  <Button
+                    variant="destructive"
+                    className="w-full"
+                    onClick={() => {
+                      const agentName = name || 'this tool'
+                      setAgentToDelete({ id: selectedAgentId, name: agentName })
+                      setDeleteDialogOpen(true)
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Tool
+                  </Button>
+                )}
               </div>
             </>
           )}
