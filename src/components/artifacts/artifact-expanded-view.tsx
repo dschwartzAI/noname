@@ -25,6 +25,7 @@ import {
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import type { Artifact } from '@/types/artifacts'
+import { Response } from '@/components/response'
 
 interface ArtifactExpandedViewProps {
   artifact: Artifact
@@ -139,9 +140,10 @@ export function ArtifactExpandedView({ artifact, open, onOpenChange }: ArtifactE
         )
 
       case 'markdown':
+      case 'document':
         return (
           <div className='prose dark:prose-invert max-w-none'>
-            <pre className='whitespace-pre-wrap text-sm'>{artifact.content}</pre>
+            <Response enableCodeBlocks={true}>{artifact.content}</Response>
           </div>
         )
 

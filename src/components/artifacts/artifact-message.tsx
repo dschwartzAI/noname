@@ -2,32 +2,45 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ChevronDown, ChevronRight, Sparkles } from 'lucide-react'
-import { ArtifactRenderer } from './artifact-renderer'
+import { ArtifactPreviewCard } from './artifact-preview-card'
 import { Response } from '@/components/response'
 import type { ArtifactMessage } from '@/types/artifacts'
 import { useState } from 'react'
 
 interface ArtifactMessageProps {
   message: ArtifactMessage
+  onArtifactSelect?: (artifactId: string) => void
+  selectedArtifactId?: string
   onEditArtifact?: (artifact: any) => void
   onDeleteArtifact?: (id: string) => void
 }
 
-export function ArtifactMessageComponent({ 
-  message, 
-  onEditArtifact, 
-  onDeleteArtifact 
+export function ArtifactMessageComponent({
+  message,
+  onArtifactSelect,
+  selectedArtifactId,
+  onEditArtifact,
+  onDeleteArtifact
 }: ArtifactMessageProps) {
   const [artifactsExpanded, setArtifactsExpanded] = useState(true)
   const hasArtifacts = message.artifacts && message.artifacts.length > 0
 
+  // Remove code blocks from content if artifacts exist (prevent duplication)
+  let displayContent = message.content
+  if (hasArtifacts) {
+    // Remove markdown code blocks (```...```)
+    displayContent = displayContent.replace(/```[\s\S]*?```/g, '').trim()
+  }
+
   return (
     <div className='space-y-3'>
-      {/* Message content */}
-      <div>
-        <Response enableCodeBlocks={true}>{message.content}</Response>
-      </div>
-      
+      {/* Message content (without code blocks if artifacts exist) */}
+      {displayContent && (
+        <div>
+          <Response enableCodeBlocks={!hasArtifacts}>{displayContent}</Response>
+        </div>
+      )}
+
       {/* Artifacts section */}
       {hasArtifacts && (
         <div className='border-t pt-3'>
@@ -46,14 +59,14 @@ export function ArtifactMessageComponent({
                 </Badge>
               </Button>
             </CollapsibleTrigger>
-            
-            <CollapsibleContent className='mt-3 space-y-4'>
+
+            <CollapsibleContent className='mt-3 space-y-3'>
               {message.artifacts!.map((artifact) => (
-                <ArtifactRenderer
+                <ArtifactPreviewCard
                   key={artifact.id}
                   artifact={artifact}
-                  onEdit={onEditArtifact}
-                  onDelete={onDeleteArtifact}
+                  onClick={() => onArtifactSelect?.(artifact.id)}
+                  isSelected={selectedArtifactId === artifact.id}
                 />
               ))}
             </CollapsibleContent>

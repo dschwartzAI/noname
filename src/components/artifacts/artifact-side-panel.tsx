@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -9,25 +8,27 @@ import {
   Eye,
   Copy,
   Download,
-  Edit,
+  X,
   FileCode,
   FileText,
   Image,
   BarChart3,
   Globe,
   Palette,
-  Maximize2
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import type { Artifact } from '@/types/artifacts'
-import { ArtifactExpandedView } from './artifact-expanded-view'
+import { cn } from '@/lib/utils'
 import { Response } from '@/components/response'
 
-interface ArtifactRendererProps {
-  artifact: Artifact
-  onEdit?: (artifact: Artifact) => void
-  onDelete?: (id: string) => void
+interface ArtifactSidePanelProps {
+  artifacts: Artifact[]
+  currentIndex: number
+  onIndexChange: (index: number) => void
+  onClose: () => void
   className?: string
 }
 
@@ -36,28 +37,28 @@ const getArtifactIcon = (type: string) => {
     case 'code':
     case 'javascript':
     case 'typescript':
-      return <FileCode className='h-4 w-4' />
+      return <FileCode className='h-5 w-5' />
     case 'react-component':
-      return <Code className='h-4 w-4' />
+      return <Code className='h-5 w-5' />
     case 'html':
-      return <Globe className='h-4 w-4' />
+      return <Globe className='h-5 w-5' />
     case 'css':
-      return <Palette className='h-4 w-4' />
+      return <Palette className='h-5 w-5' />
     case 'svg':
-      return <Image className='h-4 w-4' />
+      return <Image className='h-5 w-5' />
     case 'chart':
-      return <BarChart3 className='h-4 w-4' />
+      return <BarChart3 className='h-5 w-5' />
     case 'markdown':
     case 'document':
-      return <FileText className='h-4 w-4' />
+      return <FileText className='h-5 w-5' />
     default:
-      return <FileCode className='h-4 w-4' />
+      return <FileCode className='h-5 w-5' />
   }
 }
 
 const getLanguageForHighlighting = (type: string, language?: string) => {
   if (language) return language
-  
+
   switch (type) {
     case 'javascript':
       return 'javascript'
@@ -80,14 +81,16 @@ const getLanguageForHighlighting = (type: string, language?: string) => {
   }
 }
 
-export function ArtifactRenderer({
-  artifact,
-  onEdit,
-  onDelete,
+export function ArtifactSidePanel({
+  artifacts,
+  currentIndex,
+  onIndexChange,
+  onClose,
   className
-}: ArtifactRendererProps) {
+}: ArtifactSidePanelProps) {
   const [activeTab, setActiveTab] = useState('preview')
-  const [isExpanded, setIsExpanded] = useState(false)
+  const artifact = artifacts[currentIndex]
+  const hasMultiple = artifacts.length > 1
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(artifact.content)
@@ -105,14 +108,26 @@ export function ArtifactRenderer({
     URL.revokeObjectURL(url)
   }
 
+  const handlePrev = () => {
+    if (currentIndex > 0) {
+      onIndexChange(currentIndex - 1)
+    }
+  }
+
+  const handleNext = () => {
+    if (currentIndex < artifacts.length - 1) {
+      onIndexChange(currentIndex + 1)
+    }
+  }
+
   const renderPreview = () => {
     switch (artifact.type) {
       case 'html':
         return (
-          <div className='border rounded-lg bg-white dark:bg-gray-900'>
+          <div className='border rounded-lg bg-white dark:bg-gray-900 h-full'>
             <iframe
               srcDoc={artifact.content}
-              className='w-full h-64 border-0 rounded-lg'
+              className='w-full h-full border-0 rounded-lg'
               sandbox='allow-scripts allow-same-origin'
               title={artifact.title}
             />
@@ -120,7 +135,6 @@ export function ArtifactRenderer({
         )
 
       case 'react-component':
-        // For React components, show a code preview since we can't safely execute them
         return (
           <div className='space-y-2'>
             <p className='text-sm text-muted-foreground'>
@@ -139,7 +153,7 @@ export function ArtifactRenderer({
 
       case 'svg':
         return (
-          <div className='border rounded-lg p-4 bg-white dark:bg-gray-900 flex items-center justify-center'>
+          <div className='border rounded-lg p-4 bg-white dark:bg-gray-900 flex items-center justify-center h-full'>
             <div dangerouslySetInnerHTML={{ __html: artifact.content }} />
           </div>
         )
@@ -167,28 +181,33 @@ export function ArtifactRenderer({
   }
 
   return (
-    <Card className={className} data-testid="artifact-card">
-      <CardHeader className='pb-3'>
+    <div className={cn('flex flex-col h-full bg-background border-l animate-in slide-in-from-right duration-300', className)}>
+      {/* Sticky Header */}
+      <div className='sticky top-0 z-10 bg-background border-b p-4 space-y-3'>
         <div className='flex items-start justify-between'>
-          <div className='space-y-2'>
-            <div className='flex items-center gap-2'>
+          <div className='space-y-2 flex-1 min-w-0'>
+            <div className='flex items-center gap-3'>
               {getArtifactIcon(artifact.type)}
-              <CardTitle className='text-lg'>{artifact.title}</CardTitle>
-              <Badge variant='secondary' className='text-xs'>
+              <h3 className='text-lg font-semibold truncate'>{artifact.title}</h3>
+              <Badge variant='secondary' className='text-xs shrink-0'>
                 {artifact.type}
               </Badge>
             </div>
             {artifact.description && (
-              <CardDescription>{artifact.description}</CardDescription>
+              <p className='text-sm text-muted-foreground line-clamp-2'>{artifact.description}</p>
             )}
           </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className='flex items-center justify-between'>
           <div className='flex items-center gap-1'>
             <Button
               variant='ghost'
               size='sm'
               onClick={handleCopy}
-              className='h-8 w-8 p-0'
-              title="Copy to clipboard"
+              className='h-9 w-9 p-0'
+              title='Copy to clipboard'
             >
               <Copy className='h-4 w-4' />
             </Button>
@@ -196,56 +215,80 @@ export function ArtifactRenderer({
               variant='ghost'
               size='sm'
               onClick={handleDownload}
-              className='h-8 w-8 p-0'
-              title="Download"
+              className='h-9 w-9 p-0'
+              title='Download'
             >
               <Download className='h-4 w-4' />
             </Button>
+          </div>
+
+          <div className='flex items-center gap-2'>
+            {/* Navigation Controls */}
+            {hasMultiple && (
+              <div className='flex items-center gap-1'>
+                <Button
+                  variant='ghost'
+                  size='sm'
+                  onClick={handlePrev}
+                  disabled={currentIndex === 0}
+                  className='h-9 w-9 p-0'
+                  title='Previous artifact'
+                >
+                  <ChevronLeft className='h-4 w-4' />
+                </Button>
+                <span className='text-xs text-muted-foreground px-2'>
+                  {currentIndex + 1} / {artifacts.length}
+                </span>
+                <Button
+                  variant='ghost'
+                  size='sm'
+                  onClick={handleNext}
+                  disabled={currentIndex === artifacts.length - 1}
+                  className='h-9 w-9 p-0'
+                  title='Next artifact'
+                >
+                  <ChevronRight className='h-4 w-4' />
+                </Button>
+              </div>
+            )}
+
             <Button
               variant='ghost'
               size='sm'
-              onClick={() => setIsExpanded(true)}
-              className='h-8 w-8 p-0'
-              title="Expand"
+              onClick={onClose}
+              className='h-9 w-9 p-0'
+              title='Close (ESC)'
             >
-              <Maximize2 className='h-4 w-4' />
+              <X className='h-4 w-4' />
             </Button>
-            {onEdit && (
-              <Button
-                variant='ghost'
-                size='sm'
-                onClick={() => onEdit(artifact)}
-                className='h-8 w-8 p-0'
-                title="Edit"
-              >
-                <Edit className='h-4 w-4' />
-              </Button>
-            )}
           </div>
         </div>
-      </CardHeader>
-      
-      <CardContent>
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className='grid w-full grid-cols-2'>
-            <TabsTrigger value='preview' className='flex items-center gap-2'>
-              <Eye className='h-4 w-4' />
-              Preview
-            </TabsTrigger>
-            <TabsTrigger value='code' className='flex items-center gap-2'>
-              <Code className='h-4 w-4' />
-              Code
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value='preview' className='mt-4'>
-            <ScrollArea className='h-64 w-full'>
+      </div>
+
+      {/* Content */}
+      <div className='flex-1 overflow-hidden'>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className='h-full flex flex-col'>
+          <div className='px-4 pt-3'>
+            <TabsList className='grid w-full max-w-md grid-cols-2'>
+              <TabsTrigger value='preview' className='flex items-center gap-2'>
+                <Eye className='h-4 w-4' />
+                Preview
+              </TabsTrigger>
+              <TabsTrigger value='code' className='flex items-center gap-2'>
+                <Code className='h-4 w-4' />
+                Code
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          <TabsContent value='preview' className='flex-1 mt-3 px-4 pb-4 overflow-hidden'>
+            <ScrollArea className='h-full w-full'>
               {renderPreview()}
             </ScrollArea>
           </TabsContent>
-          
-          <TabsContent value='code' className='mt-4'>
-            <ScrollArea className='h-64 w-full'>
+
+          <TabsContent value='code' className='flex-1 mt-3 px-4 pb-4 overflow-hidden'>
+            <ScrollArea className='h-full w-full'>
               <SyntaxHighlighter
                 language={getLanguageForHighlighting(artifact.type, artifact.language)}
                 style={vscDarkPlus}
@@ -257,14 +300,7 @@ export function ArtifactRenderer({
             </ScrollArea>
           </TabsContent>
         </Tabs>
-      </CardContent>
-
-      {/* Expanded view dialog */}
-      <ArtifactExpandedView
-        artifact={artifact}
-        open={isExpanded}
-        onOpenChange={setIsExpanded}
-      />
-    </Card>
+      </div>
+    </div>
   )
 }

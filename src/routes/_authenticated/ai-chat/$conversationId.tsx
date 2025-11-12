@@ -1,10 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useChat } from '@ai-sdk/react'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Bot } from 'lucide-react'
 import { PaperclipIcon } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { useInvalidateConversations } from '@/hooks/use-conversations'
 import { getAgentIconSrc, getAgentEmoji } from '@/features/ai-chat/utils/get-agent-icon'
 import {
@@ -33,6 +34,9 @@ import {
 } from '@/components/ai-elements/prompt-input'
 import { parseArtifactsFromContent } from '@/utils/artifact-parser'
 import { ArtifactMessageComponent } from '@/components/artifacts/artifact-message'
+import { ArtifactSidePanel } from '@/components/artifacts/artifact-side-panel'
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
+import type { Artifact } from '@/types/artifacts'
 
 // Available AI models
 const MODELS = [
@@ -181,6 +185,18 @@ function ConversationChat({
   const queryClient = useQueryClient()
   const prevConversationIdRef = useRef<string | null>(null)
 
+  // Artifact side panel state
+  const [selectedArtifactIndex, setSelectedArtifactIndex] = useState<number | null>(null)
+  const [isMobile, setIsMobile] = useState(false)
+
+  // Detect mobile viewport
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768)
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
   const { messages, setMessages, sendMessage, status, error } = useChat({
     id: conversationId, // Pass conversationId for persistence
     api: '/api/v1/chat',
@@ -220,9 +236,61 @@ function ConversationChat({
     }
   }, [conversationId, data.messages, setMessages])
 
+  // Parse artifacts once per message and cache (prevents ID mismatches)
+  const messageArtifacts = useMemo(() => {
+    const artifactsByMessage = new Map<string, Artifact[]>()
+
+    messages.forEach((message) => {
+      const textContent = message.parts?.map((part) =>
+        part.type === 'text' ? part.text : ''
+      ).join('') || ''
+
+      if (agentData?.artifactsEnabled) {
+        const parsedArtifacts = parseArtifactsFromContent(textContent, message.id)
+        artifactsByMessage.set(message.id, parsedArtifacts)
+      }
+    })
+
+    return artifactsByMessage
+  }, [messages, agentData?.artifactsEnabled])
+
+  // Collect all artifacts from the cached parse results
+  const allArtifacts = useMemo(() => {
+    const artifacts: Artifact[] = []
+    messageArtifacts.forEach((messageArtifacts) => {
+      artifacts.push(...messageArtifacts)
+    })
+    console.log('🔄 Collected artifacts:', artifacts.length, 'total')
+    console.log('📋 Artifact IDs:', artifacts.map(a => a.id))
+    return artifacts
+  }, [messageArtifacts])
+
+  // Keyboard shortcuts (ESC to close, Cmd+\ to toggle)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // ESC to close
+      if (e.key === 'Escape' && selectedArtifactIndex !== null) {
+        setSelectedArtifactIndex(null)
+      }
+      // Cmd+\ to toggle (open first artifact or close)
+      if ((e.metaKey || e.ctrlKey) && e.key === '\\') {
+        e.preventDefault()
+        if (selectedArtifactIndex !== null) {
+          setSelectedArtifactIndex(null)
+        } else if (allArtifacts.length > 0) {
+          setSelectedArtifactIndex(0)
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedArtifactIndex, allArtifacts.length])
+
   const isChatLoading = status === 'submitted' || status === 'streaming'
 
-  return (
+  // Main chat content
+  const chatContent = (
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="border-b p-4">
@@ -259,24 +327,10 @@ function ConversationChat({
               part.type === 'text' ? part.text : ''
             ).join('') || ''
 
-            // Only parse artifacts if agent has them enabled
-            const artifacts = agentData?.artifactsEnabled
-              ? parseArtifactsFromContent(textContent, message.id)
-              : []
+            // Use cached artifacts (already parsed)
+            const artifacts = messageArtifacts.get(message.id) || []
 
-            // Debug logging
-            if (message.role === 'assistant') {
-              console.log('🔍 Artifact parsing:', {
-                messageId: message.id,
-                contentLength: textContent.length,
-                hasCodeBlocks: /```/.test(textContent),
-                agentArtifactsEnabled: agentData?.artifactsEnabled,
-                artifactsFound: artifacts.length,
-                artifacts: artifacts.map(a => ({ type: a.type, title: a.title }))
-              })
-            }
-
-            // Create artifact message format
+            // Create artifact message format with selection handler
             const artifactMessage = {
               id: message.id,
               role: message.role,
@@ -287,7 +341,31 @@ function ConversationChat({
             return (
               <Message key={message.id} from={message.role}>
                 <MessageContent>
-                  <ArtifactMessageComponent message={artifactMessage} />
+                  <ArtifactMessageComponent
+                    message={artifactMessage}
+                    onArtifactSelect={(artifactId) => {
+                      console.log('🎯 Click handler called:', {
+                        artifactId,
+                        currentSelectedIndex: selectedArtifactIndex,
+                        allArtifactsLength: allArtifacts.length
+                      })
+                      const index = allArtifacts.findIndex(a => a.id === artifactId)
+                      console.log('📍 Found at index:', index)
+                      if (index !== -1) {
+                        // Toggle: if clicking already-selected artifact, close it
+                        if (selectedArtifactIndex === index) {
+                          console.log('🔄 Toggling OFF (same artifact clicked)')
+                          setSelectedArtifactIndex(null)
+                        } else {
+                          console.log('✅ Setting to index:', index)
+                          setSelectedArtifactIndex(index)
+                        }
+                      } else {
+                        console.log('❌ Artifact not found in array')
+                      }
+                    }}
+                    selectedArtifactId={selectedArtifactIndex !== null ? allArtifacts[selectedArtifactIndex]?.id : undefined}
+                  />
                 </MessageContent>
               </Message>
             )
@@ -360,6 +438,49 @@ function ConversationChat({
       </div>
     </div>
   )
+
+  // Desktop: Resizable side panel | Mobile: Full-screen dialog
+  if (selectedArtifactIndex !== null && allArtifacts.length > 0) {
+    if (isMobile) {
+      // Mobile: Full-screen dialog
+      return (
+        <>
+          {chatContent}
+          <Dialog open={true} onOpenChange={(open) => !open && setSelectedArtifactIndex(null)}>
+            <DialogContent className="max-w-[95vw] w-full h-[95vh] max-h-[95vh] p-0 gap-0">
+              <ArtifactSidePanel
+                artifacts={allArtifacts}
+                currentIndex={selectedArtifactIndex}
+                onIndexChange={setSelectedArtifactIndex}
+                onClose={() => setSelectedArtifactIndex(null)}
+              />
+            </DialogContent>
+          </Dialog>
+        </>
+      )
+    } else {
+      // Desktop: Resizable split screen
+      return (
+        <PanelGroup direction="horizontal" className="h-full">
+          <Panel defaultSize={55} minSize={30}>
+            {chatContent}
+          </Panel>
+          <PanelResizeHandle className="w-px bg-border hover:bg-primary transition-colors" />
+          <Panel defaultSize={45} minSize={30}>
+            <ArtifactSidePanel
+              artifacts={allArtifacts}
+              currentIndex={selectedArtifactIndex}
+              onIndexChange={setSelectedArtifactIndex}
+              onClose={() => setSelectedArtifactIndex(null)}
+            />
+          </Panel>
+        </PanelGroup>
+      )
+    }
+  }
+
+  // No artifact selected: show just chat
+  return chatContent
 }
 
 export const Route = createFileRoute('/_authenticated/ai-chat/$conversationId')({
