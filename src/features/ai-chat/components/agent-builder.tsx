@@ -98,6 +98,12 @@ export function AgentBuilder({ open, onOpenChange, trigger, onSuccess }: AgentBu
         .then(data => {
           if (data.agent) {
             const agent = data.agent
+            console.log('🔍 Loaded agent:', {
+              id: agent.id,
+              name: agent.name,
+              artifactsEnabled: agent.artifactsEnabled,
+              artifactInstructions: agent.artifactInstructions
+            })
             setName(agent.name)
             setDescription(agent.description || '')
             setInstructions(agent.instructions || '') // ✅ Now loads from GET endpoint
@@ -109,7 +115,7 @@ export function AgentBuilder({ open, onOpenChange, trigger, onSuccess }: AgentBu
               setIconUrl(null)
             }
             setModel(agent.model)
-            setArtifactsEnabled(agent.artifactsEnabled || false)
+            setArtifactsEnabled(agent.artifactsEnabled ?? false)
             setArtifactInstructions(agent.artifactInstructions || '')
           }
         })
@@ -160,27 +166,36 @@ export function AgentBuilder({ open, onOpenChange, trigger, onSuccess }: AgentBu
       const url = isEditing ? `/api/v1/agents/${selectedAgentId}` : '/api/v1/agents'
       const method = isEditing ? 'PATCH' : 'POST'
 
+      const requestBody = {
+        name,
+        description: description || undefined,
+        instructions,
+        icon: icon || undefined,
+        avatar: iconUrl ? {
+          source: 'upload',
+          value: iconUrl,
+        } : (icon ? {
+          source: 'emoji',
+          value: icon,
+        } : undefined),
+        provider: MODELS.find(m => m.value === model)?.provider.toLowerCase() || 'openai',
+        model,
+        artifactsEnabled,
+        artifactInstructions: artifactsEnabled ? artifactInstructions : undefined,
+        published: true,
+      }
+
+      console.log('📤 Submitting agent:', {
+        method,
+        url,
+        artifactsEnabled,
+        artifactInstructions: artifactInstructions || '(empty)'
+      })
+
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          description: description || undefined,
-          instructions,
-          icon: icon || undefined,
-          avatar: iconUrl ? {
-            source: 'upload',
-            value: iconUrl,
-          } : (icon ? {
-            source: 'emoji',
-            value: icon,
-          } : undefined),
-          provider: MODELS.find(m => m.value === model)?.provider.toLowerCase() || 'openai',
-          model,
-          artifactsEnabled,
-          artifactInstructions: artifactsEnabled ? artifactInstructions : undefined,
-          published: true,
-        }),
+        body: JSON.stringify(requestBody),
       })
 
       if (!response.ok) {

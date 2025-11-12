@@ -262,6 +262,17 @@ function ConversationChat({
             // Parse artifacts from the text content
             const artifacts = parseArtifactsFromContent(textContent, message.id)
 
+            // Debug logging
+            if (message.role === 'assistant') {
+              console.log('🔍 Artifact parsing:', {
+                messageId: message.id,
+                contentLength: textContent.length,
+                hasCodeBlocks: /```/.test(textContent),
+                artifactsFound: artifacts.length,
+                artifacts: artifacts.map(a => ({ type: a.type, title: a.title }))
+              })
+            }
+
             // Create artifact message format
             const artifactMessage = {
               id: message.id,

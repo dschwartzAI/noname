@@ -1,14 +1,14 @@
 "use client"
 
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
+import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
-import { CheckCircle2, Circle, PlayCircle, Clock } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { ArrowLeft, BookOpen, Clock, Users, Play } from 'lucide-react'
+import { CourseModuleTree } from '@/components/lms/courses/course-module-tree'
 
 export const Route = createFileRoute('/_authenticated/syndicate/classroom/$courseId')({
   component: CoursePage
@@ -16,6 +16,7 @@ export const Route = createFileRoute('/_authenticated/syndicate/classroom/$cours
 
 function CoursePage() {
   const { courseId } = Route.useParams()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
 
   const { data, isLoading } = useQuery({
@@ -34,87 +35,160 @@ function CoursePage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['course', courseId] })
   })
 
-  if (isLoading) return <div className="container py-6"><Skeleton className="h-96" /></div>
+  if (isLoading) {
+    return (
+      <div className="container max-w-6xl py-6">
+        <Skeleton className="h-96" />
+      </div>
+    )
+  }
 
-  const { course, modules, enrollment } = data
+  const { course, modules, enrollment, stats } = data
   const completedLessons = enrollment?.completedLessons || []
+  const isEnrolled = !!enrollment
+
+  const handleLessonClick = (lessonId: string) => {
+    navigate({ 
+      to: '/syndicate/classroom/$courseId/$lessonId', 
+      params: { courseId, lessonId } 
+    })
+  }
+
+  const handleStartCourse = () => {
+    if (!isEnrolled) {
+      enrollMutation.mutate()
+    } else if (enrollment.lastAccessedLessonId) {
+      navigate({ 
+        to: '/syndicate/classroom/$courseId/$lessonId', 
+        params: { courseId, lessonId: enrollment.lastAccessedLessonId } 
+      })
+    } else if (modules.length > 0 && modules[0].lessons.length > 0) {
+      handleLessonClick(modules[0].lessons[0].id)
+    }
+  }
 
   return (
-    <div className="container max-w-5xl py-6 space-y-6">
+    <div className="container max-w-6xl py-6 space-y-6">
+      {/* Back Button */}
+      <Button
+        variant="ghost"
+        onClick={() => navigate({ to: '/syndicate/classroom' })}
+        className="gap-2"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to Classroom
+      </Button>
+
+      {/* Course Header */}
       <Card>
         <CardHeader>
-          <div className="flex flex-col md:flex-row md:items-start gap-4">
+          <div className="flex flex-col lg:flex-row gap-6">
+            {/* Thumbnail */}
             {course.thumbnail && (
-              <img src={course.thumbnail} alt={course.title} className="w-full md:w-48 h-32 object-cover rounded-lg" />
+              <div className="relative w-full lg:w-80 h-48 rounded-lg overflow-hidden flex-shrink-0">
+                <img 
+                  src={course.thumbnail} 
+                  alt={course.title} 
+                  className="w-full h-full object-cover" 
+                />
+              </div>
             )}
-            <div className="flex-1">
-              <CardTitle className="text-2xl">{course.title}</CardTitle>
-              <p className="text-muted-foreground mt-2">{course.description}</p>
-              <div className="flex items-center gap-2 mt-4">
-                <img src={course.instructorAvatar || '/placeholder.svg'} alt={course.instructor} className="h-8 w-8 rounded-full" />
-                <span className="text-sm">{course.instructor}</span>
+
+            {/* Course Info */}
+            <div className="flex-1 space-y-4">
+              <div>
+                <CardTitle className="text-3xl mb-2">{course.title}</CardTitle>
+                {course.tier === 'pro' && (
+                  <Badge className="mb-2">Pro</Badge>
+                )}
+                <p className="text-muted-foreground">{course.description}</p>
+              </div>
+
+              {/* Instructor */}
+              <div className="flex items-center gap-3">
+                {course.instructorAvatar ? (
+                  <img 
+                    src={course.instructorAvatar} 
+                    alt={course.instructor} 
+                    className="h-12 w-12 rounded-full"
+                  />
+                ) : (
+                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold text-lg">
+                    {course.instructor.charAt(0)}
+                  </div>
+                )}
+                <div>
+                  <p className="font-semibold">{course.instructor}</p>
+                  {course.instructorBio && (
+                    <p className="text-sm text-muted-foreground">{course.instructorBio}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Course Stats */}
+              <div className="flex flex-wrap gap-6 text-sm text-muted-foreground">
+                <span className="flex items-center gap-2">
+                  <BookOpen className="h-4 w-4" />
+                  {stats?.moduleCount || modules.length} modules
+                </span>
+                <span className="flex items-center gap-2">
+                  <Play className="h-4 w-4" />
+                  {stats?.lessonCount || 0} lessons
+                </span>
+                <span className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  {stats?.totalDuration ? `${Math.round(stats.totalDuration / 3600)}h ${Math.round((stats.totalDuration % 3600) / 60)}m` : 'N/A'}
+                </span>
+                <span className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  {course.enrollmentCount || 0} enrolled
+                </span>
               </div>
             </div>
           </div>
         </CardHeader>
-        {enrollment && (
-          <CardContent>
-            <Progress value={enrollment.progressPercentage} className="h-2" />
-            <p className="text-sm text-muted-foreground mt-2">{enrollment.progressPercentage}% complete</p>
+
+        {/* Progress */}
+        {isEnrolled && enrollment && (
+          <CardContent className="border-t">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium">Your Progress</span>
+                <span className="text-muted-foreground">
+                  {enrollment.progressPercentage}% complete
+                </span>
+              </div>
+              <Progress value={enrollment.progressPercentage} className="h-2" />
+            </div>
           </CardContent>
         )}
+
+        {/* CTA */}
+        <CardContent className={isEnrolled ? "border-t" : ""}>
+          <Button 
+            size="lg" 
+            className="w-full sm:w-auto"
+            onClick={handleStartCourse}
+            disabled={enrollMutation.isPending}
+          >
+            {enrollMutation.isPending ? 'Enrolling...' : 
+             !isEnrolled ? 'Enroll in Course' :
+             enrollment.progressPercentage === 100 ? 'Review Course' :
+             enrollment.lastAccessedLessonId ? 'Continue Learning' :
+             'Start Course'}
+          </Button>
+        </CardContent>
       </Card>
 
-      {!enrollment && (
-        <Button onClick={() => enrollMutation.mutate()} className="w-full md:w-auto">Enroll in Course</Button>
-      )}
-
-      <Accordion type="multiple" className="space-y-4">
-        {modules.map((module: any, idx: number) => {
-          const moduleLessons = module.lessons || []
-          const completedCount = moduleLessons.filter((l: any) => completedLessons.includes(l.id)).length
-          
-          return (
-            <AccordionItem key={module.id} value={module.id} className="border rounded-lg px-4">
-              <AccordionTrigger className="hover:no-underline">
-                <div className="flex items-center gap-3 text-left">
-                  <span className="text-sm font-semibold text-muted-foreground">Module {idx + 1}</span>
-                  <span className="font-semibold">{module.title}</span>
-                  <span className="text-xs text-muted-foreground ml-auto">{completedCount}/{moduleLessons.length}</span>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="space-y-2 pt-4">
-                {moduleLessons.map((lesson: any) => {
-                  const isCompleted = completedLessons.includes(lesson.id)
-                  return (
-                    <a key={lesson.id} href={`/syndicate/classroom/${courseId}/${lesson.id}`}>
-                      <Card className="hover:bg-accent transition-colors cursor-pointer">
-                        <CardContent className="flex items-center gap-3 py-3">
-                          {isCompleted ? (
-                            <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
-                          ) : (
-                            <Circle className="h-5 w-5 text-muted-foreground shrink-0" />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className={cn("font-medium", isCompleted && "text-muted-foreground")}>{lesson.title}</p>
-                            {lesson.duration && (
-                              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                                <Clock className="h-3 w-3" />
-                                {Math.round(lesson.duration / 60)} min
-                              </p>
-                            )}
-                          </div>
-                          <PlayCircle className="h-5 w-5 text-muted-foreground shrink-0" />
-                        </CardContent>
-                      </Card>
-                    </a>
-                  )
-                })}
-              </AccordionContent>
-            </AccordionItem>
-          )
-        })}
-      </Accordion>
+      {/* Course Content */}
+      <div>
+        <h2 className="text-2xl font-bold mb-4">Course Content</h2>
+        <CourseModuleTree
+          modules={modules}
+          completedLessons={completedLessons}
+          onLessonClick={handleLessonClick}
+        />
+      </div>
     </div>
   )
 }

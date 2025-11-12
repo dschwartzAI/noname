@@ -79,6 +79,10 @@ export const agents = pgTable('agents', {
   published: boolean('published').default(false).notNull(),
   isSystem: boolean('is_system').default(false).notNull(), // Pre-built system agents
 
+  // Artifacts configuration
+  artifactsEnabled: boolean('artifacts_enabled').default(false).notNull(),
+  artifactInstructions: text('artifact_instructions'),
+
   // Versioning
   version: integer('version').default(1).notNull(),
 
