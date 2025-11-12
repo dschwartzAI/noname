@@ -262,7 +262,31 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
       console.log('⚠️ No user message to save')
     }
 
-    // Step 3: Fetch user memories for context injection (ALWAYS - not just first message)
+    // Step 3: Fetch agent instructions if agentId provided
+    let agentInstructions = ''
+    let artifactInstructions = ''
+    if (agentId) {
+      const agent = await db
+        .select()
+        .from(agents)
+        .where(
+          and(
+            eq(agents.id, agentId),
+            eq(agents.organizationId, organizationId)
+          )
+        )
+        .limit(1)
+
+      if (agent && agent[0]) {
+        agentInstructions = agent[0].instructions || ''
+        if (agent[0].artifactsEnabled && agent[0].artifactInstructions) {
+          artifactInstructions = agent[0].artifactInstructions
+        }
+        console.log(`🤖 Loaded agent: ${agent[0].name} (artifacts: ${agent[0].artifactsEnabled})`)
+      }
+    }
+
+    // Step 4: Fetch user memories for context injection (ALWAYS - not just first message)
     // IMPORTANT: Always inject memories so AI has access to user context throughout conversation
     const userMemories = await db
       .select()
@@ -328,16 +352,27 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
     // UI messages have 'parts' array, model messages have 'content' string
     let messages = convertToModelMessages(uiMessages)
 
-    // Prepend system message with memory context if we have memories
-    if (memoryContext) {
-      messages = [
-        {
-          role: 'system',
-          content: `You are a helpful AI assistant. You have access to the user's business context which will help you provide more personalized and relevant responses.${memoryContext}`,
-        },
-        ...messages,
-      ]
+    // Build system prompt with agent instructions, artifact instructions, and memory context
+    let systemPrompt = agentInstructions || 'You are a helpful AI assistant.'
+
+    // Add artifact instructions if enabled
+    if (artifactInstructions) {
+      systemPrompt += `\n\n${artifactInstructions}`
     }
+
+    // Add memory context
+    if (memoryContext) {
+      systemPrompt += ` You have access to the user's business context which will help you provide more personalized and relevant responses.${memoryContext}`
+    }
+
+    // Prepend system message
+    messages = [
+      {
+        role: 'system',
+        content: systemPrompt,
+      },
+      ...messages,
+    ]
 
     console.log('📝 Converted messages:', JSON.stringify(messages, null, 2))
 
