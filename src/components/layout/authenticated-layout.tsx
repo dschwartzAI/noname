@@ -30,7 +30,9 @@ import { AgentBuilder } from '@/features/ai-chat/components/agent-builder'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { ImpersonationBanner } from '@/components/god/impersonation-banner'
 import { useConversations } from '@/hooks/use-conversations'
+import { useAgents } from '@/hooks/use-agents'
 import { Skeleton } from '@/components/ui/skeleton'
+import { nanoid } from 'nanoid'
 
 type AuthenticatedLayoutProps = {
   children?: React.ReactNode
@@ -48,19 +50,37 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   // Fetch real conversations from API
   const { data: conversations, isLoading: conversationsLoading, error: conversationsError } = useConversations()
 
+  // Fetch agents for New Chat collapsible menu
+  const { data: agents, isLoading: agentsLoading } = useAgents()
+
   // Connect to UserSysDO for remote auth events
   useUserSysEvents(user?.id || null)
 
-  // Filter navigation groups based on user role
+  // Filter navigation groups based on user role and dynamically add agents to "New Chat"
   const filteredNavGroups = sidebarData.navGroups.map((group) => ({
     ...group,
-    items: group.items.filter((item) => {
-      // Hide God Mode link if user is not a god
-      if (item.url === '/admin/god-dashboard') {
-        return user?.isGod === true
-      }
-      return true
-    }),
+    items: group.items
+      .filter((item) => {
+        // Hide God Mode link if user is not a god
+        if (item.url === '/admin/god-dashboard') {
+          return user?.isGod === true
+        }
+        return true
+      })
+      .map((item) => {
+        // Convert "Tools" to collapsible menu with agents as sub-items
+        if (item.title === 'Tools' && agents && agents.length > 0) {
+          return {
+            ...item,
+            items: agents.map((agent) => ({
+              title: agent.name,
+              url: `/ai-chat?new=${nanoid()}&agentId=${agent.id}`,
+              icon: agent.avatar?.source === 'emoji' ? undefined : undefined, // We'll handle icons differently
+            })),
+          }
+        }
+        return item
+      }),
   }))
 
   return (

@@ -1,5 +1,5 @@
 import {
-  Plus,
+  SquarePen,
   Search,
   ArrowUpRight,
   Users,
@@ -24,9 +24,9 @@ export const sidebarData: SidebarData = {
       title: '',
       items: [
         {
-          title: 'New Chat',
+          title: 'Tools',
           url: '/ai-chat',
-          icon: Plus,
+          icon: SquarePen,
         },
         {
           title: 'Search',
