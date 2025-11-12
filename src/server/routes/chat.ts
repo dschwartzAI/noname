@@ -392,8 +392,7 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
           }),
           execute: async ({ title, kind, content }) => {
             console.log('📄 createDocument tool called:', { title, kind, contentLength: content.length })
-
-            // Return summary for chat display
+            // Tool result appears in chat - frontend will extract parameters for artifact
             return `Created document: ${title}`
           },
         },

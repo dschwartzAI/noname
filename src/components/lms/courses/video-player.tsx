@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils'
 
 interface VideoPlayerProps {
   videoUrl: string
-  videoProvider?: 'youtube' | 'vimeo' | 'cloudflare' | 'custom'
+  videoProvider?: 'youtube' | 'vimeo' | 'wistia' | 'cloudflare' | 'custom'
   initialPosition?: number // seconds
   onProgress?: (position: number, percentage: number) => void
   onComplete?: () => void
@@ -44,17 +44,27 @@ export function VideoPlayer({
   const [isFullscreen, setIsFullscreen] = useState(false)
   const progressIntervalRef = useRef<NodeJS.Timeout>()
 
-  // For YouTube/Vimeo embeds
-  if (videoProvider === 'youtube' || videoProvider === 'vimeo') {
+  // For YouTube/Vimeo/Wistia embeds
+  if (videoProvider === 'youtube' || videoProvider === 'vimeo' || videoProvider === 'wistia') {
     const getEmbedUrl = () => {
       if (videoProvider === 'youtube') {
-        const videoId = videoUrl.includes('youtube.com') 
-          ? new URL(videoUrl).searchParams.get('v')
-          : videoUrl.split('/').pop()
-        return `https://www.youtube.com/embed/${videoId}?start=${initialPosition}`
-      } else {
-        const videoId = videoUrl.split('/').pop()?.split('?')[0]
+        // Extract YouTube video ID from various URL formats
+        const youtubeRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/
+        const match = videoUrl.match(youtubeRegex)
+        const videoId = match ? match[1] : videoUrl
+        return `https://www.youtube.com/embed/${videoId}?start=${initialPosition}&rel=0&modestbranding=1`
+      } else if (videoProvider === 'vimeo') {
+        // Extract Vimeo video ID
+        const vimeoRegex = /(?:vimeo\.com\/)(?:channels\/|groups\/|album\/\d+\/video\/|)(\d+)(?:$|\/|\?)/
+        const match = videoUrl.match(vimeoRegex)
+        const videoId = match ? match[1] : videoUrl.split('/').pop()?.split('?')[0]
         return `https://player.vimeo.com/video/${videoId}#t=${initialPosition}s`
+      } else {
+        // Wistia
+        const wistiaRegex = /(?:wistia\.com\/medias\/)([a-zA-Z0-9]+)/
+        const match = videoUrl.match(wistiaRegex)
+        const videoId = match ? match[1] : videoUrl
+        return `https://fast.wistia.net/embed/iframe/${videoId}?time=${initialPosition}`
       }
     }
 
@@ -63,8 +73,9 @@ export function VideoPlayer({
         <iframe
           src={getEmbedUrl()}
           className="w-full h-full"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
           allowFullScreen
+          frameBorder="0"
         />
       </div>
     )

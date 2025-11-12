@@ -10,7 +10,7 @@ import { Search } from 'lucide-react'
 import { CourseCard } from '@/components/lms/courses/course-card'
 import { useState } from 'react'
 
-export const Route = createFileRoute('/_authenticated/syndicate/classroom')({
+export const Route = createFileRoute('/_authenticated/syndicate/classroom/')({
   component: ClassroomPage
 })
 

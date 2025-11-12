@@ -190,14 +190,6 @@ function ConversationChat({
   const [isMobile, setIsMobile] = useState(false)
   const hasAutoOpenedRef = useRef(false)
 
-  // Streaming artifact state (for tool-based artifact creation)
-  const [streamingArtifact, setStreamingArtifact] = useState<{
-    id: string
-    title: string
-    kind: string
-    content: string
-    isComplete: boolean
-  } | null>(null)
 
   // Detect mobile viewport
   useEffect(() => {
@@ -220,49 +212,6 @@ function ConversationChat({
     },
     onError: (error) => {
       console.error('❌ Chat error:', error)
-    },
-    // Handle custom data stream parts for artifact streaming
-    experimental_onData: (data) => {
-      console.log('📦 Received data stream part:', data)
-
-      // Handle artifact metadata (opens panel)
-      if (data.type === 'artifact-metadata') {
-        console.log('🎬 Opening artifact panel:', data.title)
-        setStreamingArtifact({
-          id: data.id,
-          title: data.title,
-          kind: data.kind,
-          content: '',
-          isComplete: false,
-        })
-        // Auto-open panel
-        setSelectedArtifactIndex(0)
-        hasAutoOpenedRef.current = true
-      }
-
-      // Handle artifact content delta (stream content)
-      if (data.type === 'artifact-content-delta') {
-        console.log('📝 Appending artifact content:', data.delta.length, 'chars')
-        setStreamingArtifact((prev) => {
-          if (!prev || prev.id !== data.id) return prev
-          return {
-            ...prev,
-            content: prev.content + data.delta,
-          }
-        })
-      }
-
-      // Handle artifact completion
-      if (data.type === 'artifact-complete') {
-        console.log('✅ Artifact streaming complete:', data.id)
-        setStreamingArtifact((prev) => {
-          if (!prev || prev.id !== data.id) return prev
-          return {
-            ...prev,
-            isComplete: true,
-          }
-        })
-      }
     },
   })
 
@@ -289,23 +238,47 @@ function ConversationChat({
     }
   }, [conversationId, data.messages, setMessages])
 
-  // Parse artifacts once per message and cache (prevents ID mismatches)
+  // Parse artifacts from messages (both code blocks and tool calls)
   const messageArtifacts = useMemo(() => {
     const artifactsByMessage = new Map<string, Artifact[]>()
     const isStreaming = status === 'streaming'
 
     messages.forEach((message, index) => {
+      if (!agentData?.artifactsEnabled) return
+
+      const artifacts: Artifact[] = []
+
+      // 1. Check for createDocument tool calls
+      message.parts?.forEach((part) => {
+        if (part.type === 'tool-call' && part.toolName === 'createDocument') {
+          console.log('🔧 Detected createDocument tool call:', part)
+          // Extract parameters from tool call
+          const { title, kind, content } = part.args as { title: string; kind: string; content: string }
+          artifacts.push({
+            id: part.toolCallId,
+            title,
+            type: kind === 'text' ? 'markdown' : 'code',
+            content,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          } as Artifact)
+        }
+      })
+
+      // 2. Fallback: Parse code blocks (for backwards compatibility)
       const textContent = message.parts?.map((part) =>
         part.type === 'text' ? part.text : ''
       ).join('') || ''
 
-      if (agentData?.artifactsEnabled) {
-        // For the last message while streaming, allow partial artifacts
+      if (textContent && artifacts.length === 0) {
         const isLastMessage = index === messages.length - 1
         const allowPartial = isStreaming && isLastMessage && message.role === 'assistant'
-
         const parsedArtifacts = parseArtifactsFromContent(textContent, message.id, allowPartial)
-        artifactsByMessage.set(message.id, parsedArtifacts)
+        artifacts.push(...parsedArtifacts)
+      }
+
+      if (artifacts.length > 0) {
+        artifactsByMessage.set(message.id, artifacts)
       }
     })
 
@@ -318,60 +291,55 @@ function ConversationChat({
     messageArtifacts.forEach((messageArtifacts) => {
       artifacts.push(...messageArtifacts)
     })
-
-    // Add streaming artifact if it exists (tool-based streaming)
-    if (streamingArtifact) {
-      artifacts.push({
-        id: streamingArtifact.id,
-        title: streamingArtifact.title,
-        type: streamingArtifact.kind === 'text' ? 'markdown' : 'code',
-        content: streamingArtifact.content,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      } as Artifact)
-    }
-
     return artifacts
-  }, [messageArtifacts, streamingArtifact])
+  }, [messageArtifacts])
 
-  // Auto-open side panel when streaming artifact detected
+  // Auto-open side panel when artifact detected
   useEffect(() => {
     if (hasAutoOpenedRef.current) return
 
-    // Check if currently streaming
-    const isStreaming = status === 'streaming'
-
-    // Check last assistant message for opening code fence (artifact starting)
-    if (isStreaming && messages.length > 0) {
+    // Check last assistant message for tool calls or code blocks
+    if (messages.length > 0) {
       const lastMessage = messages[messages.length - 1]
       if (lastMessage.role === 'assistant') {
+        // Check for createDocument tool call
+        const hasToolCall = lastMessage.parts?.some(part =>
+          part.type === 'tool-call' && part.toolName === 'createDocument'
+        )
+
+        if (hasToolCall && selectedArtifactIndex === null) {
+          setSelectedArtifactIndex(0)
+          hasAutoOpenedRef.current = true
+          console.log('🎬 Auto-opened side panel for tool-based artifact')
+          return
+        }
+
+        // Fallback: Check for code blocks (backwards compatibility)
         const textContent = lastMessage.parts?.map((part) =>
           part.type === 'text' ? part.text : ''
         ).join('') || ''
 
-        // Detect opening code fence for markdown artifacts
         const hasOpeningFence = /```(?:markdown|document|code|javascript|typescript|html|css)/i.test(textContent)
 
         if (hasOpeningFence && selectedArtifactIndex === null) {
           setSelectedArtifactIndex(0)
           hasAutoOpenedRef.current = true
-          console.log('🎬 Auto-opened side panel for streaming artifact')
+          console.log('🎬 Auto-opened side panel for code block artifact')
         }
       }
     }
 
-    // Also open when complete artifacts appear (fallback)
+    // Also open when complete artifacts appear (general fallback)
     if (!hasAutoOpenedRef.current && allArtifacts.length > 0 && selectedArtifactIndex === null) {
       setSelectedArtifactIndex(0)
       hasAutoOpenedRef.current = true
       console.log('🎬 Auto-opened side panel for completed artifact')
     }
-  }, [messages, status, allArtifacts.length, selectedArtifactIndex])
+  }, [messages, allArtifacts.length, selectedArtifactIndex])
 
-  // Reset auto-open flag and streaming artifact when navigating to different conversation
+  // Reset auto-open flag when navigating to different conversation
   useEffect(() => {
     hasAutoOpenedRef.current = false
-    setStreamingArtifact(null)
   }, [conversationId])
 
   // Keyboard shortcuts (ESC to close, Cmd+\ to toggle)
