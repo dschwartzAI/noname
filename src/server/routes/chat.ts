@@ -10,7 +10,7 @@
 
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
-import { streamText, streamObject, convertToModelMessages, generateText, tool, createDataStreamResponse } from 'ai'
+import { streamText, streamObject, convertToModelMessages, generateText, tool, createUIMessageStream, createUIMessageStreamResponse } from 'ai'
 import { requireAuth } from '../middleware/auth'
 import { injectOrganization } from '../middleware/organization'
 import { neon } from '@neondatabase/serverless'
@@ -384,9 +384,9 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
 
     console.log('📝 Converted messages:', JSON.stringify(messages, null, 2))
 
-    // Use createDataStreamResponse for custom data parts (artifact streaming)
-    const response = createDataStreamResponse({
-      execute: async (dataStream) => {
+    // Use createUIMessageStream for custom data parts (artifact streaming)
+    const stream = createUIMessageStream({
+      execute: async ({ writer }) => {
         // Define createDocument tool for artifact generation
         const tools = artifactInstructions ? {
           createDocument: tool({
@@ -399,9 +399,10 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
               const artifactId = nanoid()
               console.log('🎨 Creating artifact via tool:', { artifactId, title, kind })
 
-              // 1. Signal artifact metadata (transient - not in chat history)
-              dataStream.writeData({
-                type: 'artifact-metadata',
+              // 1. Signal artifact metadata (opens panel)
+              writer.write({
+                type: 'data-artifact-metadata',
+                id: artifactId,
                 data: { id: artifactId, title, kind },
               })
 
@@ -415,8 +416,9 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
               // 3. Stream content deltas to client
               for await (const delta of fullStream) {
                 if (delta.type === 'object' && delta.object.content) {
-                  dataStream.writeData({
-                    type: 'artifact-delta',
+                  writer.write({
+                    type: 'data-artifact-delta',
+                    id: artifactId,
                     data: delta.object.content,
                   })
                 }
@@ -426,8 +428,9 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
               const finalArtifact = await object
 
               // 5. Signal completion
-              dataStream.writeData({
-                type: 'artifact-complete',
+              writer.write({
+                type: 'data-artifact-complete',
+                id: artifactId,
                 data: finalArtifact,
               })
 
@@ -668,12 +671,15 @@ RESPOND WITH ONLY VALID JSON, NO MARKDOWN, NO EXPLANATION:`
       },
         })
 
-        console.log('📡 Stream created, merging into dataStream')
+        console.log('📡 Stream created, merging into writer')
 
-        // Merge AI stream into dataStream (includes custom artifact data)
-        result.mergeIntoDataStream(dataStream)
+        // Merge AI stream into writer (includes custom artifact data)
+        writer.merge(result.toUIMessageStream())
       },
     })
+
+    // Create response from stream
+    const response = createUIMessageStreamResponse({ stream })
 
     // Add conversationId to response headers for frontend to track
     response.headers.set('X-Conversation-Id', currentConversationId!)
