@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Outlet, useParams } from '@tanstack/react-router'
+import { Outlet, useParams, useSearch } from '@tanstack/react-router'
 import { Wrench } from 'lucide-react'
 import { getCookie } from '@/lib/cookies'
 import { cn } from '@/lib/utils'
@@ -48,10 +48,13 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   const defaultOpen = getCookie('sidebar_state') !== 'false'
   const { user } = useAuth()
   const params = useParams({ strict: false })
+  const search = useSearch({ strict: false })
   const [agentBuilderOpen, setAgentBuilderOpen] = useState(false)
 
-  // Get active conversation ID from URL params
-  const activeConversationId = 'conversationId' in params ? params.conversationId : undefined
+  // Get active conversation ID from URL params (dynamic route) or search params (index route)
+  const activeConversationId =
+    ('conversationId' in params ? params.conversationId : undefined) ||
+    (search && 'conversationId' in search ? search.conversationId as string : undefined)
 
   // Fetch real conversations from API
   const { data: conversations, isLoading: conversationsLoading, error: conversationsError } = useConversations()
