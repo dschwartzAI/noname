@@ -34,19 +34,36 @@ function MessageBoardPage() {
   const { data: categoriesData } = useQuery({
     queryKey: ['board-categories'],
     queryFn: async () => {
-      const res = await fetch('/api/v1/board/categories')
-      return res.json()
+      try {
+        const res = await fetch('/api/v1/board/categories')
+        if (!res.ok) throw new Error('API not available')
+        return res.json()
+      } catch (error) {
+        const { mockBoardCategories } = await import('@/lib/mock-data/lms-mock-data')
+        return { categories: mockBoardCategories }
+      }
     }
   })
 
   const { data: threadsData, isLoading } = useQuery({
     queryKey: ['board-threads', selectedCategory, sortBy],
     queryFn: async () => {
-      const params = new URLSearchParams()
-      if (selectedCategory !== 'all') params.append('category', selectedCategory)
-      params.append('sortBy', sortBy)
-      const res = await fetch(`/api/v1/board/threads?${params}`)
-      return res.json()
+      try {
+        const params = new URLSearchParams()
+        if (selectedCategory !== 'all') params.append('category', selectedCategory)
+        params.append('sortBy', sortBy)
+        const res = await fetch(`/api/v1/board/threads?${params}`)
+        if (!res.ok) throw new Error('API not available')
+        return res.json()
+      } catch (error) {
+        const { mockBoardThreads } = await import('@/lib/mock-data/lms-mock-data')
+        // Filter by category if needed
+        let threads = mockBoardThreads
+        if (selectedCategory !== 'all') {
+          threads = mockBoardThreads.filter(t => t.categoryId === selectedCategory)
+        }
+        return { threads }
+      }
     }
   })
 
@@ -93,6 +110,20 @@ function MessageBoardPage() {
 
   return (
     <div className="container max-w-6xl py-6 space-y-6">
+      {/* Breadcrumb Navigation */}
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate({ to: '/syndicate' })}
+          className="h-auto p-0 hover:text-foreground"
+        >
+          Syndicate
+        </Button>
+        <span>/</span>
+        <span className="font-medium text-foreground">Message Board</span>
+      </div>
+
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>

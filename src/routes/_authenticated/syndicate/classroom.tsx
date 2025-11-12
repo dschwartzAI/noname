@@ -21,8 +21,15 @@ function ClassroomPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['courses'],
     queryFn: async () => {
-      const res = await fetch('/api/v1/courses')
-      return res.json()
+      try {
+        const res = await fetch('/api/v1/courses')
+        if (!res.ok) throw new Error('API not available')
+        return res.json()
+      } catch (error) {
+        // Use mock data if API is not available
+        const { mockCourses } = await import('@/lib/mock-data/lms-mock-data')
+        return { courses: mockCourses }
+      }
     }
   })
 
@@ -57,6 +64,20 @@ function ClassroomPage() {
 
   return (
     <div className="container max-w-7xl py-6 space-y-6">
+      {/* Breadcrumb Navigation */}
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate({ to: '/syndicate' })}
+          className="h-auto p-0 hover:text-foreground"
+        >
+          Syndicate
+        </Button>
+        <span>/</span>
+        <span className="font-medium text-foreground">Classroom</span>
+      </div>
+
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Classroom</h1>

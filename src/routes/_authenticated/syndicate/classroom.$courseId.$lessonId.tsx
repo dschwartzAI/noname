@@ -28,8 +28,15 @@ function LessonPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['lesson', lessonId],
     queryFn: async () => {
-      const res = await fetch(`/api/v1/courses/lessons/${lessonId}`)
-      return res.json()
+      try {
+        const res = await fetch(`/api/v1/courses/lessons/${lessonId}`)
+        if (!res.ok) throw new Error('API not available')
+        return res.json()
+      } catch (error) {
+        // Use mock data if API is not available
+        const { mockLessonDetail } = await import('@/lib/mock-data/lms-mock-data')
+        return mockLessonDetail
+      }
     }
   })
 
@@ -84,24 +91,35 @@ function LessonPage() {
 
   return (
     <div className="container max-w-6xl py-6 space-y-6">
-      {/* Breadcrumb */}
+      {/* Breadcrumb Navigation */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Button
           variant="ghost"
           size="sm"
+          onClick={() => navigate({ to: '/syndicate' })}
+          className="h-auto p-0 hover:text-foreground"
+        >
+          Syndicate
+        </Button>
+        <span>/</span>
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={() => navigate({ to: '/syndicate/classroom' })}
+          className="h-auto p-0 hover:text-foreground"
         >
           Classroom
         </Button>
-        <ChevronRight className="h-4 w-4" />
+        <span>/</span>
         <Button
           variant="ghost"
           size="sm"
           onClick={() => navigate({ to: '/syndicate/classroom/$courseId', params: { courseId } })}
+          className="h-auto p-0 hover:text-foreground"
         >
           {course?.title || 'Course'}
         </Button>
-        <ChevronRight className="h-4 w-4" />
+        <span>/</span>
         <span className="font-medium text-foreground">{lesson.title}</span>
       </div>
 

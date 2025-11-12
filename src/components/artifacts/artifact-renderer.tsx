@@ -4,22 +4,24 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { 
-  Code, 
-  Eye, 
-  Copy, 
-  Download, 
-  Edit, 
-  FileCode, 
-  FileText, 
-  Image, 
+import {
+  Code,
+  Eye,
+  Copy,
+  Download,
+  Edit,
+  FileCode,
+  FileText,
+  Image,
   BarChart3,
   Globe,
-  Palette
+  Palette,
+  Maximize2
 } from 'lucide-react'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import type { Artifact } from '@/types/artifacts'
+import { ArtifactExpandedView } from './artifact-expanded-view'
 
 interface ArtifactRendererProps {
   artifact: Artifact
@@ -77,13 +79,14 @@ const getLanguageForHighlighting = (type: string, language?: string) => {
   }
 }
 
-export function ArtifactRenderer({ 
-  artifact, 
-  onEdit, 
+export function ArtifactRenderer({
+  artifact,
+  onEdit,
   onDelete,
-  className 
+  className
 }: ArtifactRendererProps) {
   const [activeTab, setActiveTab] = useState('preview')
+  const [isExpanded, setIsExpanded] = useState(false)
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(artifact.content)
@@ -184,6 +187,7 @@ export function ArtifactRenderer({
               size='sm'
               onClick={handleCopy}
               className='h-8 w-8 p-0'
+              title="Copy to clipboard"
             >
               <Copy className='h-4 w-4' />
             </Button>
@@ -192,8 +196,18 @@ export function ArtifactRenderer({
               size='sm'
               onClick={handleDownload}
               className='h-8 w-8 p-0'
+              title="Download"
             >
               <Download className='h-4 w-4' />
+            </Button>
+            <Button
+              variant='ghost'
+              size='sm'
+              onClick={() => setIsExpanded(true)}
+              className='h-8 w-8 p-0'
+              title="Expand"
+            >
+              <Maximize2 className='h-4 w-4' />
             </Button>
             {onEdit && (
               <Button
@@ -201,6 +215,7 @@ export function ArtifactRenderer({
                 size='sm'
                 onClick={() => onEdit(artifact)}
                 className='h-8 w-8 p-0'
+                title="Edit"
               >
                 <Edit className='h-4 w-4' />
               </Button>
@@ -242,6 +257,13 @@ export function ArtifactRenderer({
           </TabsContent>
         </Tabs>
       </CardContent>
+
+      {/* Expanded view dialog */}
+      <ArtifactExpandedView
+        artifact={artifact}
+        open={isExpanded}
+        onOpenChange={setIsExpanded}
+      />
     </Card>
   )
 }

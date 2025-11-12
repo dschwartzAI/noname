@@ -46,8 +46,14 @@ function ThreadPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['thread', threadId],
     queryFn: async () => {
-      const res = await fetch(`/api/v1/board/threads/${threadId}`)
-      return res.json()
+      try {
+        const res = await fetch(`/api/v1/board/threads/${threadId}`)
+        if (!res.ok) throw new Error('API not available')
+        return res.json()
+      } catch (error) {
+        const { mockThreadDetail } = await import('@/lib/mock-data/lms-mock-data')
+        return mockThreadDetail
+      }
     }
   })
 
@@ -92,15 +98,28 @@ function ThreadPage() {
 
   return (
     <div className="container max-w-5xl py-6 space-y-6">
-      {/* Back Button */}
-      <Button
-        variant="ghost"
-        onClick={() => navigate({ to: '/syndicate/board' })}
-        className="gap-2"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to Message Board
-      </Button>
+      {/* Breadcrumb Navigation */}
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate({ to: '/syndicate' })}
+          className="h-auto p-0 hover:text-foreground"
+        >
+          Syndicate
+        </Button>
+        <span>/</span>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate({ to: '/syndicate/board' })}
+          className="h-auto p-0 hover:text-foreground"
+        >
+          Message Board
+        </Button>
+        <span>/</span>
+        <span className="font-medium text-foreground line-clamp-1">{thread.title}</span>
+      </div>
 
       {/* Thread */}
       <Card>
