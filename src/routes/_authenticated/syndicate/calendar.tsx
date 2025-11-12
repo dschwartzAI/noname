@@ -1,8 +1,9 @@
 "use client"
 
 import { useState } from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { MonthCalendar } from '@/components/lms/calendar/month-calendar'
 import { EventDetailModal } from '@/components/lms/calendar/event-detail-modal'
@@ -15,6 +16,7 @@ export const Route = createFileRoute('/_authenticated/syndicate/calendar')({
 })
 
 function CalendarPage() {
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [selectedEvent, setSelectedEvent] = useState<SelectCalendarEvent | null>(null)
   const [showDetailModal, setShowDetailModal] = useState(false)

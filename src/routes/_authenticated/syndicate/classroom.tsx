@@ -2,6 +2,7 @@
 
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
@@ -59,6 +60,7 @@ function ClassroomPage() {
   })
 
   const handleCourseClick = (courseId: string) => {
+    console.log('Navigating to course:', courseId)
     navigate({ to: '/syndicate/classroom/$courseId', params: { courseId } })
   }
 

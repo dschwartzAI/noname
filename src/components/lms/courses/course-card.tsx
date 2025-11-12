@@ -43,7 +43,13 @@ export function CourseCard({
   return (
     <Card 
       className="hover:shadow-lg transition-all cursor-pointer group h-full flex flex-col" 
-      onClick={onClick}
+      onClick={(e) => {
+        // Only trigger if not clicking the button
+        if ((e.target as HTMLElement).closest('button')) {
+          return
+        }
+        onClick()
+      }}
     >
       {/* Thumbnail */}
       {course.thumbnail && (
@@ -134,6 +140,10 @@ export function CourseCard({
         <Button 
           className="w-full mt-4" 
           variant={isEnrolled ? "default" : "outline"}
+          onClick={(e) => {
+            e.stopPropagation()
+            onClick()
+          }}
         >
           {isCompleted ? 'Review Course' : isEnrolled ? 'Continue Learning' : 'Start Course'}
         </Button>

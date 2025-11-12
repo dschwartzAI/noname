@@ -50,6 +50,16 @@ function CoursePage() {
     )
   }
 
+  if (!data) {
+    return (
+      <div className="container max-w-6xl py-6">
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">Course not found</p>
+        </div>
+      </div>
+    )
+  }
+
   const { course, modules, enrollment, stats } = data
   const completedLessons = enrollment?.completedLessons || []
   const isEnrolled = !!enrollment
