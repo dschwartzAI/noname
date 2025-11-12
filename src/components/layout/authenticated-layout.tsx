@@ -51,7 +51,8 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
   const { data: conversations, isLoading: conversationsLoading, error: conversationsError } = useConversations()
 
   // Fetch agents for New Chat collapsible menu
-  const { data: agents, isLoading: agentsLoading } = useAgents()
+  const { data: agentsData, isLoading: agentsLoading } = useAgents()
+  const agents = agentsData?.agents
 
   // Connect to UserSysDO for remote auth events
   useUserSysEvents(user?.id || null)
@@ -75,7 +76,8 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
             items: agents.map((agent) => ({
               title: agent.name,
               url: `/ai-chat?new=${nanoid()}&agentId=${agent.id}`,
-              icon: agent.avatar?.source === 'emoji' ? undefined : undefined, // We'll handle icons differently
+              avatar: agent.avatar, // Pass avatar data for custom rendering
+              description: agent.description, // Pass description for tooltip
             })),
           }
         }

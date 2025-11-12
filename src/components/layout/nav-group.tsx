@@ -27,11 +27,18 @@ import {
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu'
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '../ui/tooltip'
+import {
   type NavCollapsible,
   type NavItem,
   type NavLink,
   type NavGroup as NavGroupProps,
 } from './types'
+import { getAgentIconSrc, getAgentEmoji } from '@/features/ai-chat/utils/get-agent-icon'
 
 export function NavGroup({ title, items }: NavGroupProps) {
   const { state, isMobile } = useSidebar()
@@ -107,20 +114,53 @@ function SidebarMenuCollapsible({
         </CollapsibleTrigger>
         <CollapsibleContent className='CollapsibleContent'>
           <SidebarMenuSub>
-            {item.items.map((subItem) => (
-              <SidebarMenuSubItem key={subItem.title}>
-                <SidebarMenuSubButton
-                  asChild
-                  isActive={checkIsActive(href, subItem)}
-                >
-                  <Link to={subItem.url} onClick={() => setOpenMobile(false)}>
-                    {subItem.icon && <subItem.icon />}
-                    <span>{subItem.title}</span>
-                    {subItem.badge && <NavBadge>{subItem.badge}</NavBadge>}
-                  </Link>
-                </SidebarMenuSubButton>
-              </SidebarMenuSubItem>
-            ))}
+            <TooltipProvider delayDuration={300}>
+              {item.items.map((subItem) => {
+                // Check if this is an agent item with avatar data
+                const hasAvatar = 'avatar' in subItem && subItem.avatar
+                const agentData = hasAvatar ? { avatar: subItem.avatar } as any : null
+                const iconSrc = agentData ? getAgentIconSrc(agentData) : null
+                const emoji = agentData ? getAgentEmoji(agentData) : null
+                const description = 'description' in subItem ? subItem.description : null
+
+                return (
+                  <SidebarMenuSubItem key={subItem.title}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <SidebarMenuSubButton
+                          asChild
+                          isActive={checkIsActive(href, subItem)}
+                        >
+                          <Link to={subItem.url} onClick={() => setOpenMobile(false)}>
+                            {/* Render agent avatar or default icon */}
+                            {hasAvatar ? (
+                              <div className="h-4 w-4 rounded-sm bg-primary/10 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                {iconSrc ? (
+                                  <img src={iconSrc} alt={subItem.title} className="w-full h-full object-cover" />
+                                ) : emoji ? (
+                                  <span className="text-[8px]">{emoji}</span>
+                                ) : (
+                                  <span className="text-[8px]">{subItem.title[0]}</span>
+                                )}
+                              </div>
+                            ) : (
+                              subItem.icon && <subItem.icon />
+                            )}
+                            <span>{subItem.title}</span>
+                            {subItem.badge && <NavBadge>{subItem.badge}</NavBadge>}
+                          </Link>
+                        </SidebarMenuSubButton>
+                      </TooltipTrigger>
+                      {description && (
+                        <TooltipContent side="right" className="max-w-xs">
+                          <p>{description}</p>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </SidebarMenuSubItem>
+                )
+              })}
+            </TooltipProvider>
           </SidebarMenuSub>
         </CollapsibleContent>
       </SidebarMenuItem>
@@ -154,20 +194,41 @@ function SidebarMenuCollapsedDropdown({
             {item.title} {item.badge ? `(${item.badge})` : ''}
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          {item.items.map((sub) => (
-            <DropdownMenuItem key={`${sub.title}-${sub.url}`} asChild>
-              <Link
-                to={sub.url}
-                className={`${checkIsActive(href, sub) ? 'bg-secondary' : ''}`}
-              >
-                {sub.icon && <sub.icon />}
-                <span className='max-w-52 text-wrap'>{sub.title}</span>
-                {sub.badge && (
-                  <span className='ms-auto text-xs'>{sub.badge}</span>
-                )}
-              </Link>
-            </DropdownMenuItem>
-          ))}
+          {item.items.map((sub) => {
+            // Check if this is an agent item with avatar data
+            const hasAvatar = 'avatar' in sub && sub.avatar
+            const agentData = hasAvatar ? { avatar: sub.avatar } as any : null
+            const iconSrc = agentData ? getAgentIconSrc(agentData) : null
+            const emoji = agentData ? getAgentEmoji(agentData) : null
+
+            return (
+              <DropdownMenuItem key={`${sub.title}-${sub.url}`} asChild>
+                <Link
+                  to={sub.url}
+                  className={`${checkIsActive(href, sub) ? 'bg-secondary' : ''}`}
+                >
+                  {/* Render agent avatar or default icon */}
+                  {hasAvatar ? (
+                    <div className="h-4 w-4 rounded-sm bg-primary/10 flex items-center justify-center overflow-hidden flex-shrink-0">
+                      {iconSrc ? (
+                        <img src={iconSrc} alt={sub.title} className="w-full h-full object-cover" />
+                      ) : emoji ? (
+                        <span className="text-[8px]">{emoji}</span>
+                      ) : (
+                        <span className="text-[8px]">{sub.title[0]}</span>
+                      )}
+                    </div>
+                  ) : (
+                    sub.icon && <sub.icon />
+                  )}
+                  <span className='max-w-52 text-wrap'>{sub.title}</span>
+                  {sub.badge && (
+                    <span className='ms-auto text-xs'>{sub.badge}</span>
+                  )}
+                </Link>
+              </DropdownMenuItem>
+            )
+          })}
         </DropdownMenuContent>
       </DropdownMenu>
     </SidebarMenuItem>
