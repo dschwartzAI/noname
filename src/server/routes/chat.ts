@@ -10,7 +10,7 @@
 
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
-import { streamText, streamObject, convertToModelMessages, generateText, tool } from 'ai'
+import { streamText, streamObject, convertToModelMessages, generateText, tool, createDataStreamResponse } from 'ai'
 import { requireAuth } from '../middleware/auth'
 import { injectOrganization } from '../middleware/organization'
 import { neon } from '@neondatabase/serverless'
@@ -384,13 +384,72 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
 
     console.log('📝 Converted messages:', JSON.stringify(messages, null, 2))
 
-    // Stream AI response with onFinish callback for database persistence
-    const result = await streamText({
-      model: aiModel,
-      messages,
-      temperature: 0.7,
-      maxTokens: 2048,
-      onFinish: async ({ text, finishReason, usage }) => {
+    // Use createDataStreamResponse for custom data parts (artifact streaming)
+    const response = createDataStreamResponse({
+      execute: async (dataStream) => {
+        // Define createDocument tool for artifact generation
+        const tools = artifactInstructions ? {
+          createDocument: tool({
+            description: 'Create a document artifact (code, text, HTML, or React component) for the user to see and interact with',
+            parameters: z.object({
+              title: z.string().describe('Descriptive title for the artifact'),
+              kind: z.enum(['text', 'code', 'html', 'react']).describe('Type of artifact to create'),
+            }),
+            execute: async ({ title, kind }) => {
+              const artifactId = nanoid()
+              console.log('🎨 Creating artifact via tool:', { artifactId, title, kind })
+
+              // 1. Signal artifact metadata (transient - not in chat history)
+              dataStream.writeData({
+                type: 'artifact-metadata',
+                data: { id: artifactId, title, kind },
+              })
+
+              // 2. Generate artifact content with streamObject
+              const { object, fullStream } = streamObject({
+                model: aiModel,
+                schema: artifactSchema,
+                prompt: `Generate a ${kind} artifact with title: "${title}". Provide the full content.`,
+              })
+
+              // 3. Stream content deltas to client
+              for await (const delta of fullStream) {
+                if (delta.type === 'object' && delta.object.content) {
+                  dataStream.writeData({
+                    type: 'artifact-delta',
+                    data: delta.object.content,
+                  })
+                }
+              }
+
+              // 4. Wait for final object
+              const finalArtifact = await object
+
+              // 5. Signal completion
+              dataStream.writeData({
+                type: 'artifact-complete',
+                data: finalArtifact,
+              })
+
+              console.log('✅ Artifact creation complete:', {
+                artifactId,
+                contentLength: finalArtifact.content?.length || 0,
+              })
+
+              // Return summary for chat message
+              return `Created artifact: ${title}`
+            },
+          }),
+        } : undefined
+
+        // Stream AI response with tool support
+        const result = streamText({
+          model: aiModel,
+          messages,
+          temperature: 0.7,
+          maxTokens: 2048,
+          tools,
+          onFinish: async ({ text, finishReason, usage }) => {
         try {
           console.log('✅ AI response complete:', {
             finishReason,
@@ -607,14 +666,13 @@ RESPOND WITH ONLY VALID JSON, NO MARKDOWN, NO EXPLANATION:`
           console.error('❌ Error in onFinish:', error)
         }
       },
-    })
+        })
 
-    console.log('📡 Stream created, using toUIMessageStreamResponse() (AI SDK v5)')
+        console.log('📡 Stream created, merging into dataStream')
 
-    // Use Vercel AI SDK v5's UI message stream response (works with useChat hook)
-    // IMPORTANT: Pass originalMessages to prevent duplicate messages in client state
-    const response = result.toUIMessageStreamResponse({
-      originalMessages: uiMessages,
+        // Merge AI stream into dataStream (includes custom artifact data)
+        result.mergeIntoDataStream(dataStream)
+      },
     })
 
     // Add conversationId to response headers for frontend to track
@@ -639,104 +697,7 @@ RESPOND WITH ONLY VALID JSON, NO MARKDOWN, NO EXPLANATION:`
   }
 })
 
-/**
- * POST /api/v1/chat/artifact - Generate artifact with progressive streaming
- *
- * Uses streamObject to progressively stream artifact content
- * Returns partial object updates for real-time display
- */
-chatApp.post('/artifact', zValidator('json', z.object({
-  conversationId: z.string().optional(),
-  prompt: z.string(),
-  kind: z.enum(['text', 'code', 'html', 'react']).optional(),
-  model: z.string().optional(),
-  agentId: z.string().optional(),
-})), async (c) => {
-  try {
-    const { conversationId, prompt, kind, model, agentId } = c.req.valid('json')
-    const user = c.get('user')
-    const organizationId = c.get('organizationId')
-
-    if (!organizationId) {
-      return c.json({ error: 'No organization context' }, 403)
-    }
-
-    console.log('🎨 Artifact generation request:', {
-      userId: user.id,
-      organizationId,
-      conversationId,
-      kind,
-      model: model || 'gpt-4o',
-    })
-
-    // Save user message to database first (if conversationId provided)
-    if (conversationId) {
-      const sqlClient = neon(c.env.DATABASE_URL)
-      const db = drizzle(sqlClient, { schema: authSchema })
-
-      await db.insert(authSchema.message).values({
-        id: nanoid(),
-        conversationId,
-        organizationId,
-        role: 'user',
-        content: prompt,
-        toolCalls: null,
-        toolResults: null,
-        metadata: null,
-      })
-    }
-
-    // Get AI model
-    const aiModel = getModel({
-      ANTHROPIC_API_KEY: c.env.ANTHROPIC_API_KEY,
-      OPENAI_API_KEY: c.env.OPENAI_API_KEY,
-      XAI_API_KEY: c.env.XAI_API_KEY,
-    }, model || 'gpt-4o')
-
-    // Use streamObject for progressive structured streaming
-    const result = streamObject({
-      model: aiModel,
-      schema: artifactSchema,
-      prompt: kind
-        ? `Generate a ${kind} artifact for: ${prompt}. Provide a descriptive title, the kind (${kind}), and the full content.`
-        : `Generate an artifact for: ${prompt}. Determine the appropriate kind (text, code, html, or react), provide a descriptive title, and the full content.`,
-      onFinish: async ({ object }) => {
-        console.log('✅ Artifact generated:', {
-          title: object.title,
-          kind: object.kind,
-          contentLength: object.content?.length || 0,
-        })
-
-        // Optionally save to database
-        if (conversationId) {
-          const sqlClient = neon(c.env.DATABASE_URL)
-          const db = drizzle(sqlClient, { schema: authSchema })
-
-          // Save as assistant message with artifact metadata
-          await db.insert(authSchema.message).values({
-            id: nanoid(),
-            conversationId,
-            organizationId,
-            role: 'assistant',
-            content: `Created artifact: ${object.title}`,
-            toolCalls: null,
-            toolResults: null,
-            metadata: {
-              artifact: object,
-            },
-          })
-        }
-      },
-    })
-
-    // Return the partial object stream
-    return result.toTextStreamResponse()
-
-  } catch (error) {
-    console.error('❌ Artifact generation error:', error)
-    return c.json({ error: 'Failed to generate artifact' }, 500)
-  }
-})
+// /artifact endpoint removed - now using createDocument tool in regular chat
 
 /**
  * GET /api/v1/chat/:conversationId - Get conversation history
