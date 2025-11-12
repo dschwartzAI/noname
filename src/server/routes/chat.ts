@@ -91,6 +91,7 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
       messageCount: messagesArray?.length,
       hasSingleMessage: !!message
     })
+    console.log('📥 Received messagesArray:', JSON.stringify(messagesArray, null, 2))
 
     // Initialize database connection
     const sqlClient = neon(c.env.DATABASE_URL)
