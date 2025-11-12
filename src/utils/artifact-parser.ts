@@ -65,10 +65,10 @@ const ARTIFACT_INTENT_KEYWORDS = [
   'build component'
 ]
 
-export function parseArtifactsFromContent(content: string, messageId?: string): Artifact[] {
+export function parseArtifactsFromContent(content: string, messageId?: string, allowPartial: boolean = false): Artifact[] {
   const artifacts: Artifact[] = []
-  const codeBlocks = extractCodeBlocks(content)
-  
+  const codeBlocks = extractCodeBlocks(content, allowPartial)
+
   codeBlocks.forEach((block, index) => {
     const artifact = createArtifactFromCodeBlock(block, index, messageId)
     if (artifact) {
@@ -91,18 +91,38 @@ export function shouldCreateArtifact(userMessage: string, aiResponse: string): b
   return hasIntent || isSubstantialCode || hasMultipleCodeBlocks
 }
 
-function extractCodeBlocks(content: string) {
+function extractCodeBlocks(content: string, allowPartial: boolean = false) {
   const blocks: { language: string; content: string; fullMatch: string }[] = []
-  const regex = /```(\w+)?\s*([\s\S]*?)```/g
-  let match
 
-  while ((match = regex.exec(content)) !== null) {
-    const [fullMatch, language = '', codeContent] = match
-    blocks.push({
-      language: language.toLowerCase(),
-      content: codeContent.trim(),
-      fullMatch
-    })
+  if (allowPartial) {
+    // For streaming: detect incomplete code blocks (opening ``` without closing)
+    const partialRegex = /```(\w+)?\s*([\s\S]*?)(?:```|$)/g
+    let match
+
+    while ((match = partialRegex.exec(content)) !== null) {
+      const [fullMatch, language = '', codeContent] = match
+      // Only add if there's actual content
+      if (codeContent.trim()) {
+        blocks.push({
+          language: language.toLowerCase(),
+          content: codeContent.trim(),
+          fullMatch
+        })
+      }
+    }
+  } else {
+    // Normal: require complete code blocks
+    const regex = /```(\w+)?\s*([\s\S]*?)```/g
+    let match
+
+    while ((match = regex.exec(content)) !== null) {
+      const [fullMatch, language = '', codeContent] = match
+      blocks.push({
+        language: language.toLowerCase(),
+        content: codeContent.trim(),
+        fullMatch
+      })
+    }
   }
 
   return blocks

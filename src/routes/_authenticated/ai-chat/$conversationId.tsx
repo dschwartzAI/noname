@@ -188,6 +188,7 @@ function ConversationChat({
   // Artifact side panel state
   const [selectedArtifactIndex, setSelectedArtifactIndex] = useState<number | null>(null)
   const [isMobile, setIsMobile] = useState(false)
+  const hasAutoOpenedRef = useRef(false)
 
   // Detect mobile viewport
   useEffect(() => {
@@ -239,20 +240,25 @@ function ConversationChat({
   // Parse artifacts once per message and cache (prevents ID mismatches)
   const messageArtifacts = useMemo(() => {
     const artifactsByMessage = new Map<string, Artifact[]>()
+    const isStreaming = status === 'streaming'
 
-    messages.forEach((message) => {
+    messages.forEach((message, index) => {
       const textContent = message.parts?.map((part) =>
         part.type === 'text' ? part.text : ''
       ).join('') || ''
 
       if (agentData?.artifactsEnabled) {
-        const parsedArtifacts = parseArtifactsFromContent(textContent, message.id)
+        // For the last message while streaming, allow partial artifacts
+        const isLastMessage = index === messages.length - 1
+        const allowPartial = isStreaming && isLastMessage && message.role === 'assistant'
+
+        const parsedArtifacts = parseArtifactsFromContent(textContent, message.id, allowPartial)
         artifactsByMessage.set(message.id, parsedArtifacts)
       }
     })
 
     return artifactsByMessage
-  }, [messages, agentData?.artifactsEnabled])
+  }, [messages, agentData?.artifactsEnabled, status])
 
   // Collect all artifacts from the cached parse results
   const allArtifacts = useMemo(() => {
@@ -260,10 +266,47 @@ function ConversationChat({
     messageArtifacts.forEach((messageArtifacts) => {
       artifacts.push(...messageArtifacts)
     })
-    console.log('🔄 Collected artifacts:', artifacts.length, 'total')
-    console.log('📋 Artifact IDs:', artifacts.map(a => a.id))
     return artifacts
   }, [messageArtifacts])
+
+  // Auto-open side panel when streaming artifact detected
+  useEffect(() => {
+    if (hasAutoOpenedRef.current) return
+
+    // Check if currently streaming
+    const isStreaming = status === 'streaming'
+
+    // Check last assistant message for opening code fence (artifact starting)
+    if (isStreaming && messages.length > 0) {
+      const lastMessage = messages[messages.length - 1]
+      if (lastMessage.role === 'assistant') {
+        const textContent = lastMessage.parts?.map((part) =>
+          part.type === 'text' ? part.text : ''
+        ).join('') || ''
+
+        // Detect opening code fence for markdown artifacts
+        const hasOpeningFence = /```(?:markdown|document|code|javascript|typescript|html|css)/i.test(textContent)
+
+        if (hasOpeningFence && selectedArtifactIndex === null) {
+          setSelectedArtifactIndex(0)
+          hasAutoOpenedRef.current = true
+          console.log('🎬 Auto-opened side panel for streaming artifact')
+        }
+      }
+    }
+
+    // Also open when complete artifacts appear (fallback)
+    if (!hasAutoOpenedRef.current && allArtifacts.length > 0 && selectedArtifactIndex === null) {
+      setSelectedArtifactIndex(0)
+      hasAutoOpenedRef.current = true
+      console.log('🎬 Auto-opened side panel for completed artifact')
+    }
+  }, [messages, status, allArtifacts.length, selectedArtifactIndex])
+
+  // Reset auto-open flag when navigating to different conversation
+  useEffect(() => {
+    hasAutoOpenedRef.current = false
+  }, [conversationId])
 
   // Keyboard shortcuts (ESC to close, Cmd+\ to toggle)
   useEffect(() => {
@@ -344,24 +387,14 @@ function ConversationChat({
                   <ArtifactMessageComponent
                     message={artifactMessage}
                     onArtifactSelect={(artifactId) => {
-                      console.log('🎯 Click handler called:', {
-                        artifactId,
-                        currentSelectedIndex: selectedArtifactIndex,
-                        allArtifactsLength: allArtifacts.length
-                      })
                       const index = allArtifacts.findIndex(a => a.id === artifactId)
-                      console.log('📍 Found at index:', index)
                       if (index !== -1) {
                         // Toggle: if clicking already-selected artifact, close it
                         if (selectedArtifactIndex === index) {
-                          console.log('🔄 Toggling OFF (same artifact clicked)')
                           setSelectedArtifactIndex(null)
                         } else {
-                          console.log('✅ Setting to index:', index)
                           setSelectedArtifactIndex(index)
                         }
-                      } else {
-                        console.log('❌ Artifact not found in array')
                       }
                     }}
                     selectedArtifactId={selectedArtifactIndex !== null ? allArtifacts[selectedArtifactIndex]?.id : undefined}
