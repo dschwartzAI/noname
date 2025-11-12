@@ -259,8 +259,10 @@ function ConversationChat({
               part.type === 'text' ? part.text : ''
             ).join('') || ''
 
-            // Parse artifacts from the text content
-            const artifacts = parseArtifactsFromContent(textContent, message.id)
+            // Only parse artifacts if agent has them enabled
+            const artifacts = agentData?.artifactsEnabled
+              ? parseArtifactsFromContent(textContent, message.id)
+              : []
 
             // Debug logging
             if (message.role === 'assistant') {
@@ -268,6 +270,7 @@ function ConversationChat({
                 messageId: message.id,
                 contentLength: textContent.length,
                 hasCodeBlocks: /```/.test(textContent),
+                agentArtifactsEnabled: agentData?.artifactsEnabled,
                 artifactsFound: artifacts.length,
                 artifacts: artifacts.map(a => ({ type: a.type, title: a.title }))
               })
