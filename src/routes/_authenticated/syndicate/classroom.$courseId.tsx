@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect } from 'react'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useEffect, useRef } from 'react'
+import { createFileRoute, useNavigate, Outlet, useRouterState } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -14,6 +14,21 @@ export const Route = createFileRoute('/_authenticated/syndicate/classroom/$cours
 function CoursePage() {
   const { courseId } = Route.useParams()
   const navigate = useNavigate()
+  const routerState = useRouterState()
+  const hasNavigatedRef = useRef(false)
+  
+  // Check if we're on a lesson route by checking if the pathname has a lessonId segment
+  // Path structure: /syndicate/classroom/course-1/lesson-1
+  const pathname = routerState.location.pathname
+  const pathParts = pathname.split('/').filter(Boolean)
+  // pathParts: ['syndicate', 'classroom', 'course-1', 'lesson-1'] when on lesson route
+  // pathParts: ['syndicate', 'classroom', 'course-1'] when on course route only
+  const isOnLessonRoute = pathParts.length >= 4 && pathParts[3] && pathParts[3] !== courseId
+  
+  // If we're on a lesson route, ONLY render the child route (no loading message)
+  if (isOnLessonRoute) {
+    return <Outlet />
+  }
 
   const { data, isLoading } = useQuery({
     queryKey: ['course', courseId],
@@ -29,31 +44,35 @@ function CoursePage() {
     }
   })
 
-  // Auto-navigate to first lesson when data loads
+  // Reset navigation flag when courseId changes
   useEffect(() => {
-    console.log('useEffect triggered, data:', data)
+    hasNavigatedRef.current = false
+  }, [courseId])
+
+  // Auto-navigate to first lesson when data loads (only once per course)
+  useEffect(() => {
+    // Skip if already on lesson route or already navigated
+    if (isOnLessonRoute || hasNavigatedRef.current) {
+      return
+    }
+
     if (data && data.modules && data.modules.length > 0) {
       const firstLesson = data.modules[0]?.lessons[0]
-      console.log('First lesson found:', firstLesson)
       if (firstLesson) {
-        const targetRoute = '/syndicate/classroom/$courseId/$lessonId'
-        const targetParams = { courseId, lessonId: firstLesson.id }
-        console.log('Navigating to:', targetRoute, 'with params:', targetParams)
+        hasNavigatedRef.current = true
+        console.log('Navigating to first lesson:', firstLesson.id)
         
         navigate({ 
-          to: targetRoute, 
-          params: targetParams,
+          to: '/syndicate/classroom/$courseId/$lessonId', 
+          params: { courseId, lessonId: firstLesson.id },
           replace: true
-        }).then(() => {
-          console.log('Navigation completed successfully')
         }).catch((err) => {
           console.error('Navigation failed:', err)
+          hasNavigatedRef.current = false // Reset on error so we can retry
         })
       }
-    } else {
-      console.log('No data or modules:', { hasData: !!data, hasModules: data?.modules?.length })
     }
-  }, [data, courseId, navigate])
+  }, [data, courseId, navigate, isOnLessonRoute])
 
   if (isLoading) {
     return (
@@ -109,7 +128,8 @@ function CoursePage() {
     )
   }
 
-  // Show loading while navigating
+  // Show loading while navigating to first lesson
+  // Note: This should only show briefly before navigation happens
   return (
     <div className="flex items-center justify-center h-screen">
       <div className="text-center">

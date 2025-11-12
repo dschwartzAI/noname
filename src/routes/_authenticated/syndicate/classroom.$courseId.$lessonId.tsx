@@ -26,30 +26,32 @@ function LessonPage() {
   const { data: courseData } = useQuery({
     queryKey: ['course', courseId],
     queryFn: async () => {
-      try {
-        const res = await fetch(`/api/v1/courses/${courseId}`)
-        if (!res.ok) throw new Error('API not available')
-        return res.json()
-      } catch (error) {
+      const res = await fetch(`/api/v1/courses/${courseId}`)
+      if (!res.ok) {
+        // API not available, use mock data
         const { mockCourseDetail } = await import('@/lib/mock-data/lms-mock-data')
         return mockCourseDetail
       }
-    }
+      return res.json()
+    },
+    retry: false, // Don't retry failed requests
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
   })
 
   // Fetch lesson data
   const { data: lessonData, isLoading } = useQuery({
     queryKey: ['lesson', lessonId],
     queryFn: async () => {
-      try {
-        const res = await fetch(`/api/v1/courses/lessons/${lessonId}`)
-        if (!res.ok) throw new Error('API not available')
-        return res.json()
-      } catch (error) {
+      const res = await fetch(`/api/v1/courses/lessons/${lessonId}`)
+      if (!res.ok) {
+        // API not available, use mock data
         const { mockLessonDetail } = await import('@/lib/mock-data/lms-mock-data')
         return mockLessonDetail
       }
-    }
+      return res.json()
+    },
+    retry: false, // Don't retry failed requests
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
   })
 
   const updateProgressMutation = useMutation({
@@ -205,6 +207,44 @@ function LessonPage() {
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-5xl mx-auto p-6 space-y-6">
+          {/* Breadcrumb Navigation */}
+          <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate({ to: '/syndicate' })}
+              className="h-auto p-0 hover:text-foreground"
+            >
+              Syndicate
+            </Button>
+            <span>/</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate({ to: '/syndicate/classroom' })}
+              className="h-auto p-0 hover:text-foreground"
+            >
+              Classroom
+            </Button>
+            <span>/</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate({ to: '/syndicate/classroom/$courseId', params: { courseId } })}
+              className="h-auto p-0 hover:text-foreground"
+            >
+              <span className="line-clamp-1">{course.title}</span>
+            </Button>
+            {currentModuleIndex >= 0 && modules[currentModuleIndex] && (
+              <>
+                <span>/</span>
+                <span className="line-clamp-1">{modules[currentModuleIndex].title}</span>
+              </>
+            )}
+            <span>/</span>
+            <span className="font-medium text-foreground line-clamp-1">{lesson.title}</span>
+          </div>
+
           {/* Lesson Title */}
           <div>
             <h1 className="text-3xl font-bold">{lesson.title}</h1>
