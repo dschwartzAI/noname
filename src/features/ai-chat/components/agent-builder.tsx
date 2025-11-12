@@ -86,7 +86,7 @@ export function AgentBuilder({ open, onOpenChange, trigger, onSuccess }: AgentBu
   const [icon, setIcon] = useState('') // Legacy emoji field
   const [iconUrl, setIconUrl] = useState<string | null>(null) // Uploaded icon URL
   const [model, setModel] = useState('gpt-4o')
-  const [artifactsEnabled, setArtifactsEnabled] = useState(false)
+  const [artifactsEnabled, setArtifactsEnabled] = useState(true) // Default to enabled
   const [artifactInstructions, setArtifactInstructions] = useState('')
 
   // Load full agent details when editing (must use GET endpoint, not LIST)
@@ -128,7 +128,7 @@ export function AgentBuilder({ open, onOpenChange, trigger, onSuccess }: AgentBu
     setIcon('')
     setIconUrl(null)
     setModel('gpt-4o')
-    setArtifactsEnabled(false)
+    setArtifactsEnabled(true) // Default to enabled for new tools
     setArtifactInstructions('')
     setView('form')
   }
@@ -201,6 +201,8 @@ export function AgentBuilder({ open, onOpenChange, trigger, onSuccess }: AgentBu
       setIcon('')
       setIconUrl(null)
       setModel('gpt-4o')
+      setArtifactsEnabled(false)
+      setArtifactInstructions('')
       setSelectedAgentId(null)
 
       // Return to list
