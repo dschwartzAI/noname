@@ -190,6 +190,15 @@ function ConversationChat({
   const [isMobile, setIsMobile] = useState(false)
   const hasAutoOpenedRef = useRef(false)
 
+  // Streaming artifact state (for tool-based artifact creation)
+  const [streamingArtifact, setStreamingArtifact] = useState<{
+    id: string
+    title: string
+    kind: string
+    content: string
+    isComplete: boolean
+  } | null>(null)
+
   // Detect mobile viewport
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768)
@@ -211,6 +220,49 @@ function ConversationChat({
     },
     onError: (error) => {
       console.error('❌ Chat error:', error)
+    },
+    // Handle custom data stream parts for artifact streaming
+    experimental_onData: (data) => {
+      console.log('📦 Received data stream part:', data)
+
+      // Handle artifact metadata (opens panel)
+      if (data.type === 'artifact-metadata') {
+        console.log('🎬 Opening artifact panel:', data.title)
+        setStreamingArtifact({
+          id: data.id,
+          title: data.title,
+          kind: data.kind,
+          content: '',
+          isComplete: false,
+        })
+        // Auto-open panel
+        setSelectedArtifactIndex(0)
+        hasAutoOpenedRef.current = true
+      }
+
+      // Handle artifact content delta (stream content)
+      if (data.type === 'artifact-content-delta') {
+        console.log('📝 Appending artifact content:', data.delta.length, 'chars')
+        setStreamingArtifact((prev) => {
+          if (!prev || prev.id !== data.id) return prev
+          return {
+            ...prev,
+            content: prev.content + data.delta,
+          }
+        })
+      }
+
+      // Handle artifact completion
+      if (data.type === 'artifact-complete') {
+        console.log('✅ Artifact streaming complete:', data.id)
+        setStreamingArtifact((prev) => {
+          if (!prev || prev.id !== data.id) return prev
+          return {
+            ...prev,
+            isComplete: true,
+          }
+        })
+      }
     },
   })
 
@@ -266,8 +318,21 @@ function ConversationChat({
     messageArtifacts.forEach((messageArtifacts) => {
       artifacts.push(...messageArtifacts)
     })
+
+    // Add streaming artifact if it exists (tool-based streaming)
+    if (streamingArtifact) {
+      artifacts.push({
+        id: streamingArtifact.id,
+        title: streamingArtifact.title,
+        type: streamingArtifact.kind === 'text' ? 'markdown' : 'code',
+        content: streamingArtifact.content,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      } as Artifact)
+    }
+
     return artifacts
-  }, [messageArtifacts])
+  }, [messageArtifacts, streamingArtifact])
 
   // Auto-open side panel when streaming artifact detected
   useEffect(() => {
@@ -303,9 +368,10 @@ function ConversationChat({
     }
   }, [messages, status, allArtifacts.length, selectedArtifactIndex])
 
-  // Reset auto-open flag when navigating to different conversation
+  // Reset auto-open flag and streaming artifact when navigating to different conversation
   useEffect(() => {
     hasAutoOpenedRef.current = false
+    setStreamingArtifact(null)
   }, [conversationId])
 
   // Keyboard shortcuts (ESC to close, Cmd+\ to toggle)

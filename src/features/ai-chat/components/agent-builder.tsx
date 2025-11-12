@@ -135,7 +135,12 @@ export function AgentBuilder({ open, onOpenChange, trigger, onSuccess }: AgentBu
     setIconUrl(null)
     setModel('gpt-4o')
     setArtifactsEnabled(true) // Default to enabled for new tools
-    setArtifactInstructions('')
+    // Default artifact instructions for tool-based streaming
+    setArtifactInstructions(
+      'When creating substantial content like documents, code snippets, or components, use the createDocument tool. ' +
+      'This streams content directly to a side panel for better user experience. ' +
+      'Use "text" kind for markdown documents, "code" kind for source code.'
+    )
     setView('form')
   }
 
@@ -450,13 +455,13 @@ export function AgentBuilder({ open, onOpenChange, trigger, onSuccess }: AgentBu
                   <Label htmlFor="artifact-instructions">Artifact Instructions</Label>
                   <Textarea
                     id="artifact-instructions"
-                    placeholder="Instructions for how the AI should generate artifacts (e.g., 'Create interactive React components with TypeScript and Tailwind CSS')"
+                    placeholder="When creating substantial content (documents, code, components), use the createDocument tool instead of markdown code blocks. This allows content to stream directly to the side panel for better UX."
                     className="min-h-[100px] resize-none"
                     value={artifactInstructions}
                     onChange={(e) => setArtifactInstructions(e.target.value)}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Optional: Specific guidance for artifact generation and formatting
+                    Optional: Guidance for artifact generation. Leave empty to use default createDocument tool instructions.
                   </p>
                 </div>
               )}

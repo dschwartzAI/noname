@@ -10,7 +10,7 @@
 
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
-import { streamText, convertToModelMessages, generateText } from 'ai'
+import { streamText, convertToModelMessages, generateText, tool } from 'ai'
 import { requireAuth } from '../middleware/auth'
 import { injectOrganization } from '../middleware/organization'
 import { neon } from '@neondatabase/serverless'
@@ -56,6 +56,60 @@ const chatApp = new Hono<{ Bindings: Env; Variables: Variables }>()
 // Apply auth middleware to all routes
 chatApp.use('*', requireAuth)
 chatApp.use('*', injectOrganization)
+
+/**
+ * createDocument Tool - Streams artifact creation directly to side panel
+ *
+ * Implements Vercel AI Chatbot pattern for artifact streaming:
+ * 1. Sends transient metadata to trigger panel open
+ * 2. Streams content directly to side panel via custom data stream parts
+ * 3. Returns summary for chat display
+ */
+const createDocumentTool = tool({
+  description: 'Create a document, code snippet, or interactive component that will be displayed in a side panel. Use this when generating substantial content like markdown documents, code examples, React components, HTML pages, etc.',
+  parameters: z.object({
+    title: z.string().describe('Document title (e.g., "User Profile Component", "API Documentation")'),
+    kind: z.enum(['text', 'code']).describe('Type of content - "text" for markdown/documentation, "code" for source code'),
+    content: z.string().describe('The full document content to display'),
+  }),
+  execute: async ({ title, kind, content }, { dataStream }) => {
+    console.log('📄 createDocument tool called:', { title, kind, contentLength: content.length })
+
+    // Generate unique artifact ID
+    const artifactId = nanoid()
+
+    // 1. Send transient metadata parts to trigger panel open (not stored in messages)
+    dataStream.writeData({
+      type: 'artifact-metadata',
+      id: artifactId,
+      title,
+      kind,
+    })
+
+    // 2. Stream content in chunks for real-time display
+    // Split content into chunks to simulate streaming (or stream directly if chunked)
+    const chunkSize = 50
+    for (let i = 0; i < content.length; i += chunkSize) {
+      const chunk = content.slice(i, i + chunkSize)
+      dataStream.writeData({
+        type: 'artifact-content-delta',
+        id: artifactId,
+        delta: chunk,
+      })
+    }
+
+    // 3. Send completion marker
+    dataStream.writeData({
+      type: 'artifact-complete',
+      id: artifactId,
+    })
+
+    console.log('✅ Artifact streamed:', { id: artifactId, chunks: Math.ceil(content.length / chunkSize) })
+
+    // 4. Return summary for chat display (this appears in the message)
+    return `Created document: ${title}`
+  }
+})
 
 /**
  * POST /api/v1/chat - Send chat message with streaming response
@@ -382,6 +436,9 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
       messages,
       temperature: 0.7,
       maxTokens: 2048,
+      tools: {
+        createDocument: createDocumentTool,
+      },
       onFinish: async ({ text, finishReason, usage }) => {
         try {
           console.log('✅ AI response complete:', {
