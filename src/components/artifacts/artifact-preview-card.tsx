@@ -43,6 +43,32 @@ const getArtifactIcon = (type: string) => {
   }
 }
 
+const getArtifactLabel = (type: string) => {
+  switch (type) {
+    case 'markdown':
+    case 'document':
+      return 'Document'
+    case 'code':
+      return 'Code'
+    case 'react-component':
+      return 'React'
+    case 'javascript':
+      return 'JavaScript'
+    case 'typescript':
+      return 'TypeScript'
+    case 'html':
+      return 'HTML'
+    case 'css':
+      return 'CSS'
+    case 'svg':
+      return 'SVG'
+    case 'chart':
+      return 'Chart'
+    default:
+      return type
+  }
+}
+
 
 export function ArtifactPreviewCard({ artifact, onClick, isSelected }: ArtifactPreviewCardProps) {
   return (
@@ -63,7 +89,7 @@ export function ArtifactPreviewCard({ artifact, onClick, isSelected }: ArtifactP
             <div className='flex items-center gap-2'>
               <h4 className='font-medium text-sm truncate'>{artifact.title}</h4>
               <Badge variant='secondary' className='text-xs shrink-0'>
-                {artifact.type}
+                {getArtifactLabel(artifact.type)}
               </Badge>
             </div>
 

@@ -1,14 +1,11 @@
-import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
-  Code,
-  Eye,
   Copy,
   Download,
   X,
+  Code,
   FileCode,
   FileText,
   Image,
@@ -56,6 +53,32 @@ const getArtifactIcon = (type: string) => {
   }
 }
 
+const getArtifactLabel = (type: string) => {
+  switch (type) {
+    case 'markdown':
+    case 'document':
+      return 'Document'
+    case 'code':
+      return 'Code'
+    case 'react-component':
+      return 'React'
+    case 'javascript':
+      return 'JavaScript'
+    case 'typescript':
+      return 'TypeScript'
+    case 'html':
+      return 'HTML'
+    case 'css':
+      return 'CSS'
+    case 'svg':
+      return 'SVG'
+    case 'chart':
+      return 'Chart'
+    default:
+      return type
+  }
+}
+
 const getLanguageForHighlighting = (type: string, language?: string) => {
   if (language) return language
 
@@ -88,7 +111,6 @@ export function ArtifactSidePanel({
   onClose,
   className
 }: ArtifactSidePanelProps) {
-  const [activeTab, setActiveTab] = useState('preview')
   const artifact = artifacts[currentIndex]
   const hasMultiple = artifacts.length > 1
 
@@ -190,7 +212,7 @@ export function ArtifactSidePanel({
               {getArtifactIcon(artifact.type)}
               <h3 className='text-lg font-semibold truncate'>{artifact.title}</h3>
               <Badge variant='secondary' className='text-xs shrink-0'>
-                {artifact.type}
+                {getArtifactLabel(artifact.type)}
               </Badge>
             </div>
             {artifact.description && (
@@ -265,41 +287,11 @@ export function ArtifactSidePanel({
         </div>
       </div>
 
-      {/* Content */}
-      <div className='flex-1 overflow-hidden'>
-        <Tabs value={activeTab} onValueChange={setActiveTab} className='h-full flex flex-col'>
-          <div className='px-4 pt-3'>
-            <TabsList className='grid w-full max-w-md grid-cols-2'>
-              <TabsTrigger value='preview' className='flex items-center gap-2'>
-                <Eye className='h-4 w-4' />
-                Preview
-              </TabsTrigger>
-              <TabsTrigger value='code' className='flex items-center gap-2'>
-                <Code className='h-4 w-4' />
-                Code
-              </TabsTrigger>
-            </TabsList>
-          </div>
-
-          <TabsContent value='preview' className='flex-1 mt-3 px-4 pb-4 overflow-hidden'>
-            <ScrollArea className='h-full w-full'>
-              {renderPreview()}
-            </ScrollArea>
-          </TabsContent>
-
-          <TabsContent value='code' className='flex-1 mt-3 px-4 pb-4 overflow-hidden'>
-            <ScrollArea className='h-full w-full'>
-              <SyntaxHighlighter
-                language={getLanguageForHighlighting(artifact.type, artifact.language)}
-                style={vscDarkPlus}
-                className='rounded-lg'
-                customStyle={{ margin: 0, fontSize: '14px' }}
-              >
-                {artifact.content}
-              </SyntaxHighlighter>
-            </ScrollArea>
-          </TabsContent>
-        </Tabs>
+      {/* Content - Preview Only */}
+      <div className='flex-1 overflow-hidden px-4 py-4'>
+        <ScrollArea className='h-full w-full'>
+          {renderPreview()}
+        </ScrollArea>
       </div>
     </div>
   )
