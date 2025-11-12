@@ -669,6 +669,23 @@ chatApp.post('/artifact', zValidator('json', z.object({
       model: model || 'gpt-4o',
     })
 
+    // Save user message to database first (if conversationId provided)
+    if (conversationId) {
+      const sqlClient = neon(c.env.DATABASE_URL)
+      const db = drizzle(sqlClient, { schema: authSchema })
+
+      await db.insert(authSchema.message).values({
+        id: nanoid(),
+        conversationId,
+        organizationId,
+        role: 'user',
+        content: prompt,
+        toolCalls: null,
+        toolResults: null,
+        metadata: null,
+      })
+    }
+
     // Get AI model
     const aiModel = getModel({
       ANTHROPIC_API_KEY: c.env.ANTHROPIC_API_KEY,

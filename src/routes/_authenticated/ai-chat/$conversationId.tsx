@@ -1,13 +1,15 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useChat } from '@ai-sdk/react'
+import { useChat, experimental_useObject } from '@ai-sdk/react'
 import { useEffect, useState, useRef, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bot } from 'lucide-react'
+import { Bot, Sparkles } from 'lucide-react'
 import { PaperclipIcon } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { useInvalidateConversations } from '@/hooks/use-conversations'
 import { getAgentIconSrc, getAgentEmoji } from '@/features/ai-chat/utils/get-agent-icon'
+import { z } from 'zod'
+import { nanoid } from 'nanoid'
 import {
   Conversation,
   ConversationContent,
@@ -45,6 +47,14 @@ const MODELS = [
   { value: 'claude-3-5-sonnet-20241022', label: 'Claude 3.5 Sonnet', provider: 'Anthropic' },
   { value: 'grok-2-latest', label: 'Grok 2', provider: 'xAI' },
 ]
+
+// Artifact schema for streamObject (matches backend)
+const artifactSchema = z.object({
+  title: z.string().describe('Title of the artifact'),
+  kind: z.enum(['text', 'code', 'html', 'react']).describe('Type of artifact'),
+  content: z.string().describe('The full content of the artifact'),
+  language: z.string().optional().describe('Programming language for code artifacts'),
+})
 
 interface ConversationData {
   conversation: {
@@ -215,6 +225,48 @@ function ConversationChat({
     },
   })
 
+  // Artifact generation state
+  const [isGeneratingArtifact, setIsGeneratingArtifact] = useState(false)
+  const [artifactPrompt, setArtifactPrompt] = useState('')
+  const artifactIdRef = useRef<string | null>(null)
+
+  // Use experimental_useObject for progressive artifact streaming
+  const { object: streamingArtifact, submit: generateArtifact, isLoading: isArtifactLoading } = experimental_useObject({
+    api: '/api/v1/chat/artifact',
+    schema: artifactSchema,
+    onFinish: async ({ object }) => {
+      console.log('✅ Artifact generation complete:', object)
+
+      // Add artifact to messages as an assistant message
+      if (object && object.title && object.content) {
+        const artifactMessage = {
+          id: artifactIdRef.current || nanoid(),
+          role: 'assistant' as const,
+          parts: [
+            {
+              type: 'text' as const,
+              text: `Created artifact: ${object.title}`,
+            }
+          ],
+          status: 'ready' as const,
+          // Store artifact data in experimental field
+          experimental_attachments: [{
+            type: 'artifact',
+            data: object,
+          }],
+        }
+
+        setMessages((prev) => [...prev, artifactMessage])
+        setIsGeneratingArtifact(false)
+        artifactIdRef.current = null
+
+        // Refresh conversation data
+        invalidateConversations()
+        queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] })
+      }
+    },
+  })
+
   // Sync server messages with client state when navigating to a different conversation
   // AI SDK v5 pattern: setMessages updates state without remounting component
   useEffect(() => {
@@ -285,17 +337,48 @@ function ConversationChat({
     return artifactsByMessage
   }, [messages, agentData?.artifactsEnabled, status])
 
-  // Collect all artifacts from the cached parse results
+  // Collect all artifacts from the cached parse results + streaming artifact
   const allArtifacts = useMemo(() => {
     const artifacts: Artifact[] = []
     messageArtifacts.forEach((messageArtifacts) => {
       artifacts.push(...messageArtifacts)
     })
-    return artifacts
-  }, [messageArtifacts])
 
-  // Auto-open side panel when artifact detected
+    // Add streaming artifact if it exists (progressive updates)
+    if (streamingArtifact && (streamingArtifact.title || streamingArtifact.content)) {
+      const kindMap: Record<string, Artifact['type']> = {
+        'text': 'markdown',
+        'code': 'code',
+        'html': 'html',
+        'react': 'react-component',
+      }
+
+      artifacts.push({
+        id: artifactIdRef.current || 'streaming-artifact',
+        title: streamingArtifact.title || 'Generating...',
+        type: kindMap[streamingArtifact.kind || 'text'] || 'markdown',
+        content: streamingArtifact.content || '',
+        language: streamingArtifact.language,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      } as Artifact)
+    }
+
+    return artifacts
+  }, [messageArtifacts, streamingArtifact])
+
+  // Auto-open side panel when artifact streaming starts
   useEffect(() => {
+    // Open panel when streamObject starts populating (progressive streaming)
+    if (streamingArtifact && (streamingArtifact.title || streamingArtifact.content)) {
+      if (selectedArtifactIndex === null) {
+        setSelectedArtifactIndex(allArtifacts.length - 1) // Open the streaming artifact (last in array)
+        console.log('🎬 Auto-opened side panel for streaming artifact')
+      }
+      return
+    }
+
+    // Fallback: Auto-open for completed artifacts (backwards compatibility)
     if (hasAutoOpenedRef.current) return
 
     // Check last assistant message for tool calls or code blocks
@@ -335,7 +418,7 @@ function ConversationChat({
       hasAutoOpenedRef.current = true
       console.log('🎬 Auto-opened side panel for completed artifact')
     }
-  }, [messages, allArtifacts.length, selectedArtifactIndex])
+  }, [streamingArtifact, messages, allArtifacts.length, selectedArtifactIndex])
 
   // Reset auto-open flag when navigating to different conversation
   useEffect(() => {
@@ -364,7 +447,7 @@ function ConversationChat({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [selectedArtifactIndex, allArtifacts.length])
 
-  const isChatLoading = status === 'submitted' || status === 'streaming'
+  const isChatLoading = status === 'submitted' || status === 'streaming' || isArtifactLoading
 
   // Main chat content
   const chatContent = (
@@ -438,6 +521,22 @@ function ConversationChat({
             )
           })}
 
+          {/* Artifact generation loading indicator */}
+          {isArtifactLoading && (
+            <Message from="assistant">
+              <MessageContent>
+                <MessageResponse>
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 animate-pulse text-primary" />
+                    <span className="text-sm text-muted-foreground">
+                      Generating artifact...
+                    </span>
+                  </div>
+                </MessageResponse>
+              </MessageContent>
+            </Message>
+          )}
+
           {error && (
             <div className="p-4 rounded-lg bg-destructive/10 text-destructive text-sm">
               Error: {error.message}
@@ -452,17 +551,46 @@ function ConversationChat({
         <PromptInput
           onSubmit={(message, event) => {
             if (message.text?.trim()) {
-              // Pass conversationId, model, and agentId dynamically at request time (AI SDK v5 pattern)
-              sendMessage(
-                { text: message.text },
-                {
-                  body: {
-                    conversationId, // Dynamic value at request time
-                    model: selectedModel, // Dynamic value at request time
-                    agentId: data.conversation.toolId, // Pass agent/tool ID from conversation
-                  },
+              // Check if agent has artifacts enabled -> use streamObject endpoint
+              if (agentData?.artifactsEnabled) {
+                console.log('🎨 Generating artifact with streamObject...')
+
+                // Add user message to conversation
+                const userMessage = {
+                  id: nanoid(),
+                  role: 'user' as const,
+                  parts: [{
+                    type: 'text' as const,
+                    text: message.text,
+                  }],
+                  status: 'ready' as const,
                 }
-              )
+                setMessages((prev) => [...prev, userMessage])
+
+                // Generate artifact ID for tracking
+                artifactIdRef.current = nanoid()
+                setIsGeneratingArtifact(true)
+
+                // Call streamObject endpoint
+                generateArtifact({
+                  conversationId,
+                  prompt: message.text,
+                  model: selectedModel,
+                  agentId: data.conversation.toolId,
+                })
+              } else {
+                // Regular chat flow
+                sendMessage(
+                  { text: message.text },
+                  {
+                    body: {
+                      conversationId, // Dynamic value at request time
+                      model: selectedModel, // Dynamic value at request time
+                      agentId: data.conversation.toolId, // Pass agent/tool ID from conversation
+                    },
+                  }
+                )
+              }
             }
           }}
         >
