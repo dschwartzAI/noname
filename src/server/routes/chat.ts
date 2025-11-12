@@ -57,6 +57,21 @@ const chatApp = new Hono<{ Bindings: Env; Variables: Variables }>()
 chatApp.use('*', requireAuth)
 chatApp.use('*', injectOrganization)
 
+// Define createDocument tool for artifact generation
+const createDocumentTool = tool({
+  description: 'Create a document, code snippet, or interactive component that will be displayed in a side panel. Use this when generating substantial content like markdown documents, code examples, React components, HTML pages, etc.',
+  parameters: z.object({
+    title: z.string().describe('Document title (e.g., "User Profile Component", "API Documentation")'),
+    kind: z.enum(['text', 'code']).describe('Type of content - "text" for markdown/documentation, "code" for source code'),
+    content: z.string().describe('The full document content to display'),
+  }),
+  execute: async ({ title, kind, content }) => {
+    console.log('📄 createDocument tool called:', { title, kind, contentLength: content.length })
+    // Tool result appears in chat - frontend will extract parameters for artifact
+    return `Created document: ${title}`
+  },
+})
+
 /**
  * POST /api/v1/chat - Send chat message with streaming response
  *
@@ -383,19 +398,7 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
       temperature: 0.7,
       maxTokens: 2048,
       tools: {
-        createDocument: {
-          description: 'Create a document, code snippet, or interactive component that will be displayed in a side panel. Use this when generating substantial content like markdown documents, code examples, React components, HTML pages, etc.',
-          parameters: z.object({
-            title: z.string().describe('Document title (e.g., "User Profile Component", "API Documentation")'),
-            kind: z.enum(['text', 'code']).describe('Type of content - "text" for markdown/documentation, "code" for source code'),
-            content: z.string().describe('The full document content to display'),
-          }),
-          execute: async ({ title, kind, content }) => {
-            console.log('📄 createDocument tool called:', { title, kind, contentLength: content.length })
-            // Tool result appears in chat - frontend will extract parameters for artifact
-            return `Created document: ${title}`
-          },
-        },
+        createDocument: createDocumentTool,
       },
       onFinish: async ({ text, finishReason, usage }) => {
         try {
