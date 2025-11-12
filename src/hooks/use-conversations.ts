@@ -56,7 +56,7 @@ async function fetchConversations(): Promise<Conversation[]> {
     agent: conv.agent ? {
       id: conv.agent.id,
       name: conv.agent.name,
-      avatar: conv.agent.avatar?.value,
+      avatar: conv.agent.avatar, // Pass full avatar object with source and value
       icon: conv.agent.icon,
       greeting: '',
       model: conv.model,
@@ -65,6 +65,7 @@ async function fetchConversations(): Promise<Conversation[]> {
       id: 'default',
       name: conv.model,
       avatar: undefined,
+      icon: undefined,
       greeting: '',
       model: conv.model,
     },

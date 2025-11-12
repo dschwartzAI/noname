@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { useSession } from '@/lib/auth-client';
 import { LogoUpload } from './_components/logo-upload';
 import { FaviconUpload } from './_components/favicon-upload';
+import { AppNameForm } from './_components/app-name-form';
 
 export const Route = createFileRoute('/_authenticated/admin/')({
   component: AdminPanel,
@@ -312,6 +313,17 @@ function SettingsTab() {
       <Card className="p-6">
         <h3 className="text-lg font-semibold mb-6">Branding</h3>
         <div className="space-y-8">
+          {/* App Name Section */}
+          <div>
+            <label className="text-sm font-medium mb-2 block">App Name</label>
+            <p className="text-sm text-muted-foreground mb-4">
+              Set the name that appears in browser tabs and across your workspace experience.
+            </p>
+            <AppNameForm />
+          </div>
+
+          <div className="border-t" />
+
           {/* Logo Section */}
           <div>
             <label className="text-sm font-medium mb-2 block">Logo</label>
@@ -321,7 +333,6 @@ function SettingsTab() {
             <LogoUpload />
           </div>
 
-          {/* Divider */}
           <div className="border-t" />
 
           {/* Favicon Section */}

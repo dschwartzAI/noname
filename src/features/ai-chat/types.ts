@@ -1,7 +1,10 @@
 export interface Agent {
   id: string
   name: string
-  avatar?: string
+  avatar?: {
+    source: 'emoji' | 'url' | 'upload'
+    value: string
+  } | null
   icon?: string | null
   greeting: string
   model?: string
