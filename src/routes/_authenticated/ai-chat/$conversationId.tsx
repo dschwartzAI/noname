@@ -31,6 +31,8 @@ import {
   PromptInputSelectItem,
   PromptInputSelectValue,
 } from '@/components/ai-elements/prompt-input'
+import { parseArtifactsFromContent } from '@/utils/artifact-parser'
+import { ArtifactMessageComponent } from '@/components/artifacts/artifact-message'
 
 // Available AI models
 const MODELS = [
@@ -251,15 +253,31 @@ function ConversationChat({
       {/* Conversation Area with Auto-scroll */}
       <Conversation className="flex-1">
         <ConversationContent>
-          {messages.map((message) => (
-            <Message key={message.id} from={message.role}>
-              <MessageContent>
-                <MessageResponse>
-                  {message.parts?.map((part) => part.type === 'text' ? part.text : '').join('') || message.content}
-                </MessageResponse>
-              </MessageContent>
-            </Message>
-          ))}
+          {messages.map((message) => {
+            // Extract text content from message parts
+            const textContent = message.parts?.map((part) =>
+              part.type === 'text' ? part.text : ''
+            ).join('') || ''
+
+            // Parse artifacts from the text content
+            const artifacts = parseArtifactsFromContent(textContent, message.id)
+
+            // Create artifact message format
+            const artifactMessage = {
+              id: message.id,
+              role: message.role,
+              content: textContent,
+              artifacts: artifacts,
+            }
+
+            return (
+              <Message key={message.id} from={message.role}>
+                <MessageContent>
+                  <ArtifactMessageComponent message={artifactMessage} />
+                </MessageContent>
+              </Message>
+            )
+          })}
 
           {error && (
             <div className="p-4 rounded-lg bg-destructive/10 text-destructive text-sm">
