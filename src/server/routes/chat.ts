@@ -29,6 +29,7 @@ import {
   archiveConversationSchema,
   updateConversationSchema,
   conversationIdParamSchema,
+  updateArtifactSchema,
 } from '../validation/chat'
 
 // Types
@@ -388,6 +389,11 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
     // Use createUIMessageStream for custom data parts (artifact streaming)
     const stream = createUIMessageStream({
       execute: async ({ writer }) => {
+        // Track tool calls and results for persistence
+        const toolCalls: Array<{ id: string; name: string; arguments: Record<string, unknown> }> = []
+        const toolResults: Array<{ toolCallId: string; result: unknown }> = []
+        const artifactDataMap = new Map<string, { title: string; kind: string; content: string; language?: string }>()
+
         // Define createDocument tool for artifact generation
         const tools = artifactInstructions ? {
           createDocument: tool({
@@ -396,9 +402,17 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
               title: z.string().describe('Descriptive title for the artifact'),
               kind: z.enum(['text', 'code', 'html', 'react']).describe('Type of artifact to create'),
             }),
-            execute: async ({ title, kind }) => {
+            execute: async ({ title, kind }, context?: { toolCallId?: string }) => {
+              const toolCallId = context?.toolCallId || nanoid()
               const artifactId = nanoid()
-              console.log('🎨 Creating artifact via tool:', { artifactId, title, kind })
+              console.log('🎨 Creating artifact via tool:', { artifactId, toolCallId, title, kind })
+
+              // Track tool call
+              toolCalls.push({
+                id: toolCallId,
+                name: 'createDocument',
+                arguments: { title, kind },
+              })
 
               // 1. Signal artifact metadata (opens panel)
               writer.write({
@@ -435,8 +449,29 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
                 data: finalArtifact,
               })
 
+              // Store artifact data for persistence
+              artifactDataMap.set(toolCallId, {
+                title: finalArtifact.title,
+                kind: finalArtifact.kind,
+                content: finalArtifact.content,
+                language: finalArtifact.language,
+              })
+
+              // Track tool result
+              toolResults.push({
+                toolCallId,
+                result: {
+                  artifactId,
+                  title: finalArtifact.title,
+                  kind: finalArtifact.kind,
+                  content: finalArtifact.content,
+                  language: finalArtifact.language,
+                },
+              })
+
               console.log('✅ Artifact creation complete:', {
                 artifactId,
+                toolCallId,
                 contentLength: finalArtifact.content?.length || 0,
               })
 
@@ -460,15 +495,17 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
           temperature: 0.7,
           maxTokens: 2048,
           tools,
-          onFinish: async ({ text, finishReason, usage }) => {
+          onFinish: async ({ text, finishReason, usage, response }) => {
         try {
           console.log('✅ AI response complete:', {
             finishReason,
             usage,
             textLength: text.length,
+            toolCallsCount: toolCalls.length,
+            toolResultsCount: toolResults.length,
           })
 
-          // 1. Save AI response to database
+          // 1. Save AI response to database with tool calls and results
           const assistantMessageId = nanoid()
           await db.insert(authSchema.message).values({
             id: assistantMessageId,
@@ -476,8 +513,8 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
             organizationId,
             role: 'assistant',
             content: text,
-            toolCalls: null,
-            toolResults: null,
+            toolCalls: toolCalls.length > 0 ? toolCalls : null,
+            toolResults: toolResults.length > 0 ? toolResults : null,
             metadata: {
               model,
               usage: {
@@ -712,6 +749,125 @@ RESPOND WITH ONLY VALID JSON, NO MARKDOWN, NO EXPLANATION:`
 })
 
 // /artifact endpoint removed - now using createDocument tool in regular chat
+
+/**
+ * PATCH /api/v1/chat/artifact - Update artifact content
+ *
+ * Updates the content of an artifact stored in a message's toolResults
+ * NOTE: Must be defined BEFORE /:conversationId route to avoid route conflict
+ */
+chatApp.patch('/artifact', zValidator('json', updateArtifactSchema), async (c) => {
+  try {
+    const { conversationId, messageId, toolCallId, content } = c.req.valid('json')
+    const user = c.get('user')
+    const organizationId = c.get('organizationId')
+
+    if (!organizationId) {
+      return c.json({ error: 'No organization context' }, 403)
+    }
+
+    console.log('✏️ Update artifact request:', { 
+      conversationId, 
+      messageId, 
+      toolCallId, 
+      contentLength: content.length,
+      userId: user.id,
+      organizationId,
+    })
+
+    const sqlClient = neon(c.env.DATABASE_URL)
+    const db = drizzle(sqlClient, { schema: authSchema })
+
+    // Verify conversation exists and belongs to user
+    const conversation = await db.query.conversation.findFirst({
+      where: and(
+        eq(authSchema.conversation.id, conversationId),
+        eq(authSchema.conversation.organizationId, organizationId),
+        eq(authSchema.conversation.userId, user.id)
+      ),
+    })
+
+    if (!conversation) {
+      return c.json({ error: 'Conversation not found' }, 404)
+    }
+
+    // Get the message containing the artifact
+    const message = await db.query.message.findFirst({
+      where: and(
+        eq(authSchema.message.id, messageId),
+        eq(authSchema.message.conversationId, conversationId),
+        eq(authSchema.message.organizationId, organizationId)
+      ),
+    })
+
+    if (!message) {
+      return c.json({ error: 'Message not found' }, 404)
+    }
+
+    // Update the artifact content in toolResults
+    if (!message.toolResults || message.toolResults.length === 0) {
+      console.error('❌ No tool results found in message:', {
+        messageId,
+        hasToolResults: !!message.toolResults,
+        toolResultsLength: message.toolResults?.length,
+      })
+      return c.json({ error: 'No tool results found in message' }, 400)
+    }
+
+    console.log('🔍 Message toolResults:', {
+      count: message.toolResults.length,
+      toolCallIds: message.toolResults.map(tr => tr.toolCallId),
+      requestedToolCallId: toolCallId,
+    })
+
+    const updatedToolResults = message.toolResults.map((toolResult) => {
+      if (toolResult.toolCallId === toolCallId) {
+        console.log('✅ Found matching toolResult, updating content')
+        // Update the content in the result object
+        const result = toolResult.result as any
+        return {
+          ...toolResult,
+          result: {
+            ...result,
+            content,
+          },
+        }
+      }
+      return toolResult
+    })
+
+    // Check if we found the artifact (this should always be true if toolCallId matches)
+    const artifactFound = message.toolResults.some(tr => tr.toolCallId === toolCallId)
+    if (!artifactFound) {
+      console.error('❌ Artifact not found:', {
+        toolCallId,
+        availableToolCallIds: message.toolResults.map(tr => tr.toolCallId),
+        toolResultsCount: message.toolResults.length,
+        messageId,
+      })
+      return c.json({ 
+        error: 'Artifact not found in message',
+        debug: {
+          toolCallId,
+          availableToolCallIds: message.toolResults.map(tr => tr.toolCallId),
+        }
+      }, 404)
+    }
+
+    // Update the message with new toolResults
+    await db
+      .update(authSchema.message)
+      .set({ toolResults: updatedToolResults })
+      .where(eq(authSchema.message.id, messageId))
+
+    console.log('✅ Artifact updated successfully')
+
+    return c.json({ success: true })
+  } catch (error) {
+    console.error('❌ Update artifact error:', error)
+    return c.json({ error: 'Failed to update artifact' }, 500)
+  }
+})
 
 /**
  * GET /api/v1/chat/:conversationId - Get conversation history

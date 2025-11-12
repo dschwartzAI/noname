@@ -118,6 +118,20 @@ export const branchConversationSchema = z.object({
     .describe('New message content for the branched conversation'),
 })
 
+export const updateArtifactSchema = z.object({
+  conversationId: z.string()
+    .describe('Conversation ID containing the artifact'),
+
+  messageId: z.string()
+    .describe('Message ID containing the artifact'),
+
+  toolCallId: z.string()
+    .describe('Tool call ID of the artifact to update'),
+
+  content: z.string()
+    .describe('Updated artifact content'),
+})
+
 // Type exports for TypeScript
 export type ChatRequest = z.infer<typeof chatRequestSchema>
 export type GetConversation = z.infer<typeof getConversationSchema>
@@ -126,3 +140,4 @@ export type UpdateConversation = z.infer<typeof updateConversationSchema>
 export type ArchiveConversation = z.infer<typeof archiveConversationSchema>
 export type DeleteMessage = z.infer<typeof deleteMessageSchema>
 export type BranchConversation = z.infer<typeof branchConversationSchema>
+export type UpdateArtifact = z.infer<typeof updateArtifactSchema>

@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Copy,
   Download,
@@ -13,7 +15,10 @@ import {
   Globe,
   Palette,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Edit,
+  Save,
+  X as CancelIcon
 } from 'lucide-react'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
@@ -26,6 +31,9 @@ interface ArtifactSidePanelProps {
   currentIndex: number
   onIndexChange: (index: number) => void
   onClose: () => void
+  onArtifactUpdate?: (artifact: Artifact) => void
+  conversationId?: string
+  messageId?: string
   className?: string
 }
 
@@ -109,10 +117,22 @@ export function ArtifactSidePanel({
   currentIndex,
   onIndexChange,
   onClose,
+  onArtifactUpdate,
+  conversationId,
+  messageId,
   className
 }: ArtifactSidePanelProps) {
   const artifact = artifacts[currentIndex]
   const hasMultiple = artifacts.length > 1
+  const [isEditing, setIsEditing] = useState(false)
+  const [editedContent, setEditedContent] = useState(artifact.content)
+  const [isSaving, setIsSaving] = useState(false)
+
+  // Update edited content when artifact changes
+  useEffect(() => {
+    setEditedContent(artifact.content)
+    setIsEditing(false)
+  }, [artifact])
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(artifact.content)
@@ -128,6 +148,90 @@ export function ArtifactSidePanel({
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
+  }
+
+  const handleEdit = () => {
+    setEditedContent(artifact.content)
+    setIsEditing(true)
+  }
+
+  const handleCancel = () => {
+    setEditedContent(artifact.content)
+    setIsEditing(false)
+  }
+
+  const handleSave = async () => {
+    if (!conversationId || !messageId || !artifact.id) {
+      console.error('Missing required IDs for saving artifact:', {
+        conversationId,
+        messageId,
+        artifactId: artifact.id,
+        artifact: artifact,
+      })
+      alert('Missing required information. Please refresh the page and try again.')
+      return
+    }
+
+    setIsSaving(true)
+    try {
+      // Use artifact.id as toolCallId (it should be the toolCallId from the message parts)
+      const toolCallId = artifact.id
+      
+      const requestBody = {
+        conversationId,
+        messageId,
+        toolCallId,
+        content: editedContent,
+      }
+
+      console.log('💾 Saving artifact:', {
+        ...requestBody,
+        artifactId: artifact.id,
+        artifactTitle: artifact.title,
+        contentLength: editedContent.length,
+      })
+
+      const response = await fetch('/api/v1/chat/artifact', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(requestBody),
+      })
+
+      const responseData = await response.json().catch(() => ({ error: 'Failed to parse response' }))
+
+      if (!response.ok) {
+        console.error('❌ Save artifact failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          responseData,
+        })
+        throw new Error(responseData.error || `Failed to save artifact: ${response.status}`)
+      }
+
+      console.log('✅ Artifact saved successfully:', responseData)
+
+      // Update the artifact in the parent component
+      const updatedArtifact = {
+        ...artifact,
+        content: editedContent,
+        updatedAt: Date.now(),
+      }
+
+      if (onArtifactUpdate) {
+        onArtifactUpdate(updatedArtifact)
+      }
+
+      setIsEditing(false)
+    } catch (error) {
+      console.error('❌ Error saving artifact:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save artifact. Please try again.'
+      alert(errorMessage)
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handlePrev = () => {
@@ -224,24 +328,61 @@ export function ArtifactSidePanel({
         {/* Action Buttons */}
         <div className='flex items-center justify-between'>
           <div className='flex items-center gap-1'>
-            <Button
-              variant='ghost'
-              size='sm'
-              onClick={handleCopy}
-              className='h-9 w-9 p-0'
-              title='Copy to clipboard'
-            >
-              <Copy className='h-4 w-4' />
-            </Button>
-            <Button
-              variant='ghost'
-              size='sm'
-              onClick={handleDownload}
-              className='h-9 w-9 p-0'
-              title='Download'
-            >
-              <Download className='h-4 w-4' />
-            </Button>
+            {!isEditing && (
+              <>
+                <Button
+                  variant='ghost'
+                  size='sm'
+                  onClick={handleCopy}
+                  className='h-9 w-9 p-0'
+                  title='Copy to clipboard'
+                >
+                  <Copy className='h-4 w-4' />
+                </Button>
+                <Button
+                  variant='ghost'
+                  size='sm'
+                  onClick={handleDownload}
+                  className='h-9 w-9 p-0'
+                  title='Download'
+                >
+                  <Download className='h-4 w-4' />
+                </Button>
+                <Button
+                  variant='ghost'
+                  size='sm'
+                  onClick={handleEdit}
+                  className='h-9 w-9 p-0'
+                  title='Edit artifact'
+                >
+                  <Edit className='h-4 w-4' />
+                </Button>
+              </>
+            )}
+            {isEditing && (
+              <>
+                <Button
+                  variant='ghost'
+                  size='sm'
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className='h-9 w-9 p-0'
+                  title='Save changes'
+                >
+                  <Save className='h-4 w-4' />
+                </Button>
+                <Button
+                  variant='ghost'
+                  size='sm'
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                  className='h-9 w-9 p-0'
+                  title='Cancel editing'
+                >
+                  <CancelIcon className='h-4 w-4' />
+                </Button>
+              </>
+            )}
           </div>
 
           <div className='flex items-center gap-2'>
@@ -287,11 +428,22 @@ export function ArtifactSidePanel({
         </div>
       </div>
 
-      {/* Content - Preview Only */}
+      {/* Content - Preview or Edit */}
       <div className='flex-1 overflow-hidden px-4 py-4'>
-        <ScrollArea className='h-full w-full'>
-          {renderPreview()}
-        </ScrollArea>
+        {isEditing ? (
+          <ScrollArea className='h-full w-full'>
+            <Textarea
+              value={editedContent}
+              onChange={(e) => setEditedContent(e.target.value)}
+              className='font-mono text-sm min-h-[400px] resize-none'
+              placeholder='Edit artifact content...'
+            />
+          </ScrollArea>
+        ) : (
+          <ScrollArea className='h-full w-full'>
+            {renderPreview()}
+          </ScrollArea>
+        )}
       </div>
     </div>
   )

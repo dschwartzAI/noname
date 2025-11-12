@@ -60,6 +60,15 @@ interface ConversationData {
     id: string
     role: string
     content: string
+    toolCalls?: Array<{
+      id: string
+      name: string
+      arguments: Record<string, unknown>
+    }> | null
+    toolResults?: Array<{
+      toolCallId: string
+      result: unknown
+    }> | null
     createdAt: string
   }>
 }
@@ -171,17 +180,45 @@ function ConversationChat({
   invalidateConversations: () => void
 }) {
   // Convert API messages to UIMessage format (AI SDK v5)
-  const initialMessages = data.messages.map((msg) => ({
-    id: msg.id,
-    role: msg.role as 'user' | 'assistant' | 'system',
-    parts: [
+  // Include tool calls and results for artifact reconstruction
+  const initialMessages = data.messages.map((msg) => {
+    const parts: Array<{ type: string; text?: string; toolName?: string; toolCallId?: string; args?: Record<string, unknown> }> = [
       {
         type: 'text',
         text: msg.content,
       }
-    ],
-    status: 'ready' as const,
-  }))
+    ]
+
+    // Add tool call parts if present (for artifact reconstruction)
+    if (msg.toolCalls && msg.toolCalls.length > 0) {
+      msg.toolCalls.forEach((toolCall) => {
+        // Find corresponding tool result
+        const toolResult = msg.toolResults?.find(tr => tr.toolCallId === toolCall.id)
+        
+        if (toolCall.name === 'createDocument') {
+          parts.push({
+            type: 'tool-call',
+            toolName: 'createDocument',
+            toolCallId: toolCall.id,
+            args: {
+              ...toolCall.arguments,
+              // Include artifact content from tool result if available
+              ...(toolResult?.result && typeof toolResult.result === 'object' && 'content' in toolResult.result
+                ? { content: (toolResult.result as any).content }
+                : {}),
+            },
+          })
+        }
+      })
+    }
+
+    return {
+      id: msg.id,
+      role: msg.role as 'user' | 'assistant' | 'system',
+      parts,
+      status: 'ready' as const,
+    }
+  })
 
   const queryClient = useQueryClient()
   const prevConversationIdRef = useRef<string | null>(null)
@@ -285,18 +322,45 @@ function ConversationChat({
   useEffect(() => {
     // Only sync when conversationId changes (navigating between conversations)
     if (prevConversationIdRef.current !== conversationId) {
-      // Convert API messages to UIMessage format
-      const syncedMessages = data.messages.map((msg) => ({
-        id: msg.id,
-        role: msg.role as 'user' | 'assistant' | 'system',
-        parts: [
+      // Convert API messages to UIMessage format with tool calls/results
+      const syncedMessages = data.messages.map((msg) => {
+        const parts: Array<{ type: string; text?: string; toolName?: string; toolCallId?: string; args?: Record<string, unknown> }> = [
           {
             type: 'text',
             text: msg.content,
           }
-        ],
-        status: 'ready' as const,
-      }))
+        ]
+
+        // Add tool call parts if present (for artifact reconstruction)
+        if (msg.toolCalls && msg.toolCalls.length > 0) {
+          msg.toolCalls.forEach((toolCall) => {
+            // Find corresponding tool result
+            const toolResult = msg.toolResults?.find(tr => tr.toolCallId === toolCall.id)
+            
+            if (toolCall.name === 'createDocument') {
+              parts.push({
+                type: 'tool-call',
+                toolName: 'createDocument',
+                toolCallId: toolCall.id,
+                args: {
+                  ...toolCall.arguments,
+                  // Include artifact content from tool result if available
+                  ...(toolResult?.result && typeof toolResult.result === 'object' && 'content' in toolResult.result
+                    ? { content: (toolResult.result as any).content }
+                    : {}),
+                },
+              })
+            }
+          })
+        }
+
+        return {
+          id: msg.id,
+          role: msg.role as 'user' | 'assistant' | 'system',
+          parts,
+          status: 'ready' as const,
+        }
+      })
 
       setMessages(syncedMessages)
       prevConversationIdRef.current = conversationId
@@ -304,6 +368,7 @@ function ConversationChat({
   }, [conversationId, data.messages, setMessages])
 
   // Parse artifacts from messages (both code blocks and tool calls)
+  // Also track which message contains each artifact for editing
   const messageArtifacts = useMemo(() => {
     const artifactsByMessage = new Map<string, Artifact[]>()
     const isStreaming = status === 'streaming'
@@ -313,20 +378,40 @@ function ConversationChat({
 
       const artifacts: Artifact[] = []
 
-      // 1. Check for createDocument tool calls
+      // 1. Check for createDocument tool calls (from streaming or database)
       message.parts?.forEach((part) => {
         if (part.type === 'tool-call' && part.toolName === 'createDocument') {
           console.log('🔧 Detected createDocument tool call:', part)
           // Extract parameters from tool call
-          const { title, kind, content } = part.args as { title: string; kind: string; content: string }
-          artifacts.push({
-            id: part.toolCallId,
-            title,
-            type: kind === 'text' ? 'markdown' : 'code',
-            content,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-          } as Artifact)
+          const args = part.args as { title: string; kind: string; content?: string }
+          const { title, kind, content } = args
+          
+          // Ensure we have a toolCallId - this is critical for editing
+          if (!part.toolCallId) {
+            console.warn('⚠️ Tool call missing toolCallId:', part)
+            return
+          }
+          
+          // Map kind to artifact type
+          const kindMap: Record<string, Artifact['type']> = {
+            'text': 'markdown',
+            'code': 'code',
+            'html': 'html',
+            'react': 'react-component',
+          }
+          
+          if (title && kind && content) {
+            artifacts.push({
+              id: part.toolCallId, // Always use toolCallId as artifact ID
+              title,
+              type: kindMap[kind] || 'markdown',
+              content,
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+              // Store messageId for editing
+              metadata: { messageId: message.id },
+            } as Artifact)
+          }
         }
       })
 
@@ -339,6 +424,10 @@ function ConversationChat({
         const isLastMessage = index === messages.length - 1
         const allowPartial = isStreaming && isLastMessage && message.role === 'assistant'
         const parsedArtifacts = parseArtifactsFromContent(textContent, message.id, allowPartial)
+        // Add messageId metadata to parsed artifacts
+        parsedArtifacts.forEach(artifact => {
+          artifact.metadata = { messageId: message.id }
+        })
         artifacts.push(...parsedArtifacts)
       }
 
@@ -379,6 +468,64 @@ function ConversationChat({
 
     return artifacts
   }, [messageArtifacts, streamingArtifact])
+
+  // Handle artifact updates
+  const handleArtifactUpdate = async (updatedArtifact: Artifact) => {
+    // Find the message containing this artifact
+    const messageId = updatedArtifact.metadata?.messageId
+    if (!messageId) {
+      console.error('No messageId found in artifact metadata')
+      return
+    }
+
+    // Update the message parts to reflect the new content
+    setMessages((prevMessages) =>
+      prevMessages.map((msg) => {
+        if (msg.id === messageId) {
+          return {
+            ...msg,
+            parts: msg.parts?.map((part) => {
+              if (part.type === 'tool-call' && part.toolCallId === updatedArtifact.id) {
+                return {
+                  ...part,
+                  args: {
+                    ...part.args,
+                    content: updatedArtifact.content,
+                  },
+                }
+              }
+              return part
+            }),
+          }
+        }
+        return msg
+      })
+    )
+
+    // Refresh conversation data to get latest from database
+    queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] })
+  }
+
+  // Get messageId for current artifact
+  const getCurrentArtifactMessageId = () => {
+    if (selectedArtifactIndex === null) return undefined
+    const artifact = allArtifacts[selectedArtifactIndex]
+    
+    // Try to get from metadata first
+    const messageIdFromMetadata = artifact?.metadata?.messageId as string | undefined
+    if (messageIdFromMetadata) {
+      return messageIdFromMetadata
+    }
+    
+    // Fallback: find the message that contains this artifact
+    for (const [msgId, artifacts] of messageArtifacts.entries()) {
+      if (artifacts.some(a => a.id === artifact?.id)) {
+        return msgId
+      }
+    }
+    
+    return undefined
+  }
 
   // Auto-open side panel when artifact streaming starts
   useEffect(() => {
@@ -616,6 +763,9 @@ function ConversationChat({
                 currentIndex={selectedArtifactIndex}
                 onIndexChange={setSelectedArtifactIndex}
                 onClose={() => setSelectedArtifactIndex(null)}
+                onArtifactUpdate={handleArtifactUpdate}
+                conversationId={conversationId}
+                messageId={getCurrentArtifactMessageId()}
               />
             </DialogContent>
           </Dialog>
@@ -635,6 +785,9 @@ function ConversationChat({
               currentIndex={selectedArtifactIndex}
               onIndexChange={setSelectedArtifactIndex}
               onClose={() => setSelectedArtifactIndex(null)}
+              onArtifactUpdate={handleArtifactUpdate}
+              conversationId={conversationId}
+              messageId={getCurrentArtifactMessageId()}
             />
           </Panel>
         </PanelGroup>
