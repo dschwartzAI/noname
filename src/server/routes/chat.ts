@@ -10,7 +10,7 @@
 
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
-import { streamText, convertToModelMessages, generateText, tool } from 'ai'
+import { streamText, streamObject, convertToModelMessages, generateText, tool } from 'ai'
 import { requireAuth } from '../middleware/auth'
 import { injectOrganization } from '../middleware/organization'
 import { neon } from '@neondatabase/serverless'
@@ -57,19 +57,12 @@ const chatApp = new Hono<{ Bindings: Env; Variables: Variables }>()
 chatApp.use('*', requireAuth)
 chatApp.use('*', injectOrganization)
 
-// Define createDocument tool for artifact generation
-const createDocumentTool = tool({
-  description: 'Create a document, code snippet, or interactive component that will be displayed in a side panel. Use this when generating substantial content like markdown documents, code examples, React components, HTML pages, etc.',
-  parameters: z.object({
-    title: z.string().describe('Document title (e.g., "User Profile Component", "API Documentation")'),
-    kind: z.enum(['text', 'code']).describe('Type of content - "text" for markdown/documentation, "code" for source code'),
-    content: z.string().describe('The full document content to display'),
-  }),
-  execute: async ({ title, kind, content }) => {
-    console.log('📄 createDocument tool called:', { title, kind, contentLength: content.length })
-    // Tool result appears in chat - frontend will extract parameters for artifact
-    return `Created document: ${title}`
-  },
+// Artifact schema for streamObject
+const artifactSchema = z.object({
+  title: z.string().describe('Title of the artifact'),
+  kind: z.enum(['text', 'code', 'html', 'react']).describe('Type of artifact'),
+  content: z.string().describe('The full content of the artifact'),
+  language: z.string().optional().describe('Programming language for code artifacts'),
 })
 
 /**
@@ -397,9 +390,6 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
       messages,
       temperature: 0.7,
       maxTokens: 2048,
-      tools: {
-        createDocument: createDocumentTool,
-      },
       onFinish: async ({ text, finishReason, usage }) => {
         try {
           console.log('✅ AI response complete:', {
@@ -646,6 +636,88 @@ RESPOND WITH ONLY VALID JSON, NO MARKDOWN, NO EXPLANATION:`
     }
 
     return c.json({ error: 'Failed to process chat request' }, 500)
+  }
+})
+
+/**
+ * POST /api/v1/chat/artifact - Generate artifact with progressive streaming
+ *
+ * Uses streamObject to progressively stream artifact content
+ * Returns partial object updates for real-time display
+ */
+chatApp.post('/artifact', zValidator('json', z.object({
+  conversationId: z.string().optional(),
+  prompt: z.string(),
+  kind: z.enum(['text', 'code', 'html', 'react']).optional(),
+  model: z.string().optional(),
+  agentId: z.string().optional(),
+})), async (c) => {
+  try {
+    const { conversationId, prompt, kind, model, agentId } = c.req.valid('json')
+    const user = c.get('user')
+    const organizationId = c.get('organizationId')
+
+    if (!organizationId) {
+      return c.json({ error: 'No organization context' }, 403)
+    }
+
+    console.log('🎨 Artifact generation request:', {
+      userId: user.id,
+      organizationId,
+      conversationId,
+      kind,
+      model: model || 'gpt-4o',
+    })
+
+    // Get AI model
+    const aiModel = getModel({
+      ANTHROPIC_API_KEY: c.env.ANTHROPIC_API_KEY,
+      OPENAI_API_KEY: c.env.OPENAI_API_KEY,
+      XAI_API_KEY: c.env.XAI_API_KEY,
+    }, model || 'gpt-4o')
+
+    // Use streamObject for progressive structured streaming
+    const result = streamObject({
+      model: aiModel,
+      schema: artifactSchema,
+      prompt: kind
+        ? `Generate a ${kind} artifact for: ${prompt}. Provide a descriptive title, the kind (${kind}), and the full content.`
+        : `Generate an artifact for: ${prompt}. Determine the appropriate kind (text, code, html, or react), provide a descriptive title, and the full content.`,
+      onFinish: async ({ object }) => {
+        console.log('✅ Artifact generated:', {
+          title: object.title,
+          kind: object.kind,
+          contentLength: object.content?.length || 0,
+        })
+
+        // Optionally save to database
+        if (conversationId) {
+          const sqlClient = neon(c.env.DATABASE_URL)
+          const db = drizzle(sqlClient, { schema: authSchema })
+
+          // Save as assistant message with artifact metadata
+          await db.insert(authSchema.message).values({
+            id: nanoid(),
+            conversationId,
+            organizationId,
+            role: 'assistant',
+            content: `Created artifact: ${object.title}`,
+            toolCalls: null,
+            toolResults: null,
+            metadata: {
+              artifact: object,
+            },
+          })
+        }
+      },
+    })
+
+    // Return the partial object stream
+    return result.toTextStreamResponse()
+
+  } catch (error) {
+    console.error('❌ Artifact generation error:', error)
+    return c.json({ error: 'Failed to generate artifact' }, 500)
   }
 })
 
