@@ -391,7 +391,7 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
         const tools = artifactInstructions ? {
           createDocument: tool({
             description: 'Create a document artifact (code, text, HTML, or React component) for the user to see and interact with',
-            parameters: z.object({
+            inputSchema: z.object({
               title: z.string().describe('Descriptive title for the artifact'),
               kind: z.enum(['text', 'code', 'html', 'react']).describe('Type of artifact to create'),
             }),
@@ -444,6 +444,13 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
             },
           }),
         } : undefined
+
+        // Debug logging
+        console.log('🔍 Artifact instructions enabled:', !!artifactInstructions)
+        console.log('🔍 Tools defined:', !!tools)
+        if (tools) {
+          console.log('🔍 Tool names:', Object.keys(tools))
+        }
 
         // Stream AI response with tool support
         const result = streamText({
