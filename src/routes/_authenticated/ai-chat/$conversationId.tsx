@@ -190,6 +190,7 @@ function ConversationChat({
   const [selectedArtifactIndex, setSelectedArtifactIndex] = useState<number | null>(null)
   const [isMobile, setIsMobile] = useState(false)
   const hasAutoOpenedRef = useRef(false)
+  const artifactIdRef = useRef<string | null>(null)
 
 
   // Detect mobile viewport
@@ -223,6 +224,7 @@ function ConversationChat({
       if (data.type === 'artifact-metadata') {
         const { id, title, kind } = data.data as { id: string; title: string; kind: 'text' | 'code' | 'html' | 'react' }
         console.log('🎨 Artifact metadata received:', { id, title, kind })
+        artifactIdRef.current = id  // Store artifact ID for reference
         setStreamingArtifact({
           id,
           title,
