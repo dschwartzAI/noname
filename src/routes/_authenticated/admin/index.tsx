@@ -3,6 +3,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSession } from '@/lib/auth-client';
 
 export const Route = createFileRoute('/_authenticated/admin/')({
@@ -49,11 +50,21 @@ function AdminDashboard() {
         </div>
       </div>
 
-      {/* Overview Section */}
-      <OverviewTab />
+      {/* Tabs */}
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="api-usage">API Usage</TabsTrigger>
+        </TabsList>
 
-      {/* API Usage Section */}
-      <ApiUsageTab />
+        <TabsContent value="overview" className="space-y-6">
+          <OverviewTab />
+        </TabsContent>
+
+        <TabsContent value="api-usage" className="space-y-6">
+          <ApiUsageTab />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

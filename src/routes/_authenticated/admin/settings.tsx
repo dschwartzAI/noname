@@ -2,6 +2,7 @@
 
 import { createFileRoute } from '@tanstack/react-router';
 import { Card } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSession } from '@/lib/auth-client';
 import { LogoUpload } from './_components/logo-upload';
 import { FaviconUpload } from './_components/favicon-upload';
@@ -40,49 +41,54 @@ function AdminSettings() {
         <p className="text-muted-foreground">Organization settings, branding, and instructors</p>
       </div>
 
-      {/* Branding Section */}
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-6">Branding</h3>
-        <div className="space-y-8">
-          {/* App Name Section */}
-          <div>
-            <label className="text-sm font-medium mb-2 block">App Name</label>
-            <p className="text-sm text-muted-foreground mb-4">
-              Set the name that appears in browser tabs and across your workspace experience.
-            </p>
-            <AppNameForm />
-          </div>
+      {/* Tabs */}
+      <Tabs defaultValue="branding" className="w-full">
+        <TabsList>
+          <TabsTrigger value="branding">Branding</TabsTrigger>
+          <TabsTrigger value="instructors">Instructors</TabsTrigger>
+        </TabsList>
 
-          <div className="border-t" />
+        <TabsContent value="branding" className="space-y-6">
+          <Card className="p-6">
+            <div className="space-y-8">
+              {/* App Name Section */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">App Name</label>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Set the name that appears in browser tabs and across your workspace experience.
+                </p>
+                <AppNameForm />
+              </div>
 
-          {/* Logo Section */}
-          <div>
-            <label className="text-sm font-medium mb-2 block">Logo</label>
-            <p className="text-sm text-muted-foreground mb-4">
-              Upload your organization's logo. This will be displayed in the sidebar and throughout the app.
-            </p>
-            <LogoUpload />
-          </div>
+              <div className="border-t" />
 
-          <div className="border-t" />
+              {/* Logo Section */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">Logo</label>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Upload your organization's logo. This will be displayed in the sidebar and throughout the app.
+                </p>
+                <LogoUpload />
+              </div>
 
-          {/* Favicon Section */}
-          <div>
-            <label className="text-sm font-medium mb-2 block">Favicon</label>
-            <p className="text-sm text-muted-foreground mb-4">
-              Upload your browser tab icon. This appears in browser tabs and bookmarks.
-            </p>
-            <FaviconUpload />
-          </div>
-        </div>
-      </Card>
+              <div className="border-t" />
 
-      {/* Instructors Section */}
-      <div>
-        <h2 className="text-2xl font-bold mb-4">Instructors</h2>
-        <p className="text-muted-foreground mb-6">Manage course instructors for your LMS</p>
-        <InstructorsManager />
-      </div>
+              {/* Favicon Section */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">Favicon</label>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Upload your browser tab icon. This appears in browser tabs and bookmarks.
+                </p>
+                <FaviconUpload />
+              </div>
+            </div>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="instructors" className="space-y-6">
+          <InstructorsManager />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
