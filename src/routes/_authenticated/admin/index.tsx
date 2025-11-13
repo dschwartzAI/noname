@@ -6,6 +6,7 @@ import { LogoUpload } from './_components/logo-upload';
 import { FaviconUpload } from './_components/favicon-upload';
 import { AppNameForm } from './_components/app-name-form';
 import { InstructorsManager } from './_components/instructors-manager';
+import { KnowledgeBaseTab } from './_components/knowledge-base-tab';
 
 export const Route = createFileRoute('/_authenticated/admin/')({
   component: AdminPanel,
@@ -55,10 +56,11 @@ function AdminPanel() {
 
       {/* Tabs */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 lg:w-auto">
+        <TabsList className="grid w-full grid-cols-6 lg:w-auto">
           <TabsTrigger value="overview">Dashboard</TabsTrigger>
           <TabsTrigger value="api-usage">API Usage</TabsTrigger>
           <TabsTrigger value="user-management">User Management</TabsTrigger>
+          <TabsTrigger value="knowledge-base">Knowledge Base</TabsTrigger>
           <TabsTrigger value="instructors">Instructors</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
@@ -76,6 +78,11 @@ function AdminPanel() {
         {/* User Management Tab */}
         <TabsContent value="user-management" className="space-y-6">
           <UserManagementTab />
+        </TabsContent>
+
+        {/* Knowledge Base Tab */}
+        <TabsContent value="knowledge-base" className="space-y-6">
+          <KnowledgeBaseTab />
         </TabsContent>
 
         {/* Instructors Tab */}

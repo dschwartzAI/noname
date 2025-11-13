@@ -155,21 +155,57 @@ function LessonPage() {
           }).sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
         }
 
-        // Update lesson orders
+        // Update lesson orders and module assignments
         if (data.lessons && updated.modules) {
-          updated.modules = updated.modules.map((mod: any) => {
-            const moduleLessons = data.lessons?.filter((l) => l.moduleId === mod.id) || []
-            if (moduleLessons.length > 0 && mod.lessons) {
-              const updatedLessons = mod.lessons.map((les: any) => {
-                const orderUpdate = moduleLessons.find((l) => l.id === les.id)
-                if (orderUpdate) {
-                  return { ...les, order: orderUpdate.order }
-                }
-                return les
-              }).sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
-              return { ...mod, lessons: updatedLessons }
+          // Group lesson updates by their target module
+          const lessonsByModule = new Map<string, Array<{ id: string; moduleId: string; order: number }>>()
+          data.lessons.forEach((l) => {
+            if (!lessonsByModule.has(l.moduleId)) {
+              lessonsByModule.set(l.moduleId, [])
             }
-            return mod
+            lessonsByModule.get(l.moduleId)!.push(l)
+          })
+
+          // Create a map of lesson updates for quick lookup
+          const lessonUpdates = new Map(data.lessons.map(l => [l.id, l]))
+
+          updated.modules = updated.modules.map((mod: any) => {
+            const moduleLessons = mod.lessons || []
+            
+            // Remove lessons that are being moved to other modules
+            const remainingLessons = moduleLessons.filter((les: any) => {
+              const update = lessonUpdates.get(les.id)
+              return !update || update.moduleId === mod.id
+            })
+
+            // Add lessons that are being moved to this module
+            const incomingLessons = lessonsByModule.get(mod.id) || []
+            const newLessons = incomingLessons
+              .filter(({ id }) => !remainingLessons.some((l: any) => l.id === id))
+              .map(({ id, order }) => {
+                // Find the lesson data from other modules
+                for (const m of updated.modules) {
+                  const found = (m.lessons || []).find((l: any) => l.id === id)
+                  if (found) return { ...found, moduleId: mod.id, order }
+                }
+                return null
+              })
+              .filter(Boolean)
+
+            // Update orders for remaining lessons
+            const updatedLessons = remainingLessons.map((les: any) => {
+              const orderUpdate = lessonUpdates.get(les.id)
+              if (orderUpdate && orderUpdate.moduleId === mod.id) {
+                return { ...les, order: orderUpdate.order, moduleId: mod.id }
+              }
+              return les
+            })
+
+            // Combine and sort
+            const allLessons = [...updatedLessons, ...newLessons]
+              .sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
+
+            return { ...mod, lessons: allLessons }
           })
         }
 
@@ -320,7 +356,7 @@ function LessonPage() {
       return
     }
 
-    // Handle lesson reordering within the same module
+    // Handle lesson reordering within or between modules
     if (activeId.startsWith('lesson-') && overId.startsWith('lesson-')) {
       const activeLessonId = activeId.replace('lesson-', '')
       const overLessonId = overId.replace('lesson-', '')
@@ -346,15 +382,40 @@ function LessonPage() {
         }
       }
 
-      // Only reorder if lessons are in the same module
-      if (activeModule && overModule && activeModule.id === overModule.id) {
-        const newLessons = arrayMove(activeModule.lessons, activeLessonIndex, overLessonIndex)
-        const lessonOrders = newLessons.map((les: any, index: number) => ({
-          id: les.id,
-          moduleId: activeModule.id,
-          order: index,
-        }))
-        reorderMutation.mutate({ lessons: lessonOrders })
+      if (activeModule && overModule) {
+        // Same module: reorder within module
+        if (activeModule.id === overModule.id) {
+          const newLessons = arrayMove(activeModule.lessons, activeLessonIndex, overLessonIndex)
+          const lessonOrders = newLessons.map((les: any, index: number) => ({
+            id: les.id,
+            moduleId: activeModule.id,
+            order: index,
+          }))
+          reorderMutation.mutate({ lessons: lessonOrders })
+        } else {
+          // Different modules: move lesson to new module
+          // Remove from source module and add to target module
+          const sourceLesson = activeModule.lessons[activeLessonIndex]
+          
+          // Create lesson orders for both modules
+          const allLessonOrders: Array<{ id: string; moduleId: string; order: number }> = []
+          
+          // Update source module (remove lesson)
+          activeModule.lessons
+            .filter((l: any) => l.id !== activeLessonId)
+            .forEach((l: any, idx: number) => {
+              allLessonOrders.push({ id: l.id, moduleId: activeModule.id, order: idx })
+            })
+          
+          // Update target module (insert lesson)
+          const targetLessons = [...overModule.lessons]
+          targetLessons.splice(overLessonIndex, 0, { ...sourceLesson, moduleId: overModule.id })
+          targetLessons.forEach((l: any, idx: number) => {
+            allLessonOrders.push({ id: l.id, moduleId: overModule.id, order: idx })
+          })
+          
+          reorderMutation.mutate({ lessons: allLessonOrders })
+        }
       }
     }
   }

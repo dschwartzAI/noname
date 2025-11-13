@@ -20,6 +20,7 @@ import invitesApp from './routes/invites'
 import memoriesApp from './routes/memories'
 import agentsApp from './routes/agents'
 import { agentIconApp } from './routes/agent-icon'
+import kbApp from './routes/knowledge-base'
 import coursesApp from './routes/courses'
 import instructorsApp from './routes/instructors'
 // Temporarily disabled - incompatible import paths
@@ -1477,6 +1478,9 @@ app.route('/api/v1/memories', memoriesApp)
 // Agent management routes
 app.route('/api/v1/agents', agentsApp)
 app.route('/api/agents/icon', agentIconApp)
+
+// Knowledge Base routes (RAG)
+app.route('/api/v1/knowledge-base', kbApp)
 
 // LMS routes (Syndicate)
 app.route('/api/v1/instructors', instructorsApp)

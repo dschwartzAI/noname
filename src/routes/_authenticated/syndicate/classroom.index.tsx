@@ -84,6 +84,28 @@ function ClassroomPage() {
     return Array.from(cats).sort()
   }, [courses])
 
+  // Delete course mutation - MUST be before any conditional returns
+  const deleteMutation = useMutation({
+    mutationFn: async (courseId: string) => {
+      const res = await fetch(`/api/v1/courses/${courseId}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({}))
+        throw new Error(error.error || 'Failed to delete course')
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['courses'] })
+      toast.success('Course deleted successfully')
+      setCourseToDelete(null)
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete course')
+    },
+  })
+
   if (isLoading) {
     return (
       <div className="container max-w-7xl py-6 space-y-6">
@@ -140,28 +162,6 @@ function ClassroomPage() {
       search: { courseId: course.id }
     })
   }
-
-  // Delete course mutation
-  const deleteMutation = useMutation({
-    mutationFn: async (courseId: string) => {
-      const res = await fetch(`/api/v1/courses/${courseId}`, {
-        method: 'DELETE',
-      })
-      if (!res.ok) {
-        const error = await res.json().catch(() => ({}))
-        throw new Error(error.error || 'Failed to delete course')
-      }
-      return res.json()
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['courses'] })
-      toast.success('Course deleted successfully')
-      setCourseToDelete(null)
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || 'Failed to delete course')
-    },
-  })
 
   const handleDeleteCourse = (course: any) => {
     setCourseToDelete(course)

@@ -21,3 +21,4 @@ export const instructors = pgTable('instructors', {
 
 export type InsertInstructor = typeof instructors.$inferInsert
 export type SelectInstructor = typeof instructors.$inferSelect
+

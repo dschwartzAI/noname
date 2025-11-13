@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/select'
 import { useState, useEffect } from 'react'
 import { useAgents, type Agent } from '@/hooks/use-agents'
+import { useKnowledgeBases } from '@/hooks/use-knowledge-bases'
 import { useQueryClient } from '@tanstack/react-query'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AgentIconUpload } from './agent-icon-upload'
@@ -69,6 +70,7 @@ interface AgentBuilderProps {
 export function AgentBuilder({ open, onOpenChange, trigger, onSuccess }: AgentBuilderProps) {
   const queryClient = useQueryClient()
   const { data: agentsData, isLoading: agentsLoading } = useAgents()
+  const { data: kbData } = useKnowledgeBases()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // UI state
@@ -88,6 +90,7 @@ export function AgentBuilder({ open, onOpenChange, trigger, onSuccess }: AgentBu
   const [model, setModel] = useState('gpt-4o')
   const [artifactsEnabled, setArtifactsEnabled] = useState(true) // Default to enabled
   const [artifactInstructions, setArtifactInstructions] = useState('')
+  const [knowledgeBaseId, setKnowledgeBaseId] = useState<string>('')
 
   // Load full agent details when editing (must use GET endpoint, not LIST)
   useEffect(() => {
@@ -117,6 +120,8 @@ export function AgentBuilder({ open, onOpenChange, trigger, onSuccess }: AgentBu
             setModel(agent.model)
             setArtifactsEnabled(agent.artifactsEnabled ?? false)
             setArtifactInstructions(agent.artifactInstructions || '')
+            // Load knowledge base ID from toolResources
+            setKnowledgeBaseId(agent.toolResources?.fileSearch?.vectorStoreIds?.[0] || '')
           }
         })
         .catch(err => {
@@ -141,6 +146,7 @@ export function AgentBuilder({ open, onOpenChange, trigger, onSuccess }: AgentBu
       'This streams content directly to a side panel for better user experience. ' +
       'Use "text" kind for markdown documents, "code" kind for source code.'
     )
+    setKnowledgeBaseId('')
     setView('form')
   }
 
@@ -187,6 +193,12 @@ export function AgentBuilder({ open, onOpenChange, trigger, onSuccess }: AgentBu
         model,
         artifactsEnabled,
         artifactInstructions: artifactsEnabled ? artifactInstructions : undefined,
+        // Knowledge Base (RAG) configuration
+        toolResources: knowledgeBaseId ? {
+          fileSearch: {
+            vectorStoreIds: [knowledgeBaseId],
+          },
+        } : undefined,
         published: true,
       }
 
@@ -465,6 +477,32 @@ export function AgentBuilder({ open, onOpenChange, trigger, onSuccess }: AgentBu
                   </p>
                 </div>
               )}
+
+              {/* Knowledge Base Selector */}
+              <div className="space-y-2">
+                <Label htmlFor="knowledge-base">Knowledge Base (Optional)</Label>
+                <Select value={knowledgeBaseId} onValueChange={setKnowledgeBaseId}>
+                  <SelectTrigger id="knowledge-base">
+                    <SelectValue placeholder="None - Use web search or tools only" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    {kbData?.knowledgeBases.map((kb) => (
+                      <SelectItem key={kb.id} value={kb.id}>
+                        <div className="flex flex-col">
+                          <span>{kb.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {kb.documentCount} docs, {kb.totalChunks} chunks
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Give this agent access to a knowledge base for RAG (Retrieval Augmented Generation)
+                </p>
+              </div>
 
               {/* Submit */}
               <div className="pt-4 space-y-2">

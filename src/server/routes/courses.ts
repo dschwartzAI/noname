@@ -1063,9 +1063,9 @@ coursesApp.patch('/:courseId/reorder', zValidator('param', z.object({ courseId: 
       )
     }
 
-    // Update lesson orders
+    // Update lesson orders and module assignments
     if (lessonOrders && lessonOrders.length > 0) {
-      // Verify all lessons belong to modules in this course
+      // Verify all target modules belong to this course
       const moduleIds = await db
         .select({ id: modules.id })
         .from(modules)
@@ -1078,15 +1078,20 @@ coursesApp.patch('/:courseId/reorder', zValidator('param', z.object({ courseId: 
 
       for (const { id, moduleId, order } of lessonOrders) {
         if (!validModuleIds.has(moduleId)) {
-          return c.json({ error: `Lesson ${id} belongs to invalid module ${moduleId}` }, 400)
+          return c.json({ error: `Invalid target module ${moduleId}` }, 400)
         }
 
+        // Update lesson: set new module, order, and updatedAt
+        // This allows moving lessons between modules
         await db
           .update(lessons)
-          .set({ order, updatedAt: new Date() })
+          .set({ 
+            moduleId: moduleId,  // Update module assignment
+            order: order,         // Update order
+            updatedAt: new Date() 
+          })
           .where(and(
             eq(lessons.id, id),
-            eq(lessons.moduleId, moduleId),
             eq(lessons.tenantId, tenantId)
           ))
       }

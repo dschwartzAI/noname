@@ -11,6 +11,7 @@ export * from './conversations';
 export * from './messages';
 export * from './agents';
 export * from './memories';
+export * from './knowledge-base';
 
 // LMS System (Syndicate)
 export * from './tenants';
