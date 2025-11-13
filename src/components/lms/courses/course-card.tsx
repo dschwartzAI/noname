@@ -1,85 +1,110 @@
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
-import { BookOpen, Clock, Users, PlayCircle, CheckCircle2 } from 'lucide-react'
+import { MoreVertical, Edit, Trash2 } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { SelectCourse } from '@/database/schema/courses'
 
 interface CourseCardProps {
   course: SelectCourse
-  moduleCount?: number
-  lessonCount?: number
-  totalDuration?: number
-  enrollment?: {
-    progressPercentage: number
-    completedLessons: string[]
-    lastAccessedAt: Date
-  }
   onClick: () => void
+  onEdit?: () => void
+  onDelete?: () => void
+  canEdit?: boolean
 }
 
 export function CourseCard({ 
   course, 
-  moduleCount = 0,
-  lessonCount = 0, 
-  totalDuration = 0,
-  enrollment,
-  onClick 
+  onClick,
+  onEdit,
+  onDelete,
+  canEdit = false
 }: CourseCardProps) {
-  const isEnrolled = !!enrollment
-  const isCompleted = enrollment && enrollment.progressPercentage === 100
-
-  const formatDuration = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600)
-    const minutes = Math.floor((seconds % 3600) / 60)
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`
-    }
-    return `${minutes}m`
-  }
-
   return (
     <Card 
       className="hover:shadow-lg transition-all cursor-pointer group h-full flex flex-col" 
       onClick={(e) => {
-        // Only trigger if not clicking the button
-        if ((e.target as HTMLElement).closest('button')) {
+        // Only trigger if not clicking the button or dropdown
+        if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('[role="menuitem"]')) {
           return
         }
         onClick()
       }}
     >
       {/* Thumbnail */}
-      {course.thumbnail && (
-        <div className="relative w-full h-48 overflow-hidden rounded-t-lg">
+      <div className="relative w-full h-48 overflow-hidden rounded-t-lg bg-muted">
+        {course.thumbnail ? (
           <img 
+            key={course.thumbnail} // Force re-render when thumbnail changes
             src={course.thumbnail} 
             alt={course.title} 
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            onError={(e) => {
+              // If image fails to load, hide it and show placeholder
+              console.error('Failed to load course thumbnail:', course.thumbnail)
+              const target = e.target as HTMLImageElement
+              target.style.display = 'none'
+              const placeholder = target.parentElement?.querySelector('.thumbnail-placeholder') as HTMLElement
+              if (placeholder) {
+                placeholder.style.display = 'flex'
+              }
+            }}
+            onLoad={() => {
+              console.log('Course thumbnail loaded successfully:', course.thumbnail)
+            }}
           />
-          {isCompleted && (
-            <div className="absolute top-3 right-3 bg-green-600 text-white rounded-full p-2">
-              <CheckCircle2 className="h-5 w-5" />
-            </div>
-          )}
-          {!isEnrolled && course.tier === 'pro' && (
-            <Badge className="absolute top-3 left-3" variant="default">
-              Pro
-            </Badge>
-          )}
+        ) : null}
+        <div 
+          className={`thumbnail-placeholder w-full h-full flex items-center justify-center text-muted-foreground ${course.thumbnail ? 'hidden' : ''}`}
+        >
+          No Image
         </div>
-      )}
+        
+        {/* Edit Button */}
+        {canEdit && (
+          <div className="absolute top-3 right-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  className="h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit?.() }}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit Course
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem 
+                  onClick={(e) => { e.stopPropagation(); onDelete?.() }}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Course
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        )}
+      </div>
 
       <CardHeader className="pb-3 flex-grow">
         <div className="space-y-2">
           <CardTitle className="line-clamp-2 group-hover:text-blue-600 transition-colors">
             {course.title}
           </CardTitle>
-          <CardDescription className="line-clamp-2">
-            {course.description}
-          </CardDescription>
           
           {/* Instructor */}
           <div className="flex items-center gap-2 pt-2">
@@ -87,7 +112,7 @@ export function CourseCard({
               <img 
                 src={course.instructorAvatar} 
                 alt={course.instructor} 
-                className="h-6 w-6 rounded-full"
+                className="h-6 w-6 rounded-full object-cover"
               />
             ) : (
               <div className="h-6 w-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white text-xs font-semibold">
@@ -98,56 +123,6 @@ export function CourseCard({
           </div>
         </div>
       </CardHeader>
-
-      <CardContent className="space-y-3 pb-6">
-        {/* Progress Bar (if enrolled) */}
-        {isEnrolled && enrollment && (
-          <div className="space-y-2">
-            <Progress value={enrollment.progressPercentage} className="h-2" />
-            <p className="text-xs text-muted-foreground">
-              {enrollment.progressPercentage}% complete
-            </p>
-          </div>
-        )}
-
-        {/* Course Stats */}
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <BookOpen className="h-4 w-4" />
-            {moduleCount} modules
-          </span>
-          <span className="flex items-center gap-1">
-            <PlayCircle className="h-4 w-4" />
-            {lessonCount} lessons
-          </span>
-        </div>
-
-        {totalDuration > 0 && (
-          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-            <Clock className="h-4 w-4" />
-            {formatDuration(totalDuration)}
-          </div>
-        )}
-
-        {course.enrollmentCount > 0 && (
-          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-            <Users className="h-4 w-4" />
-            {course.enrollmentCount} enrolled
-          </div>
-        )}
-
-        {/* CTA Button */}
-        <Button 
-          className="w-full mt-4" 
-          variant={isEnrolled ? "default" : "outline"}
-          onClick={(e) => {
-            e.stopPropagation()
-            onClick()
-          }}
-        >
-          {isCompleted ? 'Review Course' : isEnrolled ? 'Continue Learning' : 'Start Course'}
-        </Button>
-      </CardContent>
     </Card>
   )
 }

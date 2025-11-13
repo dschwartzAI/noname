@@ -20,8 +20,9 @@ import invitesApp from './routes/invites'
 import memoriesApp from './routes/memories'
 import agentsApp from './routes/agents'
 import { agentIconApp } from './routes/agent-icon'
+import coursesApp from './routes/courses'
+import instructorsApp from './routes/instructors'
 // Temporarily disabled - incompatible import paths
-// import coursesApp from './routes/courses'
 // import calendarApp from './routes/calendar'
 // import messageBoardApp from './routes/message-board'
 import { z } from '@hono/zod-openapi'
@@ -1477,8 +1478,10 @@ app.route('/api/v1/memories', memoriesApp)
 app.route('/api/v1/agents', agentsApp)
 app.route('/api/agents/icon', agentIconApp)
 
-// LMS routes (Syndicate) - Temporarily disabled due to import path issues
-// app.route('/api/v1/courses', coursesApp)
+// LMS routes (Syndicate)
+app.route('/api/v1/instructors', instructorsApp)
+app.route('/api/v1/courses', coursesApp)
+// Temporarily disabled due to import path issues
 // app.route('/api/v1/calendar', calendarApp)
 // app.route('/api/v1/board', messageBoardApp)
 

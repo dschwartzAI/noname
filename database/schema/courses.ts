@@ -7,17 +7,21 @@
 import { pgTable, uuid, text, timestamp, integer, boolean, jsonb } from 'drizzle-orm/pg-core';
 import { tenants } from './tenants';
 import { users } from './auth';
+import { instructors } from './instructors';
 
 export const courses = pgTable('courses', {
   id: uuid('id').primaryKey().defaultRandom(),
   tenantId: uuid('tenant_id')
     .references(() => tenants.id, { onDelete: 'cascade' })
     .notNull(),
+  instructorId: uuid('instructor_id')
+    .references(() => instructors.id, { onDelete: 'set null' }),
   
   // Content
   title: text('title').notNull(),
   description: text('description'),
   thumbnail: text('thumbnail'),
+  categories: jsonb('categories').$type<string[]>().default([]),
   
   // Instructor
   instructor: text('instructor').notNull(),

@@ -1,13 +1,34 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ArrowLeft, ChevronRight, ChevronDown, ChevronUp, MessageCircle } from 'lucide-react'
+import { ArrowLeft, ChevronRight, ChevronDown, ChevronUp, MessageCircle, Edit, GripVertical } from 'lucide-react'
 import { VideoPlayer } from '@/components/lms/courses/video-player'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { useAuth } from '@/stores/auth-simple'
+import { LessonEditor } from '@/components/lms/courses/lesson-editor'
+import { ModuleEditor } from '@/components/lms/courses/module-editor'
+import { LessonCreator } from '@/components/lms/courses/lesson-creator'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 export const Route = createFileRoute('/_authenticated/syndicate/classroom/$courseId/$lessonId')({
   component: LessonPage
@@ -17,10 +38,30 @@ function LessonPage() {
   const { courseId, lessonId } = Route.useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { user } = useAuth()
   
   const [contentOpen, setContentOpen] = useState(false)
   const [resourcesOpen, setResourcesOpen] = useState(false)
   const [transcriptOpen, setTranscriptOpen] = useState(false)
+  const [editingLessonId, setEditingLessonId] = useState<string | null>(null)
+  const [isModuleEditorOpen, setIsModuleEditorOpen] = useState(false)
+  const [editingModuleId, setEditingModuleId] = useState<string | null>(null)
+  const [isLessonCreatorOpen, setIsLessonCreatorOpen] = useState(false)
+  const [defaultModuleId, setDefaultModuleId] = useState<string | undefined>(undefined)
+
+  // Fetch organization to check role
+  const { data: orgData } = useQuery({
+    queryKey: ['organization', 'current'],
+    queryFn: async () => {
+      const res = await fetch('/api/organization/current')
+      if (!res.ok) return null
+      return res.json()
+    },
+  })
+
+  const organizationRole = orgData?.organization?.role
+  const isOwner = organizationRole === 'owner' || user?.isGod
+  const canEdit = isOwner
 
   // Fetch course data
   const { data: courseData } = useQuery({
@@ -77,6 +118,97 @@ function LessonPage() {
     }
   })
 
+  const reorderMutation = useMutation({
+    mutationFn: async (data: { modules?: Array<{ id: string; order: number }>, lessons?: Array<{ id: string; moduleId: string; order: number }> }) => {
+      const res = await fetch(`/api/v1/courses/${courseId}/reorder`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Failed to reorder')
+      }
+      return res.json()
+    },
+    onMutate: async (data) => {
+      // Cancel any outgoing refetches to avoid overwriting optimistic update
+      await queryClient.cancelQueries({ queryKey: ['course', courseId] })
+
+      // Snapshot the previous value
+      const previousCourseData = queryClient.getQueryData(['course', courseId])
+
+      // Optimistically update the cache
+      queryClient.setQueryData(['course', courseId], (old: any) => {
+        if (!old) return old
+
+        const updated = { ...old }
+        
+        // Update module orders
+        if (data.modules && updated.modules) {
+          updated.modules = updated.modules.map((mod: any) => {
+            const orderUpdate = data.modules?.find((m) => m.id === mod.id)
+            if (orderUpdate) {
+              return { ...mod, order: orderUpdate.order }
+            }
+            return mod
+          }).sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
+        }
+
+        // Update lesson orders
+        if (data.lessons && updated.modules) {
+          updated.modules = updated.modules.map((mod: any) => {
+            const moduleLessons = data.lessons?.filter((l) => l.moduleId === mod.id) || []
+            if (moduleLessons.length > 0 && mod.lessons) {
+              const updatedLessons = mod.lessons.map((les: any) => {
+                const orderUpdate = moduleLessons.find((l) => l.id === les.id)
+                if (orderUpdate) {
+                  return { ...les, order: orderUpdate.order }
+                }
+                return les
+              }).sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
+              return { ...mod, lessons: updatedLessons }
+            }
+            return mod
+          })
+        }
+
+        return updated
+      })
+
+      // Return context with snapshot value
+      return { previousCourseData }
+    },
+    onError: (err, variables, context) => {
+      // Rollback to previous value on error
+      if (context?.previousCourseData) {
+        queryClient.setQueryData(['course', courseId], context.previousCourseData)
+      }
+    },
+    onSettled: () => {
+      // Always refetch after error or success to ensure consistency
+      queryClient.invalidateQueries({ queryKey: ['course', courseId] })
+    },
+  })
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+
+  // API returns course object directly with modules property
+  // Move useMemo before early return to follow Rules of Hooks
+  const modules = useMemo(() => {
+    if (!courseData) return []
+    const mods = courseData?.modules || []
+    return mods.map((mod: any) => ({
+      ...mod,
+      lessons: (mod.lessons || []).sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0)),
+    })).sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
+  }, [courseData])
+
   if (isLoading || !courseData || !lessonData) {
     return (
       <div className="flex h-screen">
@@ -90,9 +222,34 @@ function LessonPage() {
     )
   }
 
-  const { course, modules, enrollment } = courseData
-  const { lesson } = lessonData
-  const completedLessons = enrollment?.completedLessons || []
+  // API returns course object directly with modules property
+  const course = courseData
+  
+  // API returns lesson object directly (spread) with module and course properties
+  const lesson = lessonData
+  const completedLessons: string[] = []
+
+  // Get all sortable IDs for drag and drop
+  const moduleIds = modules.map((m: any) => `module-${m.id}`)
+  // Note: We'll handle lesson sorting within each module's SortableContext
+
+  // Safety check - if course or lesson is missing required fields, show error
+  if (!course?.title || !lesson?.title) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground">Course or lesson data is missing</p>
+          <Button
+            variant="outline"
+            onClick={() => navigate({ to: '/syndicate/classroom' })}
+            className="mt-4"
+          >
+            Back to Classroom
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   // Find current lesson's module and next lesson
   let currentModuleIndex = -1
@@ -100,17 +257,21 @@ function LessonPage() {
   let nextLesson = null
 
   for (let i = 0; i < modules.length; i++) {
-    const lessonIdx = modules[i].lessons.findIndex((l: any) => l.id === lessonId)
+    const moduleLessons = modules[i]?.lessons || []
+    const lessonIdx = moduleLessons.findIndex((l: any) => l.id === lessonId)
     if (lessonIdx !== -1) {
       currentModuleIndex = i
       currentLessonIndex = lessonIdx
       
       // Check if there's a next lesson in current module
-      if (lessonIdx < modules[i].lessons.length - 1) {
-        nextLesson = modules[i].lessons[lessonIdx + 1]
-      } else if (i < modules.length - 1 && modules[i + 1].lessons.length > 0) {
+      if (lessonIdx < moduleLessons.length - 1) {
+        nextLesson = moduleLessons[lessonIdx + 1]
+      } else if (i < modules.length - 1) {
         // Check first lesson of next module
-        nextLesson = modules[i + 1].lessons[0]
+        const nextModuleLessons = modules[i + 1]?.lessons || []
+        if (nextModuleLessons.length > 0) {
+          nextLesson = nextModuleLessons[0]
+        }
       }
       break
     }
@@ -128,6 +289,89 @@ function LessonPage() {
       markCompleteMutation.mutate()
       handleLessonClick(nextLesson.id)
     }
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+
+    if (!over || active.id === over.id) {
+      return
+    }
+
+    const activeId = String(active.id)
+    const overId = String(over.id)
+
+    // Handle module reordering
+    if (activeId.startsWith('module-') && overId.startsWith('module-')) {
+      const activeModuleId = activeId.replace('module-', '')
+      const overModuleId = overId.replace('module-', '')
+      
+      const activeIndex = modules.findIndex((m: any) => m.id === activeModuleId)
+      const overIndex = modules.findIndex((m: any) => m.id === overModuleId)
+
+      if (activeIndex !== -1 && overIndex !== -1) {
+        const newModules = arrayMove(modules, activeIndex, overIndex)
+        const moduleOrders = newModules.map((mod: any, index: number) => ({
+          id: mod.id,
+          order: index,
+        }))
+        reorderMutation.mutate({ modules: moduleOrders })
+      }
+      return
+    }
+
+    // Handle lesson reordering within the same module
+    if (activeId.startsWith('lesson-') && overId.startsWith('lesson-')) {
+      const activeLessonId = activeId.replace('lesson-', '')
+      const overLessonId = overId.replace('lesson-', '')
+
+      // Find which modules these lessons belong to
+      let activeModule: any = null
+      let overModule: any = null
+      let activeLessonIndex = -1
+      let overLessonIndex = -1
+
+      for (const mod of modules) {
+        const lessons = mod.lessons || []
+        const activeIdx = lessons.findIndex((l: any) => l.id === activeLessonId)
+        const overIdx = lessons.findIndex((l: any) => l.id === overLessonId)
+
+        if (activeIdx !== -1) {
+          activeModule = mod
+          activeLessonIndex = activeIdx
+        }
+        if (overIdx !== -1) {
+          overModule = mod
+          overLessonIndex = overIdx
+        }
+      }
+
+      // Only reorder if lessons are in the same module
+      if (activeModule && overModule && activeModule.id === overModule.id) {
+        const newLessons = arrayMove(activeModule.lessons, activeLessonIndex, overLessonIndex)
+        const lessonOrders = newLessons.map((les: any, index: number) => ({
+          id: les.id,
+          moduleId: activeModule.id,
+          order: index,
+        }))
+        reorderMutation.mutate({ lessons: lessonOrders })
+      }
+    }
+  }
+
+  const handleAddModule = () => {
+    setEditingModuleId(null)
+    setIsModuleEditorOpen(true)
+  }
+
+  const handleAddSection = () => {
+    // If there's a current module, use it as default
+    if (currentModuleIndex >= 0 && modules[currentModuleIndex]) {
+      setDefaultModuleId(modules[currentModuleIndex].id)
+    } else {
+      setDefaultModuleId(undefined)
+    }
+    setIsLessonCreatorOpen(true)
   }
 
   return (
@@ -154,54 +398,58 @@ function LessonPage() {
         </div>
 
         {/* Module & Lesson List */}
-        <div className="flex-1 overflow-y-auto">
-          {modules.map((module: any, moduleIdx: number) => (
-            <Collapsible key={module.id} defaultOpen={moduleIdx === currentModuleIndex}>
-              <CollapsibleTrigger className="flex items-center justify-between w-full p-4 hover:bg-muted/50 transition-colors">
-                <div className="flex-1 text-left">
-                  <p className="font-medium text-sm">{moduleIdx + 1}. {module.title}</p>
-                  <p className="text-xs text-muted-foreground">
-                    ({module.lessons.length} {module.lessons.length === 1 ? 'lesson' : 'lessons'})
-                  </p>
-                </div>
-                <ChevronRight className="h-4 w-4 transition-transform [[data-state=open]_&]:rotate-90" />
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                {module.lessons.map((lessonItem: any) => {
-                  const isActive = lessonItem.id === lessonId
-                  const isCompleted = completedLessons.includes(lessonItem.id)
-                  
-                  return (
-                    <button
-                      key={lessonItem.id}
-                      onClick={() => handleLessonClick(lessonItem.id)}
-                      className={`w-full text-left px-4 py-3 pl-8 hover:bg-muted/50 transition-colors border-l-2 ${
-                        isActive ? 'bg-primary/10 border-primary' : 'border-transparent'
-                      }`}
-                    >
-                      <p className={`text-sm ${isActive ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
-                        {lessonItem.title}
-                      </p>
-                      {isCompleted && (
-                        <p className="text-xs text-green-600 mt-1">✓ Completed</p>
-                      )}
-                    </button>
-                  )
-                })}
-              </CollapsibleContent>
-            </Collapsible>
-          ))}
-        </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="flex-1 overflow-y-auto">
+            <SortableContext items={moduleIds} strategy={verticalListSortingStrategy}>
+              {modules.map((module: any, moduleIdx: number) => {
+                const moduleLessons = module?.lessons || []
+                return (
+                  <SortableModule
+                    key={module.id}
+                    module={module}
+                    moduleIdx={moduleIdx}
+                    isOpen={moduleIdx === currentModuleIndex}
+                    currentLessonId={lessonId}
+                    completedLessons={completedLessons}
+                    canEdit={canEdit}
+                    onLessonClick={handleLessonClick}
+                    onEditLesson={(id) => setEditingLessonId(id)}
+                    onEditModule={() => {
+                      setEditingModuleId(module.id)
+                      setIsModuleEditorOpen(true)
+                    }}
+                  />
+                )
+              })}
+            </SortableContext>
+          </div>
+        </DndContext>
 
         {/* Add Module/Section Buttons */}
-        <div className="p-4 border-t bg-background space-y-2">
-          <Button variant="outline" size="sm" className="w-full justify-start">
-            + Module
-          </Button>
-          <Button variant="outline" size="sm" className="w-full justify-start">
-            + Section
-          </Button>
-        </div>
+        {canEdit && (
+          <div className="p-4 border-t bg-background space-y-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full justify-start"
+              onClick={handleAddSection}
+            >
+              + Module
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full justify-start"
+              onClick={handleAddModule}
+            >
+              + Section
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Main Content */}
@@ -351,6 +599,274 @@ function LessonPage() {
           )}
         </div>
       </div>
+
+      {/* Lesson Editor Dialog */}
+      {editingLessonId && (
+        <LessonEditorDialog
+          lessonId={editingLessonId}
+          isOpen={!!editingLessonId}
+          onClose={() => setEditingLessonId(null)}
+          onSave={() => {
+            setEditingLessonId(null)
+            queryClient.invalidateQueries({ queryKey: ['lesson', editingLessonId] })
+            queryClient.invalidateQueries({ queryKey: ['course', courseId] })
+          }}
+        />
+      )}
+
+      {/* Module Editor Dialog */}
+      {isModuleEditorOpen && (
+        <ModuleEditor
+          module={editingModuleId ? modules.find((m: any) => m.id === editingModuleId) : null}
+          courseId={courseId}
+          existingModules={modules}
+          isOpen={isModuleEditorOpen}
+          onClose={() => {
+            setIsModuleEditorOpen(false)
+            setEditingModuleId(null)
+          }}
+          onSave={() => {
+            setIsModuleEditorOpen(false)
+            setEditingModuleId(null)
+            queryClient.invalidateQueries({ queryKey: ['course', courseId] })
+          }}
+        />
+      )}
+
+      {/* Lesson Creator Dialog */}
+      {isLessonCreatorOpen && (
+        <LessonCreator
+          courseId={courseId}
+          modules={modules.map((m: any) => ({ id: m.id, title: m.title }))}
+          defaultModuleId={defaultModuleId}
+          existingLessons={modules.flatMap((m: any) => 
+            (m.lessons || []).map((l: any) => ({ moduleId: m.id, order: l.order ?? 0 }))
+          )}
+          isOpen={isLessonCreatorOpen}
+          onClose={() => {
+            setIsLessonCreatorOpen(false)
+            setDefaultModuleId(undefined)
+          }}
+          onSave={() => {
+            setIsLessonCreatorOpen(false)
+            setDefaultModuleId(undefined)
+            queryClient.invalidateQueries({ queryKey: ['course', courseId] })
+          }}
+        />
+      )}
     </div>
+  )
+}
+
+// Sortable Module Component
+function SortableModule({
+  module,
+  moduleIdx,
+  isOpen,
+  currentLessonId,
+  completedLessons,
+  canEdit,
+  onLessonClick,
+  onEditLesson,
+  onEditModule,
+}: {
+  module: any
+  moduleIdx: number
+  isOpen: boolean
+  currentLessonId: string
+  completedLessons: string[]
+  canEdit: boolean
+  onLessonClick: (id: string) => void
+  onEditLesson: (id: string) => void
+  onEditModule: () => void
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: `module-${module.id}` })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  const moduleLessons = module?.lessons || []
+  const lessonIds = moduleLessons.map((l: any) => `lesson-${l.id}`)
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <Collapsible defaultOpen={isOpen}>
+        <div className="flex items-center justify-between w-full p-4 hover:bg-muted/50 transition-colors group">
+          <CollapsibleTrigger className="flex items-center gap-2 flex-1 text-left">
+            {canEdit && (
+              <div
+                {...attributes}
+                {...listeners}
+                className="cursor-grab active:cursor-grabbing touch-none"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <GripVertical className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+            )}
+            <div className="flex-1">
+              <p className="font-medium text-sm">{moduleIdx + 1}. {module.title}</p>
+              <p className="text-xs text-muted-foreground">
+                ({moduleLessons.length} {moduleLessons.length === 1 ? 'lesson' : 'lessons'})
+              </p>
+            </div>
+            <ChevronRight className="h-4 w-4 transition-transform [[data-state=open]_&]:rotate-90 ml-auto" />
+          </CollapsibleTrigger>
+          {canEdit && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+              onClick={(e) => {
+                e.stopPropagation()
+                onEditModule()
+              }}
+            >
+              <Edit className="h-3 w-3" />
+            </Button>
+          )}
+        </div>
+        <CollapsibleContent>
+          {moduleLessons.length > 0 && (
+            <SortableContext items={lessonIds} strategy={verticalListSortingStrategy}>
+              <div>
+                {moduleLessons.map((lessonItem: any) => (
+                  <SortableLesson
+                    key={lessonItem.id}
+                    lesson={lessonItem}
+                    isActive={lessonItem.id === currentLessonId}
+                    isCompleted={completedLessons.includes(lessonItem.id)}
+                    canEdit={canEdit}
+                    onLessonClick={onLessonClick}
+                    onEditLesson={onEditLesson}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          )}
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
+  )
+}
+
+// Sortable Lesson Component
+function SortableLesson({
+  lesson,
+  isActive,
+  isCompleted,
+  canEdit,
+  onLessonClick,
+  onEditLesson,
+}: {
+  lesson: any
+  isActive: boolean
+  isCompleted: boolean
+  canEdit: boolean
+  onLessonClick: (id: string) => void
+  onEditLesson: (id: string) => void
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: `lesson-${lesson.id}` })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`group flex items-center gap-2 px-4 py-3 pl-8 hover:bg-muted/50 transition-colors border-l-2 ${
+        isActive ? 'bg-primary/10 border-primary' : 'border-transparent'
+      }`}
+    >
+      {canEdit && (
+        <div
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing touch-none -ml-2"
+        >
+          <GripVertical className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+        </div>
+      )}
+      <button
+        onClick={() => onLessonClick(lesson.id)}
+        className="flex-1 text-left"
+      >
+        <p className={`text-sm ${isActive ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
+          {lesson.title}
+        </p>
+        {isCompleted && (
+          <p className="text-xs text-green-600 mt-1">✓ Completed</p>
+        )}
+      </button>
+      {canEdit && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={(e) => {
+            e.stopPropagation()
+            onEditLesson(lesson.id)
+          }}
+        >
+          <Edit className="h-3 w-3" />
+        </Button>
+      )}
+    </div>
+  )
+}
+
+// Component to fetch and display lesson editor
+function LessonEditorDialog({ 
+  lessonId, 
+  isOpen, 
+  onClose, 
+  onSave 
+}: { 
+  lessonId: string
+  isOpen: boolean
+  onClose: () => void
+  onSave: () => void
+}) {
+  const { data: lessonData } = useQuery({
+    queryKey: ['lesson', lessonId],
+    queryFn: async () => {
+      const res = await fetch(`/api/v1/courses/lessons/${lessonId}`)
+      if (!res.ok) throw new Error('Failed to fetch lesson')
+      return res.json()
+    },
+    enabled: isOpen && !!lessonId,
+  })
+
+  if (!lessonData) {
+    return null
+  }
+
+  return (
+    <LessonEditor
+      lesson={lessonData}
+      isOpen={isOpen}
+      onClose={onClose}
+      onSave={onSave}
+    />
   )
 }

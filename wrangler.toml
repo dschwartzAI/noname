@@ -76,6 +76,11 @@ binding = "R2_LOGOS"
 bucket_name = "organization-logos"
 remote = true
 
+[[env.development.r2_buckets]]
+binding = "R2_ASSETS"
+bucket_name = "app-assets"
+remote = true
+
 [[env.development.durable_objects.bindings]]
 name = "AI_CHAT_WEBSOCKET"
 class_name = "AIChatWebSocket"

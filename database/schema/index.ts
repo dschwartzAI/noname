@@ -12,8 +12,11 @@ export * from './messages';
 export * from './agents';
 export * from './memories';
 
-// LMS System (Syndicate) - Temporarily disabled due to import path issues
-// export * from './courses';
+// LMS System (Syndicate)
+export * from './tenants';
+export * from './instructors';
+export * from './courses';
+// Temporarily disabled due to import path issues
 // export * from './calendar';
 // export * from './message-board';
 

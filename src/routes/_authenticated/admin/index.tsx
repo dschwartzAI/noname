@@ -5,6 +5,7 @@ import { useSession } from '@/lib/auth-client';
 import { LogoUpload } from './_components/logo-upload';
 import { FaviconUpload } from './_components/favicon-upload';
 import { AppNameForm } from './_components/app-name-form';
+import { InstructorsManager } from './_components/instructors-manager';
 
 export const Route = createFileRoute('/_authenticated/admin/')({
   component: AdminPanel,
@@ -54,10 +55,11 @@ function AdminPanel() {
 
       {/* Tabs */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 lg:w-auto">
+        <TabsList className="grid w-full grid-cols-5 lg:w-auto">
           <TabsTrigger value="overview">Dashboard</TabsTrigger>
           <TabsTrigger value="api-usage">API Usage</TabsTrigger>
           <TabsTrigger value="user-management">User Management</TabsTrigger>
+          <TabsTrigger value="instructors">Instructors</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
@@ -74,6 +76,11 @@ function AdminPanel() {
         {/* User Management Tab */}
         <TabsContent value="user-management" className="space-y-6">
           <UserManagementTab />
+        </TabsContent>
+
+        {/* Instructors Tab */}
+        <TabsContent value="instructors" className="space-y-6">
+          <InstructorsManager />
         </TabsContent>
 
         {/* Settings Tab */}
