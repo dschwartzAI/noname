@@ -63,7 +63,7 @@ chatApp.use('*', injectOrganization)
 // Artifact schema for streamObject
 const artifactSchema = z.object({
   title: z.string().describe('Title of the artifact'),
-  kind: z.enum(['text', 'code', 'html', 'react']).describe('Type of artifact'),
+  kind: z.enum(['document', 'text', 'code', 'html', 'react']).describe('Type of artifact'),
   content: z.string().describe('The full content of the artifact'),
   language: z.string().optional().describe('Programming language for code artifacts'),
 })
@@ -460,10 +460,14 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
         // Define createDocument tool for artifact generation
         const tools = artifactInstructions ? {
           createDocument: tool({
-            description: 'Create a document artifact (code, text, HTML, or React component) for the user to see and interact with',
+            description: 'Create an interactive artifact that streams to the side panel. Use ONLY for substantial content that benefits from side-by-side editing. For small code snippets, use inline markdown code blocks instead.',
             inputSchema: z.object({
               title: z.string().describe('Descriptive title for the artifact'),
-              kind: z.enum(['text', 'code', 'html', 'react']).describe('Type of artifact to create'),
+              kind: z.enum(['document', 'code', 'html', 'react']).describe(`Artifact type:
+- document: Editable rich text document (essays, articles, documentation) - supports bold, italic, headers
+- code: Non-editable code example/snippet with syntax highlighting
+- html: Interactive HTML preview
+- react: React component preview`),
             }),
             execute: async ({ title, kind }, context?: { toolCallId?: string }) => {
               const toolCallId = context?.toolCallId || nanoid()
@@ -485,10 +489,17 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
               })
 
               // 2. Generate artifact content with streamObject
+              const kindPrompts: Record<string, string> = {
+                document: `Generate a well-formatted document with title: "${title}". Use markdown formatting (headers with #, **bold**, *italic*). Provide complete, substantial content.`,
+                code: `Generate complete, working code for: "${title}". Include comments and proper formatting.`,
+                html: `Generate complete HTML with inline CSS for: "${title}". Make it interactive and visually appealing.`,
+                react: `Generate a complete React component for: "${title}". Include all necessary imports and make it fully functional.`,
+              }
+
               const { object, fullStream } = streamObject({
                 model: aiModel,
                 schema: artifactSchema,
-                prompt: `Generate a ${kind} artifact with title: "${title}". Provide the full content.`,
+                prompt: kindPrompts[kind] || `Generate a ${kind} artifact with title: "${title}". Provide the full content.`,
               })
 
               // 3. Stream content deltas to client

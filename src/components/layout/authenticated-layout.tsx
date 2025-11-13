@@ -153,26 +153,41 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
               <Header fixed className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <div className="ml-auto flex items-center gap-2">
                   <ThemeSwitch />
-                  <TooltipProvider delayDuration={300}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div>
-                          <AgentBuilder
-                            open={agentBuilderOpen}
-                            onOpenChange={setAgentBuilderOpen}
-                            trigger={
-                              <Button variant="ghost" size="icon">
-                                <Wrench className="h-5 w-5" />
-                              </Button>
-                            }
-                          />
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Build your tools</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  {!agentBuilderOpen && (
+                    <TooltipProvider delayDuration={300}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div>
+                            <AgentBuilder
+                              open={agentBuilderOpen}
+                              onOpenChange={setAgentBuilderOpen}
+                              trigger={
+                                <Button variant="ghost" size="icon">
+                                  <Wrench className="h-5 w-5" />
+                                </Button>
+                              }
+                            />
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Build your tools</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                  {agentBuilderOpen && (
+                    <div>
+                      <AgentBuilder
+                        open={agentBuilderOpen}
+                        onOpenChange={setAgentBuilderOpen}
+                        trigger={
+                          <Button variant="ghost" size="icon">
+                            <Wrench className="h-5 w-5" />
+                          </Button>
+                        }
+                      />
+                    </div>
+                  )}
                 </div>
               </Header>
               {children ?? <Outlet />}

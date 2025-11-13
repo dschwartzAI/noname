@@ -128,7 +128,7 @@ export function LessonCreator({
     }
 
     if (!formData.moduleId) {
-      toast.error('Please select a module')
+      toast.error('Please select a section')
       return
     }
 
@@ -157,7 +157,7 @@ export function LessonCreator({
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="lesson-module">Module *</Label>
+            <Label htmlFor="lesson-module">Section *</Label>
             <Select
               value={formData.moduleId}
               onValueChange={(value) => {
@@ -171,12 +171,12 @@ export function LessonCreator({
               disabled={isLoading}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select a module" />
+                <SelectValue placeholder="Select a section" />
               </SelectTrigger>
               <SelectContent>
                 {modules.length === 0 ? (
                   <SelectItem value="__empty" disabled>
-                    No modules available. Create a module first.
+                    No sections available. Create a section first.
                   </SelectItem>
                 ) : (
                   modules.map((module) => (

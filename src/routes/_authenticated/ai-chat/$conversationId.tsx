@@ -394,7 +394,8 @@ function ConversationChat({
           
           // Map kind to artifact type
           const kindMap: Record<string, Artifact['type']> = {
-            'text': 'markdown',
+            'document': 'document',
+            'text': 'document', // Legacy support
             'code': 'code',
             'html': 'html',
             'react': 'react-component',

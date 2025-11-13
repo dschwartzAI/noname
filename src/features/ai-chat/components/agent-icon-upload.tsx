@@ -17,11 +17,10 @@ export function AgentIconUpload({
   onRemove,
 }: AgentIconUploadProps) {
   const [preview, setPreview] = useState<string | null>(null);
-  const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
 
@@ -37,25 +36,19 @@ export function AgentIconUpload({
       return;
     }
 
-    setFile(selectedFile);
-
-    // Create preview
+    // Create preview immediately
     const reader = new FileReader();
     reader.onloadend = () => {
       setPreview(reader.result as string);
     };
     reader.readAsDataURL(selectedFile);
-  };
 
-  const handleUpload = async () => {
-    if (!file) return;
-
+    // Auto-upload immediately
     try {
       setIsUploading(true);
 
-      // Upload to R2
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', selectedFile);
 
       const uploadRes = await fetch('/api/agents/icon/upload', {
         method: 'POST',
@@ -71,25 +64,21 @@ export function AgentIconUpload({
 
       toast.success('Icon uploaded successfully');
       onUploadComplete(url);
-      setFile(null);
       setPreview(null);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to upload icon');
+      setPreview(null);
     } finally {
       setIsUploading(false);
+      // Clear the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
-  const handleCancel = () => {
-    setFile(null);
-    setPreview(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
 
   const handleRemove = () => {
-    setFile(null);
     setPreview(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -140,49 +129,28 @@ export function AgentIconUpload({
             accept="image/*"
             onChange={handleFileChange}
             className="hidden"
+            disabled={isUploading}
           />
 
-          {!file ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => fileInputRef.current?.click()}
-              type="button"
-            >
-              <Upload className="mr-2 h-4 w-4" />
-              {currentIcon || currentEmoji ? 'Change Icon' : 'Upload Icon'}
-            </Button>
-          ) : (
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                onClick={handleUpload}
-                disabled={isUploading}
-                type="button"
-              >
-                {isUploading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Uploading...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="mr-2 h-4 w-4" />
-                    Upload
-                  </>
-                )}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCancel}
-                disabled={isUploading}
-                type="button"
-              >
-                Cancel
-              </Button>
-            </div>
-          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            type="button"
+          >
+            {isUploading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Uploading...
+              </>
+            ) : (
+              <>
+                <Upload className="mr-2 h-4 w-4" />
+                {currentIcon || currentEmoji ? 'Change Icon' : 'Upload Icon'}
+              </>
+            )}
+          </Button>
         </div>
       </div>
 

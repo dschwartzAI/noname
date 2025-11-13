@@ -82,17 +82,17 @@ export function ModuleEditor({ module, courseId, existingModules = [], isOpen, o
       })
       if (!res.ok) {
         const error = await res.json()
-        throw new Error(error.error || 'Failed to create module')
+        throw new Error(error.error || 'Failed to create section')
       }
       return res.json()
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['course', courseId] })
-      toast.success('Module created successfully')
+      toast.success('Section created successfully')
       onSave()
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to create module')
+      toast.error(error.message || 'Failed to create section')
     },
   })
 
@@ -105,17 +105,17 @@ export function ModuleEditor({ module, courseId, existingModules = [], isOpen, o
       })
       if (!res.ok) {
         const error = await res.json()
-        throw new Error(error.error || 'Failed to update module')
+        throw new Error(error.error || 'Failed to update section')
       }
       return res.json()
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['course', courseId] })
-      toast.success('Module updated successfully')
+      toast.success('Section updated successfully')
       onSave()
     },
     onError: (error: Error) => {
-      toast.error(error.message || 'Failed to update module')
+      toast.error(error.message || 'Failed to update section')
     },
   })
 
@@ -146,9 +146,9 @@ export function ModuleEditor({ module, courseId, existingModules = [], isOpen, o
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{module ? 'Edit Module' : 'Create New Module'}</DialogTitle>
+          <DialogTitle>{module ? 'Edit Section' : 'Create New Section'}</DialogTitle>
           <DialogDescription>
-            {module ? 'Update module details' : 'Create a new module for this course'}
+            {module ? 'Update section details' : 'Create a new section for this course'}
           </DialogDescription>
         </DialogHeader>
 
@@ -159,7 +159,7 @@ export function ModuleEditor({ module, courseId, existingModules = [], isOpen, o
               id="module-title"
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="Module 1: Introduction"
+              placeholder="Section 1: Introduction"
               disabled={isLoading}
             />
           </div>
@@ -170,7 +170,7 @@ export function ModuleEditor({ module, courseId, existingModules = [], isOpen, o
               id="module-description"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="This module covers the basics of..."
+              placeholder="This section covers the basics of..."
               rows={3}
               disabled={isLoading}
             />
@@ -192,7 +192,7 @@ export function ModuleEditor({ module, courseId, existingModules = [], isOpen, o
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={isLoading}>
-            {isLoading ? 'Saving...' : module ? 'Update Module' : 'Create Module'}
+            {isLoading ? 'Saving...' : module ? 'Update Section' : 'Create Section'}
           </Button>
         </DialogFooter>
       </DialogContent>

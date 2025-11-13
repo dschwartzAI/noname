@@ -449,7 +449,7 @@ export function AgentBuilder({ open, onOpenChange, trigger, onSuccess }: AgentBu
               {/* Artifacts Toggle */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="artifacts-enabled">Enable Artifacts</Label>
+                  <Label htmlFor="artifacts-enabled">Enable Artifacts (Side Panel)</Label>
                   <Switch
                     id="artifacts-enabled"
                     checked={artifactsEnabled}
@@ -457,23 +457,29 @@ export function AgentBuilder({ open, onOpenChange, trigger, onSuccess }: AgentBu
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Allow this tool to generate code artifacts, documents, charts, and interactive components
+                  Gives access to createDocument tool for streaming substantial content to the side panel. Enables rich text documents (editable with formatting), HTML previews, and React components. Regular code snippets will still appear inline.
                 </p>
               </div>
 
               {/* Artifact Instructions (conditional) */}
               {artifactsEnabled && (
                 <div className="space-y-2">
-                  <Label htmlFor="artifact-instructions">Artifact Instructions</Label>
+                  <Label htmlFor="artifact-instructions">Artifact Instructions (Optional)</Label>
                   <Textarea
                     id="artifact-instructions"
-                    placeholder="When creating substantial content (documents, code, components), use the createDocument tool instead of markdown code blocks. This allows content to stream directly to the side panel for better UX."
-                    className="min-h-[100px] resize-none"
+                    placeholder="Use createDocument tool for:
+• Rich text documents (essays, articles, documentation) - kind: 'document'
+• Interactive HTML/CSS demos - kind: 'html'  
+• React components - kind: 'react'
+• Substantial code that benefits from side panel - kind: 'code'
+
+For small code snippets, use regular markdown code blocks."
+                    className="min-h-[120px] resize-none"
                     value={artifactInstructions}
                     onChange={(e) => setArtifactInstructions(e.target.value)}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Optional: Guidance for artifact generation. Leave empty to use default createDocument tool instructions.
+                    Custom guidance for when and how to use artifacts. Leave empty for default behavior.
                   </p>
                 </div>
               )}
@@ -481,12 +487,12 @@ export function AgentBuilder({ open, onOpenChange, trigger, onSuccess }: AgentBu
               {/* Knowledge Base Selector */}
               <div className="space-y-2">
                 <Label htmlFor="knowledge-base">Knowledge Base (Optional)</Label>
-                <Select value={knowledgeBaseId} onValueChange={setKnowledgeBaseId}>
+                <Select value={knowledgeBaseId || 'none'} onValueChange={(val) => setKnowledgeBaseId(val === 'none' ? '' : val)}>
                   <SelectTrigger id="knowledge-base">
                     <SelectValue placeholder="None - Use web search or tools only" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {kbData?.knowledgeBases.map((kb) => (
                       <SelectItem key={kb.id} value={kb.id}>
                         <div className="flex flex-col">

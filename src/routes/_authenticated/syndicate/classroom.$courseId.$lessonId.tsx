@@ -1,11 +1,13 @@
 "use client"
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ArrowLeft, ChevronRight, ChevronDown, ChevronUp, MessageCircle, Edit, GripVertical } from 'lucide-react'
+import { ArrowLeft, ChevronRight, ChevronDown, ChevronUp, MessageCircle, Edit, GripVertical, Trash2, Check, X } from 'lucide-react'
+import { toast } from 'sonner'
 import { VideoPlayer } from '@/components/lms/courses/video-player'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { useAuth } from '@/stores/auth-simple'
@@ -20,6 +22,9 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
+  DragStartEvent,
+  DragOverEvent,
+  DragOverlay,
 } from '@dnd-kit/core'
 import {
   arrayMove,
@@ -40,14 +45,16 @@ function LessonPage() {
   const queryClient = useQueryClient()
   const { user } = useAuth()
   
-  const [contentOpen, setContentOpen] = useState(false)
   const [resourcesOpen, setResourcesOpen] = useState(false)
   const [transcriptOpen, setTranscriptOpen] = useState(false)
   const [editingLessonId, setEditingLessonId] = useState<string | null>(null)
   const [isModuleEditorOpen, setIsModuleEditorOpen] = useState(false)
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null)
+  const [inlineEditingModuleId, setInlineEditingModuleId] = useState<string | null>(null)
   const [isLessonCreatorOpen, setIsLessonCreatorOpen] = useState(false)
   const [defaultModuleId, setDefaultModuleId] = useState<string | undefined>(undefined)
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const [overId, setOverId] = useState<string | null>(null)
 
   // Fetch organization to check role
   const { data: orgData } = useQuery({
@@ -245,6 +252,105 @@ function LessonPage() {
     })).sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0))
   }, [courseData])
 
+  // Define all mutations before early returns to follow Rules of Hooks
+  const createModuleMutation = useMutation({
+    mutationFn: async () => {
+      // Calculate order for new module: max order + 1 (add to bottom)
+      const maxOrder = modules.length > 0 
+        ? Math.max(...modules.map((m: any) => m.order ?? 0))
+        : -1
+      
+      const res = await fetch('/api/v1/courses/modules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          courseId,
+          title: 'New Section',
+          description: undefined,
+          order: maxOrder + 1,
+          published: false,
+        }),
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Failed to create section')
+      }
+      return res.json()
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['course', courseId] })
+      // Set the newly created module to inline edit mode
+      if (data.module?.id) {
+        setInlineEditingModuleId(data.module.id)
+      }
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to create section')
+    },
+  })
+
+  const updateModuleMutation = useMutation({
+    mutationFn: async ({ id, title }: { id: string; title: string }) => {
+      const res = await fetch(`/api/v1/courses/modules/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: title.trim() || 'New Section' }),
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Failed to update section')
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['course', courseId] })
+      setInlineEditingModuleId(null)
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to update section')
+    },
+  })
+
+  const deleteModuleMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/v1/courses/modules/${id}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Failed to delete section')
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['course', courseId] })
+      toast.success('Section deleted successfully')
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete section')
+    },
+  })
+
+  const deleteLessonMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/v1/courses/lessons/${id}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Failed to delete lesson')
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['course', courseId] })
+      toast.success('Lesson deleted successfully')
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to delete lesson')
+    },
+  })
+
   if (isLoading || !courseData || !lessonData) {
     return (
       <div className="flex h-screen">
@@ -327,7 +433,17 @@ function LessonPage() {
     }
   }
 
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(String(event.active.id))
+  }
+
+  const handleDragOver = (event: DragOverEvent) => {
+    setOverId(event.over ? String(event.over.id) : null)
+  }
+
   const handleDragEnd = (event: DragEndEvent) => {
+    setActiveId(null)
+    setOverId(null)
     const { active, over } = event
 
     if (!over || active.id === over.id) {
@@ -352,6 +468,53 @@ function LessonPage() {
           order: index,
         }))
         reorderMutation.mutate({ modules: moduleOrders })
+      }
+      return
+    }
+
+    // Handle lesson dragged onto a module (move to that module)
+    if (activeId.startsWith('lesson-') && overId.startsWith('module-')) {
+      const activeLessonId = activeId.replace('lesson-', '')
+      const targetModuleId = overId.replace('module-', '')
+
+      // Find source module and target module
+      let activeModule: any = null
+      let targetModule: any = null
+      let activeLessonIndex = -1
+
+      for (const mod of modules) {
+        const lessons = mod.lessons || []
+        const activeIdx = lessons.findIndex((l: any) => l.id === activeLessonId)
+        
+        if (activeIdx !== -1) {
+          activeModule = mod
+          activeLessonIndex = activeIdx
+        }
+        if (mod.id === targetModuleId) {
+          targetModule = mod
+        }
+      }
+
+      if (activeModule && targetModule) {
+        const sourceLesson = activeModule.lessons[activeLessonIndex]
+        
+        // Create lesson orders for both modules
+        const allLessonOrders: Array<{ id: string; moduleId: string; order: number }> = []
+        
+        // Update source module (remove lesson)
+        activeModule.lessons
+          .filter((l: any) => l.id !== activeLessonId)
+          .forEach((l: any, idx: number) => {
+            allLessonOrders.push({ id: l.id, moduleId: activeModule.id, order: idx })
+          })
+        
+        // Update target module (add lesson to end)
+        const targetLessons = [...targetModule.lessons, { ...sourceLesson, moduleId: targetModule.id }]
+        targetLessons.forEach((l: any, idx: number) => {
+          allLessonOrders.push({ id: l.id, moduleId: targetModule.id, order: idx })
+        })
+        
+        reorderMutation.mutate({ lessons: allLessonOrders })
       }
       return
     }
@@ -421,8 +584,7 @@ function LessonPage() {
   }
 
   const handleAddModule = () => {
-    setEditingModuleId(null)
-    setIsModuleEditorOpen(true)
+    createModuleMutation.mutate()
   }
 
   const handleAddSection = () => {
@@ -462,12 +624,16 @@ function LessonPage() {
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
           <div className="flex-1 overflow-y-auto">
             <SortableContext items={moduleIds} strategy={verticalListSortingStrategy}>
               {modules.map((module: any, moduleIdx: number) => {
                 const moduleLessons = module?.lessons || []
+                const moduleDragId = `module-${module.id}`
+                const isOver = overId === moduleDragId && activeId !== moduleDragId && activeId?.startsWith('module-')
                 return (
                   <SortableModule
                     key={module.id}
@@ -477,17 +643,44 @@ function LessonPage() {
                     currentLessonId={lessonId}
                     completedLessons={completedLessons}
                     canEdit={canEdit}
+                    isInlineEditing={inlineEditingModuleId === module.id}
+                    isDraggingOver={isOver}
                     onLessonClick={handleLessonClick}
                     onEditLesson={(id) => setEditingLessonId(id)}
                     onEditModule={() => {
-                      setEditingModuleId(module.id)
-                      setIsModuleEditorOpen(true)
+                      setInlineEditingModuleId(module.id)
+                    }}
+                    onDeleteModule={(id) => {
+                      if (confirm('Are you sure you want to delete this section? This will also delete all lessons in this section.')) {
+                        deleteModuleMutation.mutate(id)
+                      }
+                    }}
+                    onInlineEditSave={(id, title) => {
+                      updateModuleMutation.mutate({ id, title })
+                    }}
+                    onInlineEditCancel={() => {
+                      setInlineEditingModuleId(null)
                     }}
                   />
                 )
               })}
             </SortableContext>
           </div>
+          <DragOverlay>
+            {activeId && activeId.startsWith('module-') && (() => {
+              const activeModuleId = activeId.replace('module-', '')
+              const activeModule = modules.find((m: any) => m.id === activeModuleId)
+              if (!activeModule) return null
+              return (
+                <div className="bg-background border border-primary shadow-lg rounded-lg p-4 opacity-95">
+                  <p className="font-medium text-sm">{activeModule.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    ({(activeModule.lessons || []).length} {(activeModule.lessons || []).length === 1 ? 'lesson' : 'lessons'})
+                  </p>
+                </div>
+              )
+            })()}
+          </DragOverlay>
         </DndContext>
 
         {/* Add Module/Section Buttons */}
@@ -555,10 +748,24 @@ function LessonPage() {
           </div>
 
           {/* Lesson Title */}
-          <div>
-            <h1 className="text-3xl font-bold">{lesson.title}</h1>
-            {lesson.description && (
-              <p className="text-muted-foreground mt-2">{lesson.description}</p>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold">{lesson.title}</h1>
+              {lesson.description && (
+                <p className="text-muted-foreground mt-2">{lesson.description}</p>
+              )}
+            </div>
+            {canEdit && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setEditingLessonId(lesson.id)}
+                className="shrink-0"
+                title="Edit lesson"
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </Button>
             )}
           </div>
 
@@ -578,24 +785,11 @@ function LessonPage() {
           </Button>
 
           {/* Content Section */}
-          <Collapsible open={contentOpen} onOpenChange={setContentOpen}>
-            <CollapsibleTrigger className="flex items-center justify-between w-full p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
-              <div className="flex items-center gap-2">
-                <span className="text-lg">📄</span>
-                <span className="font-semibold">Content</span>
-              </div>
-              {contentOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-            </CollapsibleTrigger>
-            <CollapsibleContent className="p-4">
-              {lesson.content ? (
-                <div className="prose dark:prose-invert max-w-none">
-                  <p>{lesson.content}</p>
-                </div>
-              ) : (
-                <button className="text-primary hover:underline text-sm">Show more</button>
-              )}
-            </CollapsibleContent>
-          </Collapsible>
+          {lesson.content && (
+            <div className="prose dark:prose-invert max-w-none text-muted-foreground">
+              <p className="text-base leading-relaxed">{lesson.content}</p>
+            </div>
+          )}
 
           {/* Resources Section */}
           <Collapsible open={resourcesOpen} onOpenChange={setResourcesOpen}>
@@ -672,6 +866,15 @@ function LessonPage() {
             queryClient.invalidateQueries({ queryKey: ['lesson', editingLessonId] })
             queryClient.invalidateQueries({ queryKey: ['course', courseId] })
           }}
+          onDelete={(id) => {
+            if (confirm('Are you sure you want to delete this lesson?')) {
+              deleteLessonMutation.mutate(id, {
+                onSuccess: () => {
+                  setEditingLessonId(null)
+                }
+              })
+            }
+          }}
         />
       )}
 
@@ -727,9 +930,14 @@ function SortableModule({
   currentLessonId,
   completedLessons,
   canEdit,
+  isInlineEditing,
+  isDraggingOver,
   onLessonClick,
   onEditLesson,
   onEditModule,
+  onDeleteModule,
+  onInlineEditSave,
+  onInlineEditCancel,
 }: {
   module: any
   moduleIdx: number
@@ -737,10 +945,17 @@ function SortableModule({
   currentLessonId: string
   completedLessons: string[]
   canEdit: boolean
+  isInlineEditing?: boolean
+  isDraggingOver?: boolean
   onLessonClick: (id: string) => void
   onEditLesson: (id: string) => void
   onEditModule: () => void
+  onDeleteModule?: (id: string) => void
+  onInlineEditSave?: (id: string, title: string) => void
+  onInlineEditCancel?: () => void
 }) {
+  const [editingTitle, setEditingTitle] = useState(module.title)
+
   const {
     attributes,
     listeners,
@@ -752,48 +967,132 @@ function SortableModule({
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
+    transition: isDragging ? 'none' : transition,
+    opacity: isDragging ? 0.3 : 1,
   }
 
   const moduleLessons = module?.lessons || []
   const lessonIds = moduleLessons.map((l: any) => `lesson-${l.id}`)
 
+  // Sync editing title when module title changes externally or when entering edit mode
+  useEffect(() => {
+    if (isInlineEditing) {
+      setEditingTitle(module.title)
+    }
+  }, [isInlineEditing, module.title])
+
+  const handleSave = () => {
+    if (editingTitle.trim() && onInlineEditSave) {
+      onInlineEditSave(module.id, editingTitle.trim())
+    } else if (onInlineEditCancel) {
+      onInlineEditCancel()
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleSave()
+    } else if (e.key === 'Escape') {
+      setEditingTitle(module.title)
+      onInlineEditCancel?.()
+    }
+  }
+
   return (
     <div ref={setNodeRef} style={style}>
       <Collapsible defaultOpen={isOpen}>
-        <div className="flex items-center justify-between w-full p-4 hover:bg-muted/50 transition-colors group">
-          <CollapsibleTrigger className="flex items-center gap-2 flex-1 text-left">
-            {canEdit && (
-              <div
-                {...attributes}
-                {...listeners}
-                className="cursor-grab active:cursor-grabbing touch-none"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <GripVertical className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className={`flex items-center justify-between w-full p-4 hover:bg-muted/50 transition-colors group ${
+          isDraggingOver ? 'bg-primary/20 border-2 border-primary border-dashed rounded-lg' : ''
+        }`}>
+          {isInlineEditing ? (
+            <div className="flex items-center gap-2 flex-1">
+              <div className="flex-1">
+                <Input
+                  value={editingTitle}
+                  onChange={(e) => setEditingTitle(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className="h-8 text-sm font-medium"
+                  autoFocus
+                  placeholder="Section name"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  ({moduleLessons.length} {moduleLessons.length === 1 ? 'lesson' : 'lessons'})
+                </p>
               </div>
-            )}
-            <div className="flex-1">
-              <p className="font-medium text-sm">{moduleIdx + 1}. {module.title}</p>
-              <p className="text-xs text-muted-foreground">
-                ({moduleLessons.length} {moduleLessons.length === 1 ? 'lesson' : 'lessons'})
-              </p>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 shrink-0"
+                onClick={handleSave}
+                disabled={!editingTitle.trim()}
+              >
+                <Check className="h-3 w-3" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 shrink-0"
+                onClick={() => {
+                  setEditingTitle(module.title)
+                  onInlineEditCancel?.()
+                }}
+              >
+                <X className="h-3 w-3" />
+              </Button>
             </div>
-            <ChevronRight className="h-4 w-4 transition-transform [[data-state=open]_&]:rotate-90 ml-auto" />
-          </CollapsibleTrigger>
-          {canEdit && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-              onClick={(e) => {
-                e.stopPropagation()
-                onEditModule()
-              }}
-            >
-              <Edit className="h-3 w-3" />
-            </Button>
+          ) : (
+            <>
+              <CollapsibleTrigger className="flex items-center gap-2 flex-1 text-left">
+                {canEdit && (
+                  <div
+                    {...attributes}
+                    {...listeners}
+                    className="cursor-grab active:cursor-grabbing touch-none"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <GripVertical className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                )}
+                <div className="flex-1">
+                  <p className="font-medium text-sm">{moduleIdx + 1}. {module.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    ({moduleLessons.length} {moduleLessons.length === 1 ? 'lesson' : 'lessons'})
+                  </p>
+                </div>
+                <ChevronRight className="h-4 w-4 transition-transform [[data-state=open]_&]:rotate-90 ml-auto" />
+              </CollapsibleTrigger>
+              {canEdit && (
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onEditModule()
+                    }}
+                  >
+                    <Edit className="h-3 w-3" />
+                  </Button>
+                  {onDeleteModule && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 text-destructive hover:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (onDeleteModule) {
+                          onDeleteModule(module.id)
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
         <CollapsibleContent>
@@ -901,12 +1200,14 @@ function LessonEditorDialog({
   lessonId, 
   isOpen, 
   onClose, 
-  onSave 
+  onSave,
+  onDelete
 }: { 
   lessonId: string
   isOpen: boolean
   onClose: () => void
   onSave: () => void
+  onDelete?: (id: string) => void
 }) {
   const { data: lessonData } = useQuery({
     queryKey: ['lesson', lessonId],
@@ -928,6 +1229,7 @@ function LessonEditorDialog({
       isOpen={isOpen}
       onClose={onClose}
       onSave={onSave}
+      onDelete={onDelete}
     />
   )
 }

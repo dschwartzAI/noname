@@ -52,9 +52,10 @@ interface LessonEditorProps {
   isOpen: boolean
   onClose: () => void
   onSave: () => void
+  onDelete?: (id: string) => void
 }
 
-export function LessonEditor({ lesson, isOpen, onClose, onSave }: LessonEditorProps) {
+export function LessonEditor({ lesson, isOpen, onClose, onSave, onDelete }: LessonEditorProps) {
   const queryClient = useQueryClient()
   
   const [formData, setFormData] = useState<Partial<Lesson>>({
@@ -63,8 +64,6 @@ export function LessonEditor({ lesson, isOpen, onClose, onSave }: LessonEditorPr
     content: '',
     videoUrl: '',
     videoProvider: undefined,
-    duration: undefined,
-    thumbnail: '',
     transcript: '',
     transcriptUrl: '',
     resources: [],
@@ -83,8 +82,6 @@ export function LessonEditor({ lesson, isOpen, onClose, onSave }: LessonEditorPr
         content: lesson.content || '',
         videoUrl: lesson.videoUrl || '',
         videoProvider: lesson.videoProvider,
-        duration: lesson.duration,
-        thumbnail: lesson.thumbnail || '',
         transcript: lesson.transcript || '',
         transcriptUrl: lesson.transcriptUrl || '',
         resources: lesson.resources || [],
@@ -98,8 +95,6 @@ export function LessonEditor({ lesson, isOpen, onClose, onSave }: LessonEditorPr
         content: '',
         videoUrl: '',
         videoProvider: undefined,
-        duration: undefined,
-        thumbnail: '',
         transcript: '',
         transcriptUrl: '',
         resources: [],
@@ -178,11 +173,9 @@ export function LessonEditor({ lesson, isOpen, onClose, onSave }: LessonEditorPr
     const payload: Partial<Lesson> = {
       title,
       description: formData.description?.trim() || undefined,
-      content: formData.content?.trim() || undefined,
+      content: formData.content?.trim() || '',
       videoUrl: formData.videoUrl?.trim() || undefined,
       videoProvider: formData.videoProvider,
-      duration: formData.duration,
-      thumbnail: formData.thumbnail?.trim() || undefined,
       transcript: formData.transcript?.trim() || undefined,
       transcriptUrl: formData.transcriptUrl?.trim() || undefined,
       resources: formData.resources || [],
@@ -280,30 +273,6 @@ export function LessonEditor({ lesson, isOpen, onClose, onSave }: LessonEditorPr
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="lesson-duration">Duration (seconds)</Label>
-              <Input
-                id="lesson-duration"
-                type="number"
-                value={formData.duration || ''}
-                onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) || undefined })}
-                disabled={isLoading}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="lesson-thumbnail">Thumbnail URL</Label>
-              <Input
-                id="lesson-thumbnail"
-                type="url"
-                value={formData.thumbnail}
-                onChange={(e) => setFormData({ ...formData, thumbnail: e.target.value })}
-                placeholder="https://..."
-                disabled={isLoading}
-              />
-            </div>
-          </div>
-
           <div className="space-y-2">
             <Label htmlFor="lesson-transcript">Transcript</Label>
             <Textarea
@@ -311,7 +280,9 @@ export function LessonEditor({ lesson, isOpen, onClose, onSave }: LessonEditorPr
               value={formData.transcript}
               onChange={(e) => setFormData({ ...formData, transcript: e.target.value })}
               placeholder="Enter transcript text..."
-              rows={4}
+              rows={3}
+              className="resize-y min-h-[80px] max-h-[300px] overflow-y-auto overflow-x-hidden whitespace-pre-wrap break-words w-full"
+              style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
               disabled={isLoading}
             />
           </div>
@@ -465,13 +436,28 @@ export function LessonEditor({ lesson, isOpen, onClose, onSave }: LessonEditorPr
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isLoading}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave} disabled={isLoading}>
-            {isLoading ? 'Saving...' : 'Update Lesson'}
-          </Button>
+        <DialogFooter className="flex items-center justify-between">
+          <div>
+            {onDelete && lesson?.id && (
+              <Button
+                variant="destructive"
+                onClick={() => onDelete(lesson.id)}
+                disabled={isLoading}
+                type="button"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete Lesson
+              </Button>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose} disabled={isLoading}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={isLoading}>
+              {isLoading ? 'Saving...' : 'Update Lesson'}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

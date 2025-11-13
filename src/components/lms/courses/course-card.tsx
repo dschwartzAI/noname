@@ -48,16 +48,12 @@ export function CourseCard({
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             onError={(e) => {
               // If image fails to load, hide it and show placeholder
-              console.error('Failed to load course thumbnail:', course.thumbnail)
               const target = e.target as HTMLImageElement
               target.style.display = 'none'
               const placeholder = target.parentElement?.querySelector('.thumbnail-placeholder') as HTMLElement
               if (placeholder) {
                 placeholder.style.display = 'flex'
               }
-            }}
-            onLoad={() => {
-              console.log('Course thumbnail loaded successfully:', course.thumbnail)
             }}
           />
         ) : null}

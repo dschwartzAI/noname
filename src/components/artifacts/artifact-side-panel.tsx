@@ -25,6 +25,7 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import type { Artifact } from '@/types/artifacts'
 import { cn } from '@/lib/utils'
 import { Response } from '@/components/response'
+import { RichTextEditor } from './rich-text-editor'
 
 interface ArtifactSidePanelProps {
   artifacts: Artifact[]
@@ -450,14 +451,23 @@ export function ArtifactSidePanel({
       {/* Content - Preview or Edit */}
       <div className='flex-1 overflow-hidden px-4 py-4'>
         {isEditing ? (
-          <ScrollArea className='h-full w-full'>
-            <Textarea
-              value={editedContent}
-              onChange={(e) => setEditedContent(e.target.value)}
-              className='font-mono text-sm min-h-[400px] resize-none'
-              placeholder='Edit artifact content...'
+          // Use rich text editor for document/markdown artifacts, textarea for others
+          artifact.type === 'document' || artifact.type === 'markdown' ? (
+            <RichTextEditor
+              content={editedContent}
+              onChange={setEditedContent}
+              className='h-full'
             />
-          </ScrollArea>
+          ) : (
+            <ScrollArea className='h-full w-full'>
+              <Textarea
+                value={editedContent}
+                onChange={(e) => setEditedContent(e.target.value)}
+                className='font-mono text-sm min-h-[400px] resize-none'
+                placeholder='Edit artifact content...'
+              />
+            </ScrollArea>
+          )
         ) : (
           <ScrollArea className='h-full w-full'>
             {renderPreview()}

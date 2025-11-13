@@ -48,6 +48,7 @@ export function KnowledgeBaseTab() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [kbToDelete, setKbToDelete] = useState<string | null>(null)
+  const [deletingDocKey, setDeletingDocKey] = useState<string | null>(null)
 
   // Queries
   const { data: kbData, isLoading: kbLoading } = useKnowledgeBases()
@@ -137,22 +138,19 @@ export function KnowledgeBaseTab() {
   const handleDeleteDocument = async (filename: string) => {
     if (!selectedKB) return
 
+    setDeletingDocKey(filename)
+
     try {
       await deleteDoc.mutateAsync({
         knowledgeBaseId: selectedKB.id,
         documentKey: filename, // Just the filename, API will construct full path
       })
 
-      toast({
-        title: 'Document deleted',
-        description: 'AI Search will remove it from the index',
-      })
+      toast.success('Document deleted - AI Search will remove it from the index')
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to delete document',
-        variant: 'destructive',
-      })
+      toast.error(error instanceof Error ? error.message : 'Failed to delete document')
+    } finally {
+      setDeletingDocKey(null)
     }
   }
 
@@ -171,6 +169,31 @@ export function KnowledgeBaseTab() {
           Create Knowledge Base
         </Button>
       </div>
+
+      {/* AI Search Setup Notice */}
+      <Card className="bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800">
+        <div className="p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="font-semibold text-orange-900 dark:text-orange-100">AI Search Not Configured</h3>
+              <p className="text-sm text-orange-800 dark:text-orange-200 mt-1">
+                Documents are uploaded to R2 storage but not indexed for semantic search yet.
+                To enable RAG (Retrieval Augmented Generation), you need to:
+              </p>
+              <ol className="text-sm text-orange-800 dark:text-orange-200 mt-2 ml-4 list-decimal space-y-1">
+                <li>Authenticate wrangler: <code className="bg-orange-100 dark:bg-orange-900 px-1 py-0.5 rounded">wrangler login</code></li>
+                <li>Create AI Search index in Cloudflare Dashboard (name: <code className="bg-orange-100 dark:bg-orange-900 px-1 py-0.5 rounded">soloo-rag-store</code>)</li>
+                <li>Remove <code className="bg-orange-100 dark:bg-orange-900 px-1 py-0.5 rounded">--local</code> flag from package.json dev:backend script</li>
+                <li>Restart dev servers</li>
+              </ol>
+              <p className="text-xs text-orange-700 dark:text-orange-300 mt-3">
+                💡 For now, you can upload and manage documents. They'll be automatically indexed once AI Search is configured.
+              </p>
+            </div>
+          </div>
+        </div>
+      </Card>
 
       {/* Loading State */}
       {kbLoading && (
@@ -218,7 +241,7 @@ export function KnowledgeBaseTab() {
                     )}
                     <div className="flex gap-4 mt-3 text-xs text-muted-foreground">
                       <span>{kb.documentCount} {kb.documentCount === 1 ? 'document' : 'documents'}</span>
-                      <span className="text-muted-foreground/60">AI Search enabled</span>
+                      <span className="text-orange-600 dark:text-orange-400">⚠️ Setup AI Search to enable RAG</span>
                     </div>
                   </div>
                   <Button
@@ -275,7 +298,7 @@ export function KnowledgeBaseTab() {
                           onProcess={() => {}} // No-op: AI Search auto-processes
                           onDelete={() => handleDeleteDocument(doc.filename)}
                           isProcessing={false}
-                          isDeleting={deleteDoc.isPending}
+                          isDeleting={deletingDocKey === doc.filename}
                         />
                       ))}
                     </div>
@@ -467,8 +490,12 @@ function DocumentCard({ document, onProcess, onDelete, isProcessing, isDeleting 
           <p className="font-medium truncate">{document.filename}</p>
           <div className="flex gap-3 text-xs text-muted-foreground mt-1">
             <span className="flex items-center gap-1">
-              <Check className="h-3 w-3 text-green-500" />
-              Indexed by AI Search
+              <Upload className="h-3 w-3 text-blue-500" />
+              <span className="text-blue-600 dark:text-blue-400">Uploaded to R2</span>
+            </span>
+            <span className="flex items-center gap-1 text-orange-600 dark:text-orange-400">
+              <AlertCircle className="h-3 w-3" />
+              Not indexed yet
             </span>
             <span>{fileExt}</span>
             <span>{(document.size / 1024).toFixed(1)} KB</span>
