@@ -161,14 +161,33 @@ export function ArtifactSidePanel({
   }
 
   const handleSave = async () => {
+    // Enhanced logging to debug what's missing
+    console.log('💾 Attempting to save artifact:', {
+      conversationId,
+      messageId,
+      artifactId: artifact.id,
+      artifactTitle: artifact.title,
+      artifactMetadata: artifact.metadata,
+      hasConversationId: !!conversationId,
+      hasMessageId: !!messageId,
+      hasArtifactId: !!artifact.id,
+    })
+
     if (!conversationId || !messageId || !artifact.id) {
-      console.error('Missing required IDs for saving artifact:', {
-        conversationId,
-        messageId,
-        artifactId: artifact.id,
+      console.error('❌ Missing required IDs for saving artifact:', {
+        conversationId: conversationId || 'MISSING',
+        messageId: messageId || 'MISSING',
+        artifactId: artifact.id || 'MISSING',
         artifact: artifact,
       })
-      alert('Missing required information. Please refresh the page and try again.')
+
+      // More specific error message
+      const missing = []
+      if (!conversationId) missing.push('conversation ID')
+      if (!messageId) missing.push('message ID')
+      if (!artifact.id) missing.push('artifact ID')
+
+      alert(`Unable to save: Missing ${missing.join(', ')}. Please try refreshing the page.`)
       return
     }
 

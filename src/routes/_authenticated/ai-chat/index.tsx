@@ -338,6 +338,8 @@ function ChatPage() {
                     language: data.language,
                     createdAt: now,
                     updatedAt: now,
+                    // Store messageId for editing
+                    metadata: { messageId: assistantMessageId },
                   }
                   const newIndex = prev.length
 
@@ -608,6 +610,13 @@ function ChatPage() {
           currentIndex={currentArtifactIndex}
           onIndexChange={setCurrentArtifactIndex}
           onClose={() => setIsPanelOpen(false)}
+          conversationId={effectiveConversationId}
+          messageId={artifacts[currentArtifactIndex]?.metadata?.messageId as string | undefined}
+          onArtifactUpdate={(updatedArtifact) => {
+            setArtifacts((prev) =>
+              prev.map((a) => (a.id === updatedArtifact.id ? updatedArtifact : a))
+            )
+          }}
           className="w-1/2 h-full"
         />
       )}
