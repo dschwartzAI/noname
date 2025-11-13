@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "./dev-servers.sh",
     "dev:frontend": "vite",
-    "dev:backend": "wrangler dev --local --port 8788",
+    "dev:backend": "wrangler dev --local --port 8788 --inspector-port 0",
     "build": "tsc -b && vite build",
     "build:skip-checks": "vite build",
     "lint": "eslint .",

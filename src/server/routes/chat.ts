@@ -22,7 +22,7 @@ import { z } from 'zod'
 import * as authSchema from '../../../database/better-auth-schema'
 import { memories } from '../../../database/schema/memories'
 import { agents } from '../../../database/schema/agents'
-import { knowledgeBaseChunks } from '../../../database/schema/knowledge-base'
+import { knowledgeBases } from '../../../database/schema/knowledge-base'
 import {
   chatRequestSchema,
   getConversationSchema,
@@ -32,7 +32,6 @@ import {
   conversationIdParamSchema,
   updateArtifactSchema,
 } from '../validation/chat'
-import { getRelevantContext } from '../../lib/rag-retrieval'
 
 // Types
 type Env = {
@@ -40,7 +39,7 @@ type Env = {
   ANTHROPIC_API_KEY?: string
   OPENAI_API_KEY?: string
   XAI_API_KEY?: string
-  AI?: any // Cloudflare AI binding for embeddings
+  AI?: any // Cloudflare AI binding (includes AI Search via .autorag())
 }
 
 type Variables = {
@@ -99,7 +98,7 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
 
     // Initialize database connection
     const sqlClient = neon(c.env.DATABASE_URL)
-    const db = drizzle(sqlClient, { schema: { ...authSchema, memories, agents, knowledgeBaseChunks } })
+    const db = drizzle(sqlClient, { schema: { ...authSchema, memories, agents, knowledgeBases } })
 
     // Step 1: Get or create conversation
     let currentConversationId = conversationId
@@ -298,29 +297,58 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
         }
         console.log(`🤖 Loaded agent: ${agent[0].name} (artifacts: ${agent[0].artifactsEnabled})`)
 
-        // Check if agent has knowledge base assigned (RAG)
+        // Check if agent has knowledge base assigned (RAG via AI Search)
         const toolResources = agent[0].toolResources as any
         if (toolResources?.fileSearch?.vectorStoreIds?.[0]) {
           const knowledgeBaseId = toolResources.fileSearch.vectorStoreIds[0]
           console.log(`📚 Agent has knowledge base: ${knowledgeBaseId}`)
 
-          // Retrieve relevant context from knowledge base
-          if (c.env.AI && userMessageContent) {
+          // Get KB metadata for R2 path prefix
+          const kb = await db.query.knowledgeBases.findFirst({
+            where: eq(knowledgeBases.id, knowledgeBaseId),
+          })
+
+          // Retrieve relevant context using Cloudflare AI Search
+          if (kb && c.env.AI && userMessageContent) {
             try {
-              knowledgeBaseContext = await getRelevantContext(
-                userMessageContent,
-                knowledgeBaseId,
-                organizationId,
-                db,
-                c.env.AI,
-                5 // top 5 chunks
-              )
+              console.log(`🔍 Searching AI Search: ${kb.aiSearchStoreId}`)
+              console.log(`   Query: "${userMessageContent.substring(0, 100)}..."`)
+              console.log(`   Filters: orgId=${organizationId}, path=${kb.r2PathPrefix}`)
+
+              // Query AI Search using autorag().aiSearch()
+              // Note: AI Search filters by metadata (organizationId, knowledgeBaseId, etc.)
+              const result = await c.env.AI.autorag(kb.aiSearchStoreId).aiSearch({
+                query: userMessageContent,
+                max_num_results: 5,
+                rewrite_query: false,
+                filters: {
+                  // Multi-tenant isolation via metadata filtering
+                  organizationId,
+                  knowledgeBaseId,
+                },
+              })
+
+              // Format context from search results
+              // AI Search returns: { answer: string, data: Array<{text, metadata, score}> }
+              if (result?.data && result.data.length > 0) {
+                knowledgeBaseContext = '\n\n═══ KNOWLEDGE BASE CONTEXT ═══\n'
+                knowledgeBaseContext += `\nRelevant information from knowledge base "${kb.name}":\n\n`
+                result.data.forEach((item: any, index: number) => {
+                  knowledgeBaseContext += `[${index + 1}] ${item.text}\n\n`
+                })
+                knowledgeBaseContext += '═══════════════════════════════\n'
+                console.log(`✅ Retrieved ${result.data.length} relevant chunks from AI Search`)
+              } else {
+                console.log('⚠️ No relevant context found in AI Search')
+              }
             } catch (error) {
-              console.error('❌ Failed to retrieve KB context:', error)
+              console.error('❌ Failed to retrieve KB context from AI Search:', error)
               // Continue without KB context - don't block chat
             }
           } else if (!c.env.AI) {
-            console.warn('⚠️ AI binding not available for RAG retrieval')
+            console.warn('⚠️ AI binding not available (use wrangler dev --remote for RAG)')
+          } else if (!kb) {
+            console.warn(`⚠️ Knowledge base ${knowledgeBaseId} not found`)
           }
         }
       }

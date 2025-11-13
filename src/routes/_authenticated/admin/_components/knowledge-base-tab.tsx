@@ -134,18 +134,18 @@ export function KnowledgeBaseTab() {
     }
   }
 
-  const handleDeleteDocument = async (documentId: string) => {
+  const handleDeleteDocument = async (filename: string) => {
     if (!selectedKB) return
 
     try {
       await deleteDoc.mutateAsync({
         knowledgeBaseId: selectedKB.id,
-        documentId,
+        documentKey: filename, // Just the filename, API will construct full path
       })
 
       toast({
         title: 'Document deleted',
-        description: 'Document and its embeddings have been removed',
+        description: 'AI Search will remove it from the index',
       })
     } catch (error) {
       toast({
@@ -217,9 +217,8 @@ export function KnowledgeBaseTab() {
                       </p>
                     )}
                     <div className="flex gap-4 mt-3 text-xs text-muted-foreground">
-                      <span>{kb.documentCount} docs</span>
-                      <span>{kb.totalChunks} chunks</span>
-                      <span>{kb.totalTokens.toLocaleString()} tokens</span>
+                      <span>{kb.documentCount} {kb.documentCount === 1 ? 'document' : 'documents'}</span>
+                      <span className="text-muted-foreground/60">AI Search enabled</span>
                     </div>
                   </div>
                   <Button
@@ -271,11 +270,11 @@ export function KnowledgeBaseTab() {
                     <div className="space-y-3">
                       {documents.map((doc) => (
                         <DocumentCard
-                          key={doc.id}
+                          key={doc.key}
                           document={doc}
-                          onProcess={() => handleProcessDocument(doc.id)}
-                          onDelete={() => handleDeleteDocument(doc.id)}
-                          isProcessing={processDoc.isPending}
+                          onProcess={() => {}} // No-op: AI Search auto-processes
+                          onDelete={() => handleDeleteDocument(doc.filename)}
+                          isProcessing={false}
                           isDeleting={deleteDoc.isPending}
                         />
                       ))}
@@ -454,19 +453,11 @@ interface DocumentCardProps {
 }
 
 function DocumentCard({ document, onProcess, onDelete, isProcessing, isDeleting }: DocumentCardProps) {
-  const statusIcon = {
-    pending: <AlertCircle className="h-4 w-4 text-yellow-500" />,
-    processing: <Loader2 className="h-4 w-4 animate-spin text-blue-500" />,
-    completed: <Check className="h-4 w-4 text-green-500" />,
-    failed: <X className="h-4 w-4 text-red-500" />,
-  }[document.status]
+  // Format upload date
+  const uploadDate = document.uploadedAt ? new Date(document.uploadedAt).toLocaleDateString() : 'Unknown'
 
-  const statusText = {
-    pending: 'Pending',
-    processing: 'Processing...',
-    completed: 'Ready',
-    failed: 'Failed',
-  }[document.status]
+  // Get file extension from filename
+  const fileExt = document.filename?.split('.').pop()?.toUpperCase() || 'FILE'
 
   return (
     <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent transition-colors">
@@ -476,45 +467,28 @@ function DocumentCard({ document, onProcess, onDelete, isProcessing, isDeleting 
           <p className="font-medium truncate">{document.filename}</p>
           <div className="flex gap-3 text-xs text-muted-foreground mt-1">
             <span className="flex items-center gap-1">
-              {statusIcon}
-              {statusText}
+              <Check className="h-3 w-3 text-green-500" />
+              Indexed by AI Search
             </span>
-            {document.status === 'completed' && (
-              <>
-                <span>{document.chunkCount} chunks</span>
-                <span>{document.tokenCount.toLocaleString()} tokens</span>
-              </>
-            )}
+            <span>{fileExt}</span>
             <span>{(document.size / 1024).toFixed(1)} KB</span>
+            <span>Uploaded {uploadDate}</span>
           </div>
-          {document.status === 'failed' && document.errorMessage && (
-            <p className="text-xs text-destructive mt-1">{document.errorMessage}</p>
-          )}
         </div>
       </div>
 
       <div className="flex items-center gap-2">
-        {document.status === 'pending' && (
-          <Button size="sm" onClick={onProcess} disabled={isProcessing}>
-            {isProcessing ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              'Process'
-            )}
-          </Button>
-        )}
-        {document.status === 'failed' && (
-          <Button size="sm" variant="outline" onClick={onProcess} disabled={isProcessing}>
-            Retry
-          </Button>
-        )}
         <Button
           size="sm"
           variant="ghost"
           onClick={onDelete}
           disabled={isDeleting}
         >
-          <Trash2 className="h-4 w-4 text-destructive" />
+          {isDeleting ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Trash2 className="h-4 w-4 text-destructive" />
+          )}
         </Button>
       </div>
     </div>

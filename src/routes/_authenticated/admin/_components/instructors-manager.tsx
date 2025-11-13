@@ -394,7 +394,6 @@ export function InstructorsManager() {
                 <TableHead className="w-[220px]">Name</TableHead>
                 <TableHead>Title</TableHead>
                 <TableHead>Bio</TableHead>
-                <TableHead className="w-[200px]">Avatar URL</TableHead>
                 <TableHead className="w-[140px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -405,9 +404,6 @@ export function InstructorsManager() {
                   <TableCell>{instructor.title || '—'}</TableCell>
                   <TableCell className="max-w-[320px] truncate">
                     {instructor.bio || '—'}
-                  </TableCell>
-                  <TableCell className="max-w-[200px] truncate">
-                    {instructor.avatarUrl || '—'}
                   </TableCell>
                   <TableCell className="text-right space-x-2">
                     <Button

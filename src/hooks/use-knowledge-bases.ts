@@ -14,28 +14,21 @@ export interface KnowledgeBase {
   createdBy: string | null
   name: string
   description: string | null
-  vectorStoreId: string | null
+  aiSearchStoreId: string
+  r2PathPrefix: string
   documentCount: number
-  totalChunks: number
-  totalTokens: number
+  lastSyncedAt: string | null
   createdAt: string
   updatedAt: string
 }
 
 export interface KnowledgeBaseDocument {
-  id: string
-  knowledgeBaseId: string
-  organizationId: string
-  filename: string
-  mimeType: string
-  size: number
-  r2Key: string
-  status: 'pending' | 'processing' | 'completed' | 'failed'
-  chunkCount: number
-  tokenCount: number
-  errorMessage: string | null
-  uploadedAt: string
-  processedAt: string | null
+  // R2 object metadata (from c.env.R2_ASSETS.list())
+  key: string          // Full R2 key
+  filename: string     // Filename without path prefix
+  size: number        // File size in bytes
+  uploadedAt: Date    // Upload timestamp from R2
+  contentType?: string // MIME type
 }
 
 interface KnowledgeBasesResponse {
@@ -213,14 +206,14 @@ export function useUploadDocument() {
 }
 
 /**
- * Delete a document from a knowledge base
+ * Delete a document from a knowledge base (R2 + AI Search)
  */
 export function useDeleteDocument() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ knowledgeBaseId, documentId }: { knowledgeBaseId: string; documentId: string }) => {
-      const response = await fetch(`/api/v1/knowledge-base/${knowledgeBaseId}/documents/${documentId}`, {
+    mutationFn: async ({ knowledgeBaseId, documentKey }: { knowledgeBaseId: string; documentKey: string }) => {
+      const response = await fetch(`/api/v1/knowledge-base/${knowledgeBaseId}/documents/${documentKey}`, {
         method: 'DELETE',
       })
 
