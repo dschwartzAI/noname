@@ -40,6 +40,9 @@ import { Route as AuthenticatedOrganizationSettingsRouteImport } from './routes/
 import { Route as AuthenticatedErrorsErrorRouteImport } from './routes/_authenticated/errors/$error'
 import { Route as AuthenticatedAiChatBackupRouteImport } from './routes/_authenticated/ai-chat.backup'
 import { Route as AuthenticatedAiChatConversationIdRouteImport } from './routes/_authenticated/ai-chat/$conversationId'
+import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin/users'
+import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin/settings'
+import { Route as AuthenticatedAdminKnowledgeRouteImport } from './routes/_authenticated/admin/knowledge'
 import { Route as AuthenticatedAdminGodDashboardRouteImport } from './routes/_authenticated/admin/god-dashboard'
 import { Route as authSignupTokenRouteImport } from './routes/(auth)/signup.$token'
 import { Route as AuthenticatedSyndicateClassroomRouteRouteImport } from './routes/_authenticated/syndicate/classroom.route'
@@ -220,6 +223,23 @@ const AuthenticatedAiChatConversationIdRoute =
     path: '/$conversationId',
     getParentRoute: () => AuthenticatedAiChatRouteRoute,
   } as any)
+const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
+  id: '/admin/users',
+  path: '/admin/users',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAdminSettingsRoute =
+  AuthenticatedAdminSettingsRouteImport.update({
+    id: '/admin/settings',
+    path: '/admin/settings',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAdminKnowledgeRoute =
+  AuthenticatedAdminKnowledgeRouteImport.update({
+    id: '/admin/knowledge',
+    path: '/admin/knowledge',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAdminGodDashboardRoute =
   AuthenticatedAdminGodDashboardRouteImport.update({
     id: '/admin/god-dashboard',
@@ -286,6 +306,9 @@ export interface FileRoutesByFullPath {
   '/syndicate/classroom': typeof AuthenticatedSyndicateClassroomRouteRouteWithChildren
   '/signup/$token': typeof authSignupTokenRoute
   '/admin/god-dashboard': typeof AuthenticatedAdminGodDashboardRoute
+  '/admin/knowledge': typeof AuthenticatedAdminKnowledgeRoute
+  '/admin/settings': typeof AuthenticatedAdminSettingsRoute
+  '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/ai-chat/$conversationId': typeof AuthenticatedAiChatConversationIdRoute
   '/ai-chat/backup': typeof AuthenticatedAiChatBackupRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
@@ -322,6 +345,9 @@ export interface FileRoutesByTo {
   '/': typeof AuthenticatedIndexRoute
   '/signup/$token': typeof authSignupTokenRoute
   '/admin/god-dashboard': typeof AuthenticatedAdminGodDashboardRoute
+  '/admin/knowledge': typeof AuthenticatedAdminKnowledgeRoute
+  '/admin/settings': typeof AuthenticatedAdminSettingsRoute
+  '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/ai-chat/$conversationId': typeof AuthenticatedAiChatConversationIdRoute
   '/ai-chat/backup': typeof AuthenticatedAiChatBackupRoute
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
@@ -364,6 +390,9 @@ export interface FileRoutesById {
   '/_authenticated/syndicate/classroom': typeof AuthenticatedSyndicateClassroomRouteRouteWithChildren
   '/(auth)/signup/$token': typeof authSignupTokenRoute
   '/_authenticated/admin/god-dashboard': typeof AuthenticatedAdminGodDashboardRoute
+  '/_authenticated/admin/knowledge': typeof AuthenticatedAdminKnowledgeRoute
+  '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
+  '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/ai-chat/$conversationId': typeof AuthenticatedAiChatConversationIdRoute
   '/_authenticated/ai-chat/backup': typeof AuthenticatedAiChatBackupRoute
   '/_authenticated/errors/$error': typeof AuthenticatedErrorsErrorRoute
@@ -406,6 +435,9 @@ export interface FileRouteTypes {
     | '/syndicate/classroom'
     | '/signup/$token'
     | '/admin/god-dashboard'
+    | '/admin/knowledge'
+    | '/admin/settings'
+    | '/admin/users'
     | '/ai-chat/$conversationId'
     | '/ai-chat/backup'
     | '/errors/$error'
@@ -442,6 +474,9 @@ export interface FileRouteTypes {
     | '/'
     | '/signup/$token'
     | '/admin/god-dashboard'
+    | '/admin/knowledge'
+    | '/admin/settings'
+    | '/admin/users'
     | '/ai-chat/$conversationId'
     | '/ai-chat/backup'
     | '/errors/$error'
@@ -483,6 +518,9 @@ export interface FileRouteTypes {
     | '/_authenticated/syndicate/classroom'
     | '/(auth)/signup/$token'
     | '/_authenticated/admin/god-dashboard'
+    | '/_authenticated/admin/knowledge'
+    | '/_authenticated/admin/settings'
+    | '/_authenticated/admin/users'
     | '/_authenticated/ai-chat/$conversationId'
     | '/_authenticated/ai-chat/backup'
     | '/_authenticated/errors/$error'
@@ -740,6 +778,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAiChatConversationIdRouteImport
       parentRoute: typeof AuthenticatedAiChatRouteRoute
     }
+    '/_authenticated/admin/users': {
+      id: '/_authenticated/admin/users'
+      path: '/admin/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AuthenticatedAdminUsersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/settings': {
+      id: '/_authenticated/admin/settings'
+      path: '/admin/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AuthenticatedAdminSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/knowledge': {
+      id: '/_authenticated/admin/knowledge'
+      path: '/admin/knowledge'
+      fullPath: '/admin/knowledge'
+      preLoaderRoute: typeof AuthenticatedAdminKnowledgeRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/admin/god-dashboard': {
       id: '/_authenticated/admin/god-dashboard'
       path: '/admin/god-dashboard'
@@ -920,6 +979,9 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSyndicateRouteRoute: typeof AuthenticatedSyndicateRouteRouteWithChildren
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
   AuthenticatedAdminGodDashboardRoute: typeof AuthenticatedAdminGodDashboardRoute
+  AuthenticatedAdminKnowledgeRoute: typeof AuthenticatedAdminKnowledgeRoute
+  AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
+  AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
   AuthenticatedErrorsErrorRoute: typeof AuthenticatedErrorsErrorRoute
   AuthenticatedOrganizationSettingsRoute: typeof AuthenticatedOrganizationSettingsRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
@@ -934,6 +996,9 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
     AuthenticatedSyndicateRouteRouteWithChildren,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
   AuthenticatedAdminGodDashboardRoute: AuthenticatedAdminGodDashboardRoute,
+  AuthenticatedAdminKnowledgeRoute: AuthenticatedAdminKnowledgeRoute,
+  AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
+  AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
   AuthenticatedErrorsErrorRoute: AuthenticatedErrorsErrorRoute,
   AuthenticatedOrganizationSettingsRoute:
     AuthenticatedOrganizationSettingsRoute,

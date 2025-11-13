@@ -22,6 +22,7 @@ import { z } from 'zod'
 import * as authSchema from '../../../database/better-auth-schema'
 import { memories } from '../../../database/schema/memories'
 import { agents } from '../../../database/schema/agents'
+import { knowledgeBaseChunks } from '../../../database/schema/knowledge-base'
 import {
   chatRequestSchema,
   getConversationSchema,
@@ -31,6 +32,7 @@ import {
   conversationIdParamSchema,
   updateArtifactSchema,
 } from '../validation/chat'
+import { getRelevantContext } from '../../lib/rag-retrieval'
 
 // Types
 type Env = {
@@ -38,6 +40,7 @@ type Env = {
   ANTHROPIC_API_KEY?: string
   OPENAI_API_KEY?: string
   XAI_API_KEY?: string
+  AI?: any // Cloudflare AI binding for embeddings
 }
 
 type Variables = {
@@ -96,7 +99,7 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
 
     // Initialize database connection
     const sqlClient = neon(c.env.DATABASE_URL)
-    const db = drizzle(sqlClient, { schema: { ...authSchema, memories } })
+    const db = drizzle(sqlClient, { schema: { ...authSchema, memories, agents, knowledgeBaseChunks } })
 
     // Step 1: Get or create conversation
     let currentConversationId = conversationId
@@ -275,6 +278,7 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
     // Step 3: Fetch agent instructions if agentId provided
     let agentInstructions = ''
     let artifactInstructions = ''
+    let knowledgeBaseContext = ''
     if (agentId) {
       const agent = await db
         .select()
@@ -293,6 +297,32 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
           artifactInstructions = agent[0].artifactInstructions
         }
         console.log(`🤖 Loaded agent: ${agent[0].name} (artifacts: ${agent[0].artifactsEnabled})`)
+
+        // Check if agent has knowledge base assigned (RAG)
+        const toolResources = agent[0].toolResources as any
+        if (toolResources?.fileSearch?.vectorStoreIds?.[0]) {
+          const knowledgeBaseId = toolResources.fileSearch.vectorStoreIds[0]
+          console.log(`📚 Agent has knowledge base: ${knowledgeBaseId}`)
+
+          // Retrieve relevant context from knowledge base
+          if (c.env.AI && userMessageContent) {
+            try {
+              knowledgeBaseContext = await getRelevantContext(
+                userMessageContent,
+                knowledgeBaseId,
+                organizationId,
+                db,
+                c.env.AI,
+                5 // top 5 chunks
+              )
+            } catch (error) {
+              console.error('❌ Failed to retrieve KB context:', error)
+              // Continue without KB context - don't block chat
+            }
+          } else if (!c.env.AI) {
+            console.warn('⚠️ AI binding not available for RAG retrieval')
+          }
+        }
       }
     }
 
@@ -362,12 +392,17 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
     // UI messages have 'parts' array, model messages have 'content' string
     let messages = convertToModelMessages(uiMessages)
 
-    // Build system prompt with agent instructions, artifact instructions, and memory context
+    // Build system prompt with agent instructions, artifact instructions, memory context, and KB context
     let systemPrompt = agentInstructions || 'You are a helpful AI assistant.'
 
     // Add artifact instructions if enabled
     if (artifactInstructions) {
       systemPrompt += `\n\n${artifactInstructions}`
+    }
+
+    // Add knowledge base context (RAG)
+    if (knowledgeBaseContext) {
+      systemPrompt += `\n\n${knowledgeBaseContext}`
     }
 
     // Add memory context

@@ -38,6 +38,7 @@ remote = true
 
 [ai]
 binding = "AI"
+remote = true
 
 # For development, we'll remove the problematic KV bindings and use minimal config
 [env.development]
@@ -46,6 +47,7 @@ experimental_vectorize_bind_to_prod = true
 
 [env.development.ai]
 binding = "AI"
+remote = true
 
 # [[env.development.vectorize]]
 # binding = "VECTORIZE"

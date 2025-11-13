@@ -1,18 +1,15 @@
+"use client"
+
 import { createFileRoute } from '@tanstack/react-router';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { useSession } from '@/lib/auth-client';
-import { LogoUpload } from './_components/logo-upload';
-import { FaviconUpload } from './_components/favicon-upload';
-import { AppNameForm } from './_components/app-name-form';
-import { InstructorsManager } from './_components/instructors-manager';
-import { KnowledgeBaseTab } from './_components/knowledge-base-tab';
 
 export const Route = createFileRoute('/_authenticated/admin/')({
-  component: AdminPanel,
+  component: AdminDashboard,
 });
 
-function AdminPanel() {
+function AdminDashboard() {
   const { data: session, isPending } = useSession();
   const user = session?.user;
 
@@ -38,8 +35,8 @@ function AdminPanel() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">SoloOS Admin Panel</h1>
-          <p className="text-muted-foreground">Organization metrics and management</p>
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <p className="text-muted-foreground">Organization metrics and API usage</p>
         </div>
         <div className="flex items-center gap-2 text-sm">
           <span className="text-muted-foreground">Total Users:</span>
@@ -48,53 +45,15 @@ function AdminPanel() {
           <span className="font-semibold">87</span>
           <span className="text-muted-foreground">Trial:</span>
           <span className="font-semibold">10</span>
-          <button className="ml-4 px-4 py-2 bg-primary text-primary-foreground rounded-md">
-            Refresh
-          </button>
+          <Button className="ml-4">Refresh</Button>
         </div>
       </div>
 
-      {/* Tabs */}
-      <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-6 lg:w-auto">
-          <TabsTrigger value="overview">Dashboard</TabsTrigger>
-          <TabsTrigger value="api-usage">API Usage</TabsTrigger>
-          <TabsTrigger value="user-management">User Management</TabsTrigger>
-          <TabsTrigger value="knowledge-base">Knowledge Base</TabsTrigger>
-          <TabsTrigger value="instructors">Instructors</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
-        </TabsList>
+      {/* Overview Section */}
+      <OverviewTab />
 
-        {/* Overview Tab */}
-        <TabsContent value="overview" className="space-y-6">
-          <OverviewTab />
-        </TabsContent>
-
-        {/* API Usage Tab */}
-        <TabsContent value="api-usage" className="space-y-6">
-          <ApiUsageTab />
-        </TabsContent>
-
-        {/* User Management Tab */}
-        <TabsContent value="user-management" className="space-y-6">
-          <UserManagementTab />
-        </TabsContent>
-
-        {/* Knowledge Base Tab */}
-        <TabsContent value="knowledge-base" className="space-y-6">
-          <KnowledgeBaseTab />
-        </TabsContent>
-
-        {/* Instructors Tab */}
-        <TabsContent value="instructors" className="space-y-6">
-          <InstructorsManager />
-        </TabsContent>
-
-        {/* Settings Tab */}
-        <TabsContent value="settings" className="space-y-6">
-          <SettingsTab />
-        </TabsContent>
-      </Tabs>
+      {/* API Usage Section */}
+      <ApiUsageTab />
     </div>
   );
 }

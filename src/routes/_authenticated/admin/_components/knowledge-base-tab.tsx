@@ -30,7 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'sonner'
 import {
   useKnowledgeBases,
   useKnowledgeBaseDocuments,
@@ -44,7 +44,6 @@ import {
 } from '@/hooks/use-knowledge-bases'
 
 export function KnowledgeBaseTab() {
-  const { toast } = useToast()
   const [selectedKB, setSelectedKB] = useState<KnowledgeBase | null>(null)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
@@ -77,17 +76,10 @@ export function KnowledgeBaseTab() {
 
     try {
       await createKB.mutateAsync({ name, description })
-      toast({
-        title: 'Knowledge base created',
-        description: `"${name}" has been created successfully`,
-      })
+      toast.success(`Knowledge base "${name}" created successfully`)
       setIsCreateDialogOpen(false)
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to create knowledge base',
-        variant: 'destructive',
-      })
+      toast.error(error instanceof Error ? error.message : 'Failed to create knowledge base')
     }
   }
 
@@ -96,21 +88,14 @@ export function KnowledgeBaseTab() {
 
     try {
       await deleteKB.mutateAsync(kbToDelete)
-      toast({
-        title: 'Knowledge base deleted',
-        description: 'All documents and embeddings have been removed',
-      })
+      toast.success('Knowledge base deleted - All documents and embeddings removed')
       setIsDeleteDialogOpen(false)
       setKbToDelete(null)
       if (selectedKB?.id === kbToDelete) {
         setSelectedKB(null)
       }
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to delete knowledge base',
-        variant: 'destructive',
-      })
+      toast.error(error instanceof Error ? error.message : 'Failed to delete knowledge base')
     }
   }
 
@@ -123,21 +108,14 @@ export function KnowledgeBaseTab() {
         file,
       })
 
-      toast({
-        title: 'Document uploaded',
-        description: `${file.name} has been uploaded. Click "Process" to chunk and embed.`,
-      })
+      toast.success(`${file.name} uploaded successfully - Processing started`)
 
       // Auto-process the document
       if (result.document?.id) {
         handleProcessDocument(result.document.id)
       }
     } catch (error) {
-      toast({
-        title: 'Upload failed',
-        description: error instanceof Error ? error.message : 'Failed to upload document',
-        variant: 'destructive',
-      })
+      toast.error(error instanceof Error ? error.message : 'Failed to upload document')
     }
   }
 
@@ -150,16 +128,9 @@ export function KnowledgeBaseTab() {
         documentId,
       })
 
-      toast({
-        title: 'Document processed',
-        description: `Generated ${result.chunkCount} chunks (${result.tokenCount.toLocaleString()} tokens)`,
-      })
+      toast.success(`Document processed: ${result.chunkCount} chunks (${result.tokenCount.toLocaleString()} tokens)`)
     } catch (error) {
-      toast({
-        title: 'Processing failed',
-        description: error instanceof Error ? error.message : 'Failed to process document',
-        variant: 'destructive',
-      })
+      toast.error(error instanceof Error ? error.message : 'Failed to process document')
     }
   }
 

@@ -8,6 +8,10 @@ import {
   Shield,
   Building2,
   GraduationCap,
+  LayoutDashboard,
+  UsersRound,
+  Database,
+  Settings,
 } from 'lucide-react'
 import { type SidebarData } from '../types'
 
@@ -40,8 +44,29 @@ export const sidebarData: SidebarData = {
         },
         {
           title: 'Admin',
-          url: '/admin',
           icon: Building2,
+          items: [
+            {
+              title: 'Dashboard',
+              url: '/admin',
+              icon: LayoutDashboard,
+            },
+            {
+              title: 'Users',
+              url: '/admin/users',
+              icon: UsersRound,
+            },
+            {
+              title: 'Knowledge',
+              url: '/admin/knowledge',
+              icon: Database,
+            },
+            {
+              title: 'Settings',
+              url: '/admin/settings',
+              icon: Settings,
+            },
+          ],
         },
         {
           title: 'Syndicate',
