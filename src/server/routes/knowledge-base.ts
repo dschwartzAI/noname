@@ -20,8 +20,10 @@ import * as schema from '../../../database/schema'
 // Types
 type Env = {
   DATABASE_URL: string
-  R2_ASSETS: R2Bucket
+  KNOWLEDGE_BASE_DOCS: R2Bucket
   AI_SEARCH?: any // Cloudflare AI Search binding (optional for localhost)
+  CLOUDFLARE_ACCOUNT_ID: string
+  CLOUDFLARE_API_TOKEN: string
 }
 
 type Variables = {
@@ -221,10 +223,10 @@ kbApp.delete('/:id', zValidator('param', kbIdSchema), async (c) => {
 
     // Delete all documents in R2 folder
     try {
-      const objects = await c.env.R2_ASSETS.list({ prefix: kb.r2PathPrefix })
+      const objects = await c.env.KNOWLEDGE_BASE_DOCS.list({ prefix: kb.r2PathPrefix })
 
       for (const obj of objects.objects) {
-        await c.env.R2_ASSETS.delete(obj.key)
+        await c.env.KNOWLEDGE_BASE_DOCS.delete(obj.key)
         console.log('  ✅ Deleted R2 file:', obj.key)
       }
 
@@ -321,7 +323,7 @@ kbApp.post('/:id/upload', zValidator('param', kbIdSchema), async (c) => {
 
     // Upload to R2 with metadata for multi-tenant filtering
     const arrayBuffer = await file.arrayBuffer()
-    await c.env.R2_ASSETS.put(key, arrayBuffer, {
+    await c.env.KNOWLEDGE_BASE_DOCS.put(key, arrayBuffer, {
       httpMetadata: {
         contentType: file.type,
       },
@@ -333,7 +335,34 @@ kbApp.post('/:id/upload', zValidator('param', kbIdSchema), async (c) => {
       },
     })
 
-    console.log('✅ Document uploaded - AI Search will auto-index')
+    console.log('✅ Document uploaded to R2')
+
+    // Trigger AI Search sync via Cloudflare API
+    try {
+      const syncUrl = `https://api.cloudflare.com/client/v4/accounts/${c.env.CLOUDFLARE_ACCOUNT_ID}/ai/search/${kb.aiSearchStoreId}/sync`
+
+      console.log('🔄 Triggering AI Search sync:', syncUrl)
+
+      const syncResponse = await fetch(syncUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${c.env.CLOUDFLARE_API_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (syncResponse.ok) {
+        const syncData = await syncResponse.json()
+        console.log('✅ AI Search sync triggered:', syncData)
+      } else {
+        const errorText = await syncResponse.text()
+        console.error('⚠️ Failed to trigger AI Search sync:', syncResponse.status, errorText)
+        // Don't fail the upload if sync fails - file is already in R2
+      }
+    } catch (syncError) {
+      console.error('⚠️ AI Search sync trigger error:', syncError)
+      // Continue - file is uploaded successfully even if sync fails
+    }
 
     // Increment document count
     await db
@@ -348,7 +377,7 @@ kbApp.post('/:id/upload', zValidator('param', kbIdSchema), async (c) => {
     return c.json({
       success: true,
       key,
-      message: 'Document uploaded successfully. AI Search is indexing...',
+      message: 'Document uploaded successfully. AI Search sync triggered.',
     })
   } catch (error) {
     console.error('❌ Upload document error:', error)
@@ -387,7 +416,7 @@ kbApp.get('/:id/documents', zValidator('param', kbIdSchema), async (c) => {
     }
 
     // List documents from R2
-    const objects = await c.env.R2_ASSETS.list({ prefix: kb.r2PathPrefix })
+    const objects = await c.env.KNOWLEDGE_BASE_DOCS.list({ prefix: kb.r2PathPrefix })
 
     const documents = objects.objects.map(obj => ({
       key: obj.key,
@@ -445,7 +474,7 @@ kbApp.delete('/:id/documents/*', zValidator('param', kbIdSchema), async (c) => {
     console.log('🗑️ Deleting document from R2:', fullKey)
 
     // Delete from R2
-    await c.env.R2_ASSETS.delete(fullKey)
+    await c.env.KNOWLEDGE_BASE_DOCS.delete(fullKey)
 
     // Decrement document count
     await db

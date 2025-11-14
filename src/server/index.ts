@@ -23,8 +23,8 @@ import { agentIconApp } from './routes/agent-icon'
 import kbApp from './routes/knowledge-base'
 import coursesApp from './routes/courses'
 import instructorsApp from './routes/instructors'
+import calendarApp from './routes/calendar'
 // Temporarily disabled - incompatible import paths
-// import calendarApp from './routes/calendar'
 // import messageBoardApp from './routes/message-board'
 import { z } from '@hono/zod-openapi'
 // import { runWithTools } from '@cloudflare/ai-utils'
@@ -1485,8 +1485,8 @@ app.route('/api/v1/knowledge-base', kbApp)
 // LMS routes (Syndicate)
 app.route('/api/v1/instructors', instructorsApp)
 app.route('/api/v1/courses', coursesApp)
+app.route('/api/v1/calendar', calendarApp)
 // Temporarily disabled due to import path issues
-// app.route('/api/v1/calendar', calendarApp)
 // app.route('/api/v1/board', messageBoardApp)
 
 // TTS testing endpoint

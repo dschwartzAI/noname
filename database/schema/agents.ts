@@ -8,6 +8,7 @@
 import { pgTable, text, uuid, timestamp, jsonb, boolean, integer, index } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { organization, user } from '../better-auth-schema';
+import { knowledgeBases } from './knowledge-base';
 
 export const agents = pgTable('agents', {
   id: text('id').primaryKey(), // Custom ID format: 'agent_abc123'
@@ -32,6 +33,10 @@ export const agents = pgTable('agents', {
     .default('openai')
     .notNull(),
   model: text('model').notNull(), // e.g., 'gpt-4', 'claude-3-sonnet'
+
+  // Knowledge Base (RAG)
+  knowledgeBaseId: uuid('knowledge_base_id')
+    .references(() => knowledgeBases.id, { onDelete: 'set null' }),
 
   // Tools configuration
   tools: jsonb('tools').$type<string[]>().default([]),
@@ -113,6 +118,10 @@ export const agentsRelations = relations(agents, ({ one, many }) => ({
   creator: one(user, {
     fields: [agents.createdBy],
     references: [user.id],
+  }),
+  knowledgeBase: one(knowledgeBases, {
+    fields: [agents.knowledgeBaseId],
+    references: [knowledgeBases.id],
   }),
   // Conversations using this agent (forward reference)
   conversations: many('conversations' as any),

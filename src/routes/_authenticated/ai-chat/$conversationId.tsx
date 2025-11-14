@@ -195,19 +195,25 @@ function ConversationChat({
         // Find corresponding tool result
         const toolResult = msg.toolResults?.find(tr => tr.toolCallId === toolCall.id)
         
-        if (toolCall.name === 'createDocument') {
-          parts.push({
-            type: 'tool-call',
-            toolName: 'createDocument',
-            toolCallId: toolCall.id,
-            args: {
-              ...toolCall.arguments,
-              // Include artifact content from tool result if available
-              ...(toolResult?.result && typeof toolResult.result === 'object' && 'content' in toolResult.result
-                ? { content: (toolResult.result as any).content }
-                : {}),
-            },
-          })
+        if (toolCall.name === 'createDocument' && toolCall.arguments) {
+          // Ensure arguments is always defined - required by AI SDK
+          const args = {
+            ...toolCall.arguments,
+            // Include artifact content from tool result if available
+            ...(toolResult?.result && typeof toolResult.result === 'object' && 'content' in toolResult.result
+              ? { content: (toolResult.result as any).content }
+              : {}),
+          }
+
+          // Only add tool-call part if we have valid arguments
+          if (args.title && args.kind) {
+            parts.push({
+              type: 'tool-call',
+              toolName: 'createDocument',
+              toolCallId: toolCall.id,
+              args,
+            })
+          }
         }
       })
     }
@@ -337,19 +343,25 @@ function ConversationChat({
             // Find corresponding tool result
             const toolResult = msg.toolResults?.find(tr => tr.toolCallId === toolCall.id)
             
-            if (toolCall.name === 'createDocument') {
-              parts.push({
-                type: 'tool-call',
-                toolName: 'createDocument',
-                toolCallId: toolCall.id,
-                args: {
-                  ...toolCall.arguments,
-                  // Include artifact content from tool result if available
-                  ...(toolResult?.result && typeof toolResult.result === 'object' && 'content' in toolResult.result
-                    ? { content: (toolResult.result as any).content }
-                    : {}),
-                },
-              })
+            if (toolCall.name === 'createDocument' && toolCall.arguments) {
+              // Ensure arguments is always defined - required by AI SDK
+              const args = {
+                ...toolCall.arguments,
+                // Include artifact content from tool result if available
+                ...(toolResult?.result && typeof toolResult.result === 'object' && 'content' in toolResult.result
+                  ? { content: (toolResult.result as any).content }
+                  : {}),
+              }
+
+              // Only add tool-call part if we have valid arguments
+              if (args.title && args.kind) {
+                parts.push({
+                  type: 'tool-call',
+                  toolName: 'createDocument',
+                  toolCallId: toolCall.id,
+                  args,
+                })
+              }
             }
           })
         }
@@ -612,9 +624,9 @@ function ConversationChat({
 
   // Main chat content
   const chatContent = (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="border-b p-4">
+      <div className="border-b p-4 flex-shrink-0">
         <div className="flex items-center gap-3">
           {/* Agent Icon */}
           <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -640,7 +652,7 @@ function ConversationChat({
       </div>
 
       {/* Conversation Area with Auto-scroll */}
-      <Conversation className="flex-1">
+      <Conversation className="flex-1 overflow-y-auto">
         <ConversationContent>
           {messages.map((message) => {
             // Extract text content from message parts
@@ -691,8 +703,8 @@ function ConversationChat({
         <ConversationScrollButton />
       </Conversation>
 
-      {/* Input Area */}
-      <div className="border-t p-4">
+      {/* Input Area - Fixed at bottom */}
+      <div className="border-t p-4 flex-shrink-0 bg-background">
         <PromptInput
           onSubmit={(message, event) => {
             if (message.text?.trim()) {

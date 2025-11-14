@@ -53,7 +53,11 @@ function CalendarPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(eventData)
       })
-      if (!res.ok) throw new Error('Failed to create event')
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ error: 'Failed to create event' }))
+        console.error('Create event error:', error)
+        throw new Error(error.error || 'Failed to create event')
+      }
       return res.json()
     },
     onSuccess: () => {

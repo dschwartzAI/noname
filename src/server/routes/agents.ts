@@ -62,6 +62,9 @@ const createAgentSchema = z.object({
   provider: z.enum(['openai', 'anthropic', 'xai', 'bedrock']).describe('AI provider'),
   model: z.string().min(1).describe('Model identifier (e.g., gpt-4o, claude-3-5-sonnet)'),
 
+  // Knowledge Base (RAG)
+  knowledgeBaseId: z.string().uuid().nullable().optional().describe('Knowledge base ID for RAG'),
+
   // Model parameters
   temperature: z.number().min(0).max(2).optional().describe('Temperature (0-2)'),
   topP: z.number().min(0).max(1).optional().describe('Top P (0-1)'),
@@ -219,6 +222,7 @@ agentsApp.post('/', zValidator('json', createAgentSchema), async (c) => {
       avatar: data.avatar || null,
       provider: data.provider,
       model: data.model,
+      knowledgeBaseId: data.knowledgeBaseId || null,
       parameters: {
         temperature: data.temperature ?? 0.7,
         topP: data.topP ?? 1.0,
@@ -293,6 +297,7 @@ agentsApp.patch('/:id', zValidator('param', agentIdSchema), zValidator('json', u
     if (updates.avatar !== undefined) updateData.avatar = updates.avatar
     if (updates.provider !== undefined) updateData.provider = updates.provider
     if (updates.model !== undefined) updateData.model = updates.model
+    if (updates.knowledgeBaseId !== undefined) updateData.knowledgeBaseId = updates.knowledgeBaseId
     if (updates.tier !== undefined) updateData.tier = updates.tier
     if (updates.published !== undefined) updateData.published = updates.published
     if (updates.artifactsEnabled !== undefined) updateData.artifactsEnabled = updates.artifactsEnabled

@@ -354,6 +354,67 @@ coursesApp.get('/', async (c) => {
 })
 
 /**
+ * GET /api/v1/courses/lessons/:id - Get lesson detail
+ */
+coursesApp.get('/lessons/:id', zValidator('param', lessonIdSchema), async (c) => {
+  try {
+    const user = c.get('user')
+    const organizationId = c.get('organizationId')
+    const { id } = c.req.valid('param')
+
+    if (!organizationId) {
+      return c.json({ error: 'No organization context' }, 403)
+    }
+
+    const sqlClient = neon(c.env.DATABASE_URL)
+    const db = drizzle(sqlClient, { schema: { lessons, modules, courses, lessonProgress } })
+
+    const tenantId = await getTenantId(c.env, organizationId)
+
+    // Get lesson with module and course info
+    const [lesson] = await db
+      .select({
+        lesson: lessons,
+        module: modules,
+        course: courses,
+      })
+      .from(lessons)
+      .innerJoin(modules, eq(lessons.moduleId, modules.id))
+      .innerJoin(courses, eq(modules.courseId, courses.id))
+      .where(and(
+        eq(lessons.id, id),
+        eq(lessons.tenantId, tenantId)
+      ))
+      .limit(1)
+
+    if (!lesson) {
+      return c.json({ error: 'Lesson not found' }, 404)
+    }
+
+    // Get user's progress for this lesson
+    const [progress] = await db
+      .select()
+      .from(lessonProgress)
+      .where(and(
+        eq(lessonProgress.lessonId, id),
+        eq(lessonProgress.userId, user.id),
+        eq(lessonProgress.tenantId, tenantId)
+      ))
+      .limit(1)
+
+    return c.json({
+      ...lesson.lesson,
+      module: lesson.module,
+      course: lesson.course,
+      progress: progress || null,
+    })
+  } catch (error) {
+    console.error('❌ Get lesson error:', error)
+    return c.json({ error: 'Failed to fetch lesson' }, 500)
+  }
+})
+
+/**
  * GET /api/v1/courses/:id - Get course detail with modules and lessons
  */
 coursesApp.get('/:id', zValidator('param', courseIdSchema), async (c) => {
@@ -656,67 +717,6 @@ coursesApp.delete('/:id', zValidator('param', courseIdSchema), async (c) => {
   } catch (error) {
     console.error('❌ Delete course error:', error)
     return c.json({ error: 'Failed to delete course' }, 500)
-  }
-})
-
-/**
- * GET /api/v1/courses/lessons/:id - Get lesson detail
- */
-coursesApp.get('/lessons/:id', zValidator('param', lessonIdSchema), async (c) => {
-  try {
-    const user = c.get('user')
-    const organizationId = c.get('organizationId')
-    const { id } = c.req.valid('param')
-
-    if (!organizationId) {
-      return c.json({ error: 'No organization context' }, 403)
-    }
-
-    const sqlClient = neon(c.env.DATABASE_URL)
-    const db = drizzle(sqlClient, { schema: { lessons, modules, courses, lessonProgress } })
-
-    const tenantId = await getTenantId(c.env, organizationId)
-
-    // Get lesson with module and course info
-    const [lesson] = await db
-      .select({
-        lesson: lessons,
-        module: modules,
-        course: courses,
-      })
-      .from(lessons)
-      .innerJoin(modules, eq(lessons.moduleId, modules.id))
-      .innerJoin(courses, eq(modules.courseId, courses.id))
-      .where(and(
-        eq(lessons.id, id),
-        eq(lessons.tenantId, tenantId)
-      ))
-      .limit(1)
-
-    if (!lesson) {
-      return c.json({ error: 'Lesson not found' }, 404)
-    }
-
-    // Get user's progress for this lesson
-    const [progress] = await db
-      .select()
-      .from(lessonProgress)
-      .where(and(
-        eq(lessonProgress.lessonId, id),
-        eq(lessonProgress.userId, user.id),
-        eq(lessonProgress.tenantId, tenantId)
-      ))
-      .limit(1)
-
-    return c.json({
-      ...lesson.lesson,
-      module: lesson.module,
-      course: lesson.course,
-      progress: progress || null,
-    })
-  } catch (error) {
-    console.error('❌ Get lesson error:', error)
-    return c.json({ error: 'Failed to fetch lesson' }, 500)
   }
 })
 

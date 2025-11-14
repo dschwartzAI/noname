@@ -13,8 +13,7 @@ export const calendarEvents = pgTable('calendar_events', {
   tenantId: uuid('tenant_id')
     .references(() => tenants.id, { onDelete: 'cascade' })
     .notNull(),
-  createdBy: uuid('created_by')
-    .references(() => users.id, { onDelete: 'cascade' })
+  createdBy: text('created_by')
     .notNull(),
   
   // Event details
@@ -81,8 +80,7 @@ export const eventRsvps = pgTable('event_rsvps', {
   eventId: uuid('event_id')
     .references(() => calendarEvents.id, { onDelete: 'cascade' })
     .notNull(),
-  userId: uuid('user_id')
-    .references(() => users.id, { onDelete: 'cascade' })
+  userId: text('user_id')
     .notNull(),
   tenantId: uuid('tenant_id')
     .references(() => tenants.id, { onDelete: 'cascade' })

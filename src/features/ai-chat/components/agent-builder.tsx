@@ -120,8 +120,8 @@ export function AgentBuilder({ open, onOpenChange, trigger, onSuccess }: AgentBu
             setModel(agent.model)
             setArtifactsEnabled(agent.artifactsEnabled ?? false)
             setArtifactInstructions(agent.artifactInstructions || '')
-            // Load knowledge base ID from toolResources
-            setKnowledgeBaseId(agent.toolResources?.fileSearch?.vectorStoreIds?.[0] || '')
+            // Load knowledge base ID directly from agent
+            setKnowledgeBaseId(agent.knowledgeBaseId || '')
           }
         })
         .catch(err => {
@@ -193,12 +193,8 @@ export function AgentBuilder({ open, onOpenChange, trigger, onSuccess }: AgentBu
         model,
         artifactsEnabled,
         artifactInstructions: artifactsEnabled ? artifactInstructions : undefined,
-        // Knowledge Base (RAG) configuration
-        toolResources: knowledgeBaseId ? {
-          fileSearch: {
-            vectorStoreIds: [knowledgeBaseId],
-          },
-        } : undefined,
+        // Knowledge Base (RAG) - send as direct field, not nested in toolResources
+        knowledgeBaseId: knowledgeBaseId || null,
         published: true,
       }
 
@@ -498,7 +494,7 @@ For small code snippets, use regular markdown code blocks."
                         <div className="flex flex-col">
                           <span>{kb.name}</span>
                           <span className="text-xs text-muted-foreground">
-                            {kb.documentCount} docs, {kb.totalChunks} chunks
+                            {kb.documentCount} {kb.documentCount === 1 ? 'document' : 'documents'}
                           </span>
                         </div>
                       </SelectItem>

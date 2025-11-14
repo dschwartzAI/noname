@@ -17,7 +17,7 @@ export * from './knowledge-base';
 export * from './tenants';
 export * from './instructors';
 export * from './courses';
+export * from './calendar';
 // Temporarily disabled due to import path issues
-// export * from './calendar';
 // export * from './message-board';
 

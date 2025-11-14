@@ -298,9 +298,8 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
         console.log(`🤖 Loaded agent: ${agent[0].name} (artifacts: ${agent[0].artifactsEnabled})`)
 
         // Check if agent has knowledge base assigned (RAG via AI Search)
-        const toolResources = agent[0].toolResources as any
-        if (toolResources?.fileSearch?.vectorStoreIds?.[0]) {
-          const knowledgeBaseId = toolResources.fileSearch.vectorStoreIds[0]
+        if (agent[0].knowledgeBaseId) {
+          const knowledgeBaseId = agent[0].knowledgeBaseId
           console.log(`📚 Agent has knowledge base: ${knowledgeBaseId}`)
 
           // Get KB metadata for R2 path prefix
@@ -313,33 +312,64 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
             try {
               console.log(`🔍 Searching AI Search: ${kb.aiSearchStoreId}`)
               console.log(`   Query: "${userMessageContent.substring(0, 100)}..."`)
-              console.log(`   Filters: orgId=${organizationId}, path=${kb.r2PathPrefix}`)
+              console.log(`   Target folder: ${kb.r2PathPrefix}`)
 
               // Query AI Search using autorag().aiSearch()
-              // Note: AI Search filters by metadata (organizationId, knowledgeBaseId, etc.)
+              // TODO: Filter by folder path for multi-tenant isolation once we determine correct syntax
+              // For now, retrieve all results and filter in code
               const result = await c.env.AI.autorag(kb.aiSearchStoreId).aiSearch({
                 query: userMessageContent,
-                max_num_results: 5,
+                max_num_results: 20, // Get more results to filter
                 rewrite_query: false,
-                filters: {
-                  // Multi-tenant isolation via metadata filtering
-                  organizationId,
-                  knowledgeBaseId,
-                },
               })
 
               // Format context from search results
               // AI Search returns: { answer: string, data: Array<{text, metadata, score}> }
               if (result?.data && result.data.length > 0) {
-                knowledgeBaseContext = '\n\n═══ KNOWLEDGE BASE CONTEXT ═══\n'
-                knowledgeBaseContext += `\nRelevant information from knowledge base "${kb.name}":\n\n`
-                result.data.forEach((item: any, index: number) => {
-                  knowledgeBaseContext += `[${index + 1}] ${item.text}\n\n`
+                console.log(`📦 Total results from AI Search: ${result.data.length}`)
+
+                // CRITICAL: Filter results by folder path for multi-tenant isolation
+                // AI Search returns: { file_id, filename, score, attributes, content }
+                const filteredResults = result.data.filter((item: any) => {
+                  // Check if the filename starts with our KB folder path
+                  const itemPath = item.filename || item.file_id || ''
+                  const isInFolder = itemPath.startsWith(kb.r2PathPrefix)
+
+                  if (!isInFolder) {
+                    console.log(`🚫 Filtered out: ${itemPath} (not in ${kb.r2PathPrefix})`)
+                  } else {
+                    console.log(`✅ Keeping: ${itemPath}`)
+                  }
+
+                  return isInFolder
                 })
-                knowledgeBaseContext += '═══════════════════════════════\n'
-                console.log(`✅ Retrieved ${result.data.length} relevant chunks from AI Search`)
+
+                console.log(`✅ Filtered to ${filteredResults.length} chunks from KB folder`)
+
+                if (filteredResults.length > 0) {
+                  knowledgeBaseContext = '\n\n═══ KNOWLEDGE BASE CONTEXT ═══\n'
+                  knowledgeBaseContext += `\nRelevant information from knowledge base "${kb.name}":\n\n`
+                  filteredResults.slice(0, 5).forEach((item: any, index: number) => {
+                    // AI Search structure: { content: [{text: "..."}, ...], filename, score, ... }
+                    let text = ''
+
+                    if (Array.isArray(item.content)) {
+                      // Content is array of objects with 'text' field
+                      text = item.content.map((chunk: any) => chunk.text || chunk).join(' ')
+                    } else if (typeof item.content === 'string') {
+                      text = item.content
+                    } else {
+                      text = JSON.stringify(item.content)
+                    }
+
+                    knowledgeBaseContext += `[${index + 1}] ${text}\n\n`
+                  })
+                  knowledgeBaseContext += '═══════════════════════════════\n'
+                } else {
+                  console.log('⚠️ No relevant context found in this KB folder after filtering')
+                }
               } else {
-                console.log('⚠️ No relevant context found in AI Search')
+                console.log('⚠️ No results from AI Search')
               }
             } catch (error) {
               console.error('❌ Failed to retrieve KB context from AI Search:', error)
@@ -354,8 +384,10 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
       }
     }
 
-    // Step 4: Fetch user memories for context injection (ALWAYS - not just first message)
-    // IMPORTANT: Always inject memories so AI has access to user context throughout conversation
+    // Step 4: Fetch user memories for context injection
+    // ALWAYS inject memories - they're needed for personalization
+    let memoryContext = ''
+
     const userMemories = await db
       .select()
       .from(memories)
@@ -368,7 +400,6 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
       .orderBy(asc(memories.category), desc(memories.createdAt))
 
     // Format memories by category
-    let memoryContext = ''
     if (userMemories.length > 0) {
       const categories = {
         business_info: 'Business Information',
