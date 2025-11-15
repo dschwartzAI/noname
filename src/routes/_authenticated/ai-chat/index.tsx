@@ -52,13 +52,38 @@ const MODELS = [
   { value: 'grok-2-latest', label: 'Grok 2', provider: 'xAI' },
 ]
 
+// Store generated conversation IDs to survive React StrictMode double-mounting
+const conversationIdCache = new Map<string, string>()
+
 function ChatPage() {
   const { new: newChatKey, conversationId: urlConversationId, agentId } = Route.useSearch()
   const navigate = useNavigate()
   const [selectedModel, setSelectedModel] = useState('gpt-4o')
   const invalidateConversations = useInvalidateConversations()
 
-  console.log('🚀 ChatPage mounted - URL params:', { urlConversationId, agentId, newChatKey })
+  // Track actual mounts vs renders
+  const renderCountRef = useRef(0)
+  const prevPropsRef = useRef({ urlConversationId, agentId, newChatKey })
+  renderCountRef.current++
+
+  // Track what changed to cause this render
+  const changes: string[] = []
+  if (prevPropsRef.current.urlConversationId !== urlConversationId) changes.push('urlConversationId')
+  if (prevPropsRef.current.agentId !== agentId) changes.push('agentId')
+  if (prevPropsRef.current.newChatKey !== newChatKey) changes.push('newChatKey')
+  prevPropsRef.current = { urlConversationId, agentId, newChatKey }
+
+  useEffect(() => {
+    console.log('✨ ChatPage MOUNTED (component created)')
+    return () => console.log('💀 ChatPage UNMOUNTED (component destroyed)')
+  }, [])
+
+  if (changes.length > 0) {
+    console.log('🔄 ChatPage RENDER #' + renderCountRef.current, 'Changed:', changes.join(', '))
+  } else if (renderCountRef.current <= 5 || renderCountRef.current % 5 === 0) {
+    // Only log every 5th render to reduce noise, plus first 5
+    console.log('🔄 ChatPage RENDER #' + renderCountRef.current, '(state update)')
+  }
 
   // Fetch agent details if agentId is provided
   const { data: agentData } = useQuery({
@@ -75,9 +100,24 @@ function ChatPage() {
 
   // Generate conversation ID upfront (like Vercel AI Chatbot pattern)
   // Use URL conversationId if present, otherwise generate new one
+  // Cache the ID to survive React StrictMode double-mounting
   const [conversationId] = useState(() => {
-    const id = urlConversationId || nanoid()
-    console.log('🆔 Initial conversationId:', id, urlConversationId ? '(from URL)' : '(generated)')
+    if (urlConversationId) {
+      console.log('🆔 Using URL conversationId:', urlConversationId)
+      return urlConversationId
+    }
+
+    // Use cache key based on current route/params to ensure stability
+    const cacheKey = `new-chat-${newChatKey || 'default'}`
+    if (conversationIdCache.has(cacheKey)) {
+      const cachedId = conversationIdCache.get(cacheKey)!
+      console.log('🆔 Reusing cached conversationId:', cachedId)
+      return cachedId
+    }
+
+    const id = nanoid()
+    conversationIdCache.set(cacheKey, id)
+    console.log('🆔 Generated new conversationId:', id)
     return id
   })
 
@@ -89,18 +129,25 @@ function ChatPage() {
   const hasNavigatedRef = useRef(false)
 
   // Sync URL conversationId to effectiveConversationId (when navigating to existing conversation)
+  // Only depend on urlConversationId to prevent re-triggering when effectiveConversationId changes
   useEffect(() => {
     if (urlConversationId && urlConversationId !== effectiveConversationId) {
       console.log('🔄 URL conversationId changed, syncing:', urlConversationId)
       setEffectiveConversationId(urlConversationId)
       hasNavigatedRef.current = true
     }
-  }, [urlConversationId, effectiveConversationId])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlConversationId]) // Only trigger on URL change, not effectiveConversationId
 
   useEffect(() => {
     if (newChatKey && newChatKey !== currentChatKey) {
       // New chat triggered - generate fresh conversation ID
       const newId = nanoid()
+
+      // Update cache for this new chat key
+      const cacheKey = `new-chat-${newChatKey}`
+      conversationIdCache.set(cacheKey, newId)
+
       setEffectiveConversationId(newId)
       setCurrentChatKey(newChatKey)
       // Reset navigation flag for new conversation
@@ -118,7 +165,7 @@ function ChatPage() {
         replace: true,
       })
     }
-  }, [newChatKey, currentChatKey, navigate])
+  }, [newChatKey, currentChatKey, navigate, agentId])
 
   // Load existing conversation messages from backend if conversationId is present
   const { data: conversationData } = useQuery({
@@ -149,55 +196,48 @@ function ChatPage() {
       })))
     }
   }, [conversationData])
-  const [artifacts, setArtifacts] = useState<Artifact[]>(() => {
-    // Load artifacts from localStorage on mount
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem(`artifacts-${effectiveConversationId}`)
-      if (stored) {
-        try {
-          return JSON.parse(stored)
-        } catch (e) {
-          console.error('Failed to parse stored artifacts:', e)
-        }
-      }
-    }
-    return []
-  })
+
+  // Initialize artifacts as empty - loading happens in useEffect below
+  const [artifacts, setArtifacts] = useState<Artifact[]>([])
   const [isPanelOpen, setIsPanelOpen] = useState(false)
   const [currentArtifactIndex, setCurrentArtifactIndex] = useState(0)
   const [status, setStatus] = useState<'idle' | 'submitted' | 'streaming' | 'error'>('idle')
   const [error, setError] = useState<Error | null>(null)
 
-  // Persist artifacts to localStorage whenever they change
+  // Load and persist artifacts - COMBINED into single effect to prevent cascading updates
   useEffect(() => {
-    if (artifacts.length > 0) {
+    if (!effectiveConversationId) return
+
+    const key = `artifacts-${effectiveConversationId}`
+
+    // Load artifacts from localStorage when conversation changes
+    const stored = localStorage.getItem(key)
+    console.log('📂 Loading artifacts for conversation:', effectiveConversationId)
+    if (stored) {
+      try {
+        const loaded = JSON.parse(stored)
+        console.log('✅ Loaded', loaded.length, 'artifacts from localStorage')
+        setArtifacts(loaded)
+      } catch (e) {
+        console.error('Failed to parse stored artifacts:', e)
+        setArtifacts([])
+      }
+    } else {
+      console.log('ℹ️ No stored artifacts found for this conversation')
+      setArtifacts([])
+    }
+
+    // No cleanup needed - loading happens on conversation change only
+  }, [effectiveConversationId])
+
+  // Persist artifacts to localStorage whenever they change (separate effect to avoid loops)
+  useEffect(() => {
+    if (artifacts.length > 0 && effectiveConversationId) {
       const key = `artifacts-${effectiveConversationId}`
       localStorage.setItem(key, JSON.stringify(artifacts))
       console.log('💾 Saved', artifacts.length, 'artifacts to', key)
     }
   }, [artifacts, effectiveConversationId])
-
-  // Load artifacts from localStorage when conversation changes
-  useEffect(() => {
-    if (effectiveConversationId) {
-      const key = `artifacts-${effectiveConversationId}`
-      const stored = localStorage.getItem(key)
-      console.log('📂 Loading artifacts for conversation:', effectiveConversationId)
-      if (stored) {
-        try {
-          const loaded = JSON.parse(stored)
-          console.log('✅ Loaded', loaded.length, 'artifacts from localStorage')
-          setArtifacts(loaded)
-        } catch (e) {
-          console.error('Failed to parse stored artifacts:', e)
-          setArtifacts([])
-        }
-      } else {
-        console.log('ℹ️ No stored artifacts found for this conversation')
-        setArtifacts([])
-      }
-    }
-  }, [effectiveConversationId])
 
   // Manual stream parsing implementation
   const sendMessage = async (
@@ -301,8 +341,9 @@ function ChatPage() {
                   return
                 }
 
-                setMessages((prev) =>
-                  prev.map((m) => {
+                // Use React 18's automatic batching for better performance
+                setMessages((prev) => {
+                  const updated = prev.map((m) => {
                     if (m.id === assistantMessageId) {
                       const newContent = m.content + deltaText
                       return {
@@ -313,7 +354,8 @@ function ChatPage() {
                     }
                     return m
                   })
-                )
+                  return updated
+                })
               }
 
               // Handle artifact metadata (create artifact and auto-open panel)
@@ -403,19 +445,19 @@ function ChatPage() {
 
       setStatus('idle')
 
-      // Refresh sidebar conversation list
-      invalidateConversations()
-
-      // Update URL with conversationId (without navigation/remount)
+      // Update URL with conversationId BEFORE invalidating queries to avoid extra renders
       if (!hasNavigatedRef.current && !urlConversationId) {
         hasNavigatedRef.current = true
         console.log('🔗 First message - updating URL with conversationId:', effectiveConversationId)
-        navigate({
+        await navigate({
           to: '/ai-chat',
           search: { conversationId: effectiveConversationId, agentId },
           replace: true,
         })
       }
+
+      // Refresh sidebar conversation list (after URL update to reduce render churn)
+      invalidateConversations()
     } catch (err) {
       console.error('❌ Chat error:', err)
       setError(err instanceof Error ? err : new Error(String(err)))
@@ -494,23 +536,15 @@ function ChatPage() {
             </ConversationEmptyState>
           ) : (
             <>
-              {messages.map((message) => {
-                // Debug: log message structure if it has issues
-                const hasUndefinedText = message.parts?.some(part => part.type === 'text' && part.text === undefined)
-                if (hasUndefinedText) {
-                  console.warn('⚠️ Message has undefined text in parts:', message)
-                }
-
-                return (
-                  <Message key={message.id} from={message.role}>
-                    <MessageContent>
-                      <MessageResponse>
-                        {message.parts?.map((part) => part.type === 'text' ? (part.text ?? '') : '').join('') || message.content}
-                      </MessageResponse>
-                    </MessageContent>
-                  </Message>
-                )
-              })}
+              {messages.map((message) => (
+                <Message key={message.id} from={message.role}>
+                  <MessageContent>
+                    <MessageResponse>
+                      {message.content || message.parts?.map((part) => part.type === 'text' ? (part.text ?? '') : '').join('') || ''}
+                    </MessageResponse>
+                  </MessageContent>
+                </Message>
+              ))}
 
               {/* Thinking indicator - show when AI is processing */}
               {isLoading && (
