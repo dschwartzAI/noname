@@ -355,14 +355,15 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
 
                     if (Array.isArray(item.content)) {
                       // Content is array of objects with 'text' field
-                      text = item.content.map((chunk: any) => chunk.text || chunk).join(' ')
+                      // Join with newlines to preserve markdown structure (headings, lists, etc.)
+                      text = item.content.map((chunk: any) => chunk.text || chunk).join('\n')
                     } else if (typeof item.content === 'string') {
                       text = item.content
                     } else {
                       text = JSON.stringify(item.content)
                     }
 
-                    knowledgeBaseContext += `[${index + 1}] ${text}\n\n`
+                    knowledgeBaseContext += `${text}\n\n`
                   })
                   knowledgeBaseContext += '═══════════════════════════════\n'
                 } else {
@@ -462,6 +463,7 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
     // Add knowledge base context (RAG)
     if (knowledgeBaseContext) {
       systemPrompt += `\n\n${knowledgeBaseContext}`
+      systemPrompt += '\n\nWhen referencing information from the knowledge base above, format your response using proper markdown:\n- Use **bold** for headings and key terms\n- Use bullet points and numbered lists where appropriate\n- Maintain clear structure with spacing between sections\n- Preserve the original formatting and organization from the source material'
     }
 
     // Add memory context

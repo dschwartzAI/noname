@@ -694,6 +694,44 @@ function ConversationChat({
             )
           })}
 
+          {/* Thinking indicator - show when waiting for AI response */}
+          {(() => {
+            const lastMessage = messages.at(-1)
+            const showThinking =
+              status === 'submitted' ||
+              (status === 'streaming' &&
+                lastMessage?.role === 'assistant' &&
+                lastMessage?.parts?.length === 0)
+
+            // Debug logging
+            if (status !== 'ready') {
+              console.log('🔍 Thinking check:', {
+                status,
+                lastMessageRole: lastMessage?.role,
+                lastMessagePartsLength: lastMessage?.parts?.length,
+                showThinking
+              })
+            }
+
+            if (showThinking) {
+              return (
+                <Message from="assistant">
+                  <MessageContent>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <div className="flex gap-1">
+                        <span className="animate-bounce" style={{ animationDelay: '0ms' }}>●</span>
+                        <span className="animate-bounce" style={{ animationDelay: '150ms' }}>●</span>
+                        <span className="animate-bounce" style={{ animationDelay: '300ms' }}>●</span>
+                      </div>
+                      <span className="text-sm">Thinking...</span>
+                    </div>
+                  </MessageContent>
+                </Message>
+              )
+            }
+            return null
+          })()}
+
           {error && (
             <div className="p-4 rounded-lg bg-destructive/10 text-destructive text-sm">
               Error: {error.message}
