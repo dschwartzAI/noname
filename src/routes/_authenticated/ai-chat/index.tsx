@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { consumeStream } from 'ai'
 import { useState, useRef, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Bot } from 'lucide-react'
+import { Bot, Loader2 } from 'lucide-react'
 import { nanoid } from 'nanoid'
 import { useInvalidateConversations } from '@/hooks/use-conversations'
 import { getAgentIconSrc, getAgentEmoji } from '@/features/ai-chat/utils/get-agent-icon'
@@ -511,6 +511,18 @@ function ChatPage() {
                   </Message>
                 )
               })}
+
+              {/* Thinking indicator - show when AI is processing */}
+              {isLoading && (
+                <Message from="assistant">
+                  <MessageContent>
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-sm text-muted-foreground">Thinking...</span>
+                    </div>
+                  </MessageContent>
+                </Message>
+              )}
 
               {/* Artifact cards (clickable to toggle panel) */}
               {artifacts.length > 0 && (
