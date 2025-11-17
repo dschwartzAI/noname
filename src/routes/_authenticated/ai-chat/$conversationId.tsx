@@ -36,7 +36,6 @@ import {
 import { parseArtifactsFromContent } from '@/utils/artifact-parser'
 import { ArtifactMessageComponent } from '@/components/artifacts/artifact-message'
 import { ArtifactSidePanel } from '@/components/artifacts/artifact-side-panel'
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import type { Artifact } from '@/types/artifacts'
 
 // Available AI models
@@ -622,9 +621,40 @@ function ConversationChat({
 
   const isChatLoading = status === 'submitted' || status === 'streaming'
 
+  // Minimal layout debug when artifacts open/close
+  useEffect(() => {
+    const chatContainer = document.querySelector('[data-chat-container]')
+    const conversationArea = document.querySelector('[data-conversation-area]')
+
+    if (!chatContainer || !conversationArea) return
+
+    const chatRect = chatContainer.getBoundingClientRect()
+    const convRect = conversationArea.getBoundingClientRect()
+
+    console.log('═══════════════════════════════════════')
+    console.log('🔍 LAYOUT DEBUG INFO')
+    console.log('💬 Chat Container:', {
+      height: chatRect.height,
+      scrollHeight: chatContainer.scrollHeight,
+      clientHeight: chatContainer.clientHeight,
+      hasOverflow: chatContainer.scrollHeight > chatContainer.clientHeight
+    })
+    console.log('💭 Conversation Area:', {
+      height: convRect.height,
+      scrollHeight: conversationArea.scrollHeight,
+      clientHeight: conversationArea.clientHeight,
+      hasOverflow: conversationArea.scrollHeight > conversationArea.clientHeight
+    })
+    console.log('═══════════════════════════════════════')
+  }, [selectedArtifactIndex, messages.length])
+
   // Main chat content
   const chatContent = (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div 
+      data-chat-container
+      className="flex flex-col h-full min-h-0 max-h-full overflow-hidden" 
+      style={{ height: '100%', maxHeight: '100%' }}
+    >
       {/* Header */}
       <div className="border-b p-4 flex-shrink-0">
         <div className="flex items-center gap-3">
@@ -652,9 +682,18 @@ function ConversationChat({
       </div>
 
       {/* Conversation Area with Auto-scroll */}
-      <Conversation className="flex-1 overflow-y-auto">
-        <ConversationContent>
-          {messages.map((message) => {
+      <div 
+        data-conversation-wrapper
+        className="flex-1 min-h-0 overflow-hidden flex flex-col"
+      >
+        {/* This div is the actual scroll container for the chat messages */}
+        <div
+          data-conversation-area
+          className="flex-1 min-h-0 overflow-y-auto pb-4"
+        >
+          <Conversation>
+          <ConversationContent>
+            {messages.map((message) => {
             // Extract text content from message parts
             const textContent = message.parts?.map((part) =>
               part.type === 'text' ? part.text : ''
@@ -692,7 +731,7 @@ function ConversationChat({
                 </MessageContent>
               </Message>
             )
-          })}
+            })}
 
           {/* Thinking indicator - show when waiting for AI response */}
           {(() => {
@@ -733,73 +772,82 @@ function ConversationChat({
               Error: {error.message}
             </div>
           )}
-        </ConversationContent>
-        <ConversationScrollButton />
-      </Conversation>
+          </ConversationContent>
+          <ConversationScrollButton />
+        </Conversation>
+        </div>
+      </div>
 
-      {/* Input Area - Fixed at bottom */}
-      <div className="border-t p-4 flex-shrink-0 bg-background">
-        <PromptInput
-          onSubmit={(message, event) => {
-            if (message.text?.trim()) {
-              // Send message - artifact tool will be called automatically if agent has artifacts enabled
-              sendMessage(
-                { text: message.text },
-                {
-                  body: {
-                    conversationId, // Dynamic value at request time
-                    model: selectedModel, // Dynamic value at request time
-                    agentId: data.conversation.toolId, // Pass agent/tool ID from conversation
-                  },
-                }
-              )
-            }
-          }}
-        >
-          <PromptInputBody>
-            <PromptInputTextarea
-              placeholder="Send a message..."
-              disabled={isChatLoading}
-            />
-          </PromptInputBody>
+      {/* Input Area - Fixed at bottom, aligned with conversation width */}
+      <div
+        className="border-t bg-background/90 backdrop-blur flex-shrink-0 sticky bottom-0 z-20"
+        style={{
+          paddingBottom: `calc(1rem + env(safe-area-inset-bottom, 0px))`,
+        }}
+      >
+        <div className="max-w-3xl mx-auto w-full px-4 pt-4">
+          <PromptInput
+            onSubmit={(message, event) => {
+              if (message.text?.trim()) {
+                // Send message - artifact tool will be called automatically if agent has artifacts enabled
+                sendMessage(
+                  { text: message.text },
+                  {
+                    body: {
+                      conversationId, // Dynamic value at request time
+                      model: selectedModel, // Dynamic value at request time
+                      agentId: data.conversation.toolId, // Pass agent/tool ID from conversation
+                    },
+                  }
+                )
+              }
+            }}
+          >
+            <PromptInputBody>
+              <PromptInputTextarea
+                placeholder="Send a message..."
+                disabled={isChatLoading}
+              />
+            </PromptInputBody>
 
-          <PromptInputFooter>
-            <PromptInputTools>
-              <PromptInputButton>
-                <PaperclipIcon className="h-4 w-4" />
-              </PromptInputButton>
+            <PromptInputFooter>
+              <PromptInputTools>
+                <PromptInputButton>
+                  <PaperclipIcon className="h-4 w-4" />
+                </PromptInputButton>
 
-              {/* Model selector commented out - using agent's default model */}
-              {/* <PromptInputSelect value={selectedModel} onValueChange={setSelectedModel}>
-                <PromptInputSelectTrigger>
-                  <PromptInputSelectValue>
-                    {MODELS.find(m => m.value === selectedModel)?.label}
-                  </PromptInputSelectValue>
-                </PromptInputSelectTrigger>
-                <PromptInputSelectContent>
-                  {MODELS.map((model) => (
-                    <PromptInputSelectItem key={model.value} value={model.value}>
-                      <div className="flex flex-col">
-                        <span>{model.label}</span>
-                        <span className="text-xs text-muted-foreground">{model.provider}</span>
-                      </div>
-                    </PromptInputSelectItem>
-                  ))}
-                </PromptInputSelectContent>
-              </PromptInputSelect> */}
-            </PromptInputTools>
+                {/* Model selector commented out - using agent's default model */}
+                {/* <PromptInputSelect value={selectedModel} onValueChange={setSelectedModel}>
+                  <PromptInputSelectTrigger>
+                    <PromptInputSelectValue>
+                      {MODELS.find(m => m.value === selectedModel)?.label}
+                    </PromptInputSelectValue>
+                  </PromptInputSelectTrigger>
+                  <PromptInputSelectContent>
+                    {MODELS.map((model) => (
+                      <PromptInputSelectItem key={model.value} value={model.value}>
+                        <div className="flex flex-col">
+                          <span>{model.label}</span>
+                          <span className="text-xs text-muted-foreground">{model.provider}</span>
+                        </div>
+                      </PromptInputSelectItem>
+                    ))}
+                  </PromptInputSelectContent>
+                </PromptInputSelect> */}
+              </PromptInputTools>
 
-            <PromptInputSubmit status={status} />
-          </PromptInputFooter>
-        </PromptInput>
+              <PromptInputSubmit status={status} />
+            </PromptInputFooter>
+          </PromptInput>
+        </div>
       </div>
     </div>
   )
 
-  // Desktop: Resizable side panel | Mobile: Full-screen dialog
+  // Desktop: Side-by-side panel | Mobile: Full-screen dialog
   if (selectedArtifactIndex !== null && allArtifacts.length > 0) {
     if (isMobile) {
-      // Mobile: Full-screen dialog
+      // Mobile: Full-screen dialog (unchanged)
       return (
         <>
           {chatContent}
@@ -819,14 +867,19 @@ function ConversationChat({
         </>
       )
     } else {
-      // Desktop: Resizable split screen
+      // Desktop: side-by-side layout with fixed height
       return (
-        <PanelGroup direction="horizontal" className="h-full">
-          <Panel defaultSize={55} minSize={30}>
+        <div className="flex h-screen">
+          {/* Main chat column */}
+          <div className="flex flex-col flex-[0.55] min-w-0 h-full overflow-hidden">
             {chatContent}
-          </Panel>
-          <PanelResizeHandle className="w-px bg-border hover:bg-primary transition-colors" />
-          <Panel defaultSize={45} minSize={30}>
+          </div>
+
+          {/* Divider */}
+          <div className="w-px bg-border" />
+
+          {/* Artifact side panel column */}
+          <div className="flex flex-col flex-[0.45] min-w-0 h-full overflow-y-auto">
             <ArtifactSidePanel
               artifacts={allArtifacts}
               currentIndex={selectedArtifactIndex}
@@ -836,8 +889,8 @@ function ConversationChat({
               conversationId={conversationId}
               messageId={getCurrentArtifactMessageId()}
             />
-          </Panel>
-        </PanelGroup>
+          </div>
+        </div>
       )
     }
   }

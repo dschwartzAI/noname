@@ -417,9 +417,9 @@ function ChatPage() {
   return (
     <div className="flex h-full overflow-hidden">
       {/* Main Chat Area */}
-      <div className={`flex flex-col h-full transition-all duration-300 ${isPanelOpen ? 'w-1/2' : 'w-full'}`}>
+      <div className={`flex flex-col h-full min-h-0 transition-all duration-300 ${isPanelOpen ? 'w-1/2' : 'w-full'}`}>
       {/* Header */}
-      <div className="border-b p-4">
+      <div className="border-b p-4 flex-shrink-0">
         <div className="flex items-center gap-3">
           {/* Agent Icon */}
           <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -445,7 +445,7 @@ function ChatPage() {
       </div>
 
       {/* Conversation Area with Auto-scroll */}
-      <Conversation className="flex-1 overflow-y-auto">
+      <Conversation className="flex-1 min-h-0 overflow-y-auto pb-4">
         <ConversationContent>
           {messages.length === 0 ? (
             <ConversationEmptyState
@@ -532,8 +532,14 @@ function ChatPage() {
       </Conversation>
 
       {/* Input Area */}
-      <div className="border-t p-4">
-        <PromptInput
+      <div
+        className="border-t bg-background/90 backdrop-blur flex-shrink-0 sticky bottom-0 z-20"
+        style={{
+          paddingBottom: `calc(1rem + env(safe-area-inset-bottom, 0px))`,
+        }}
+      >
+        <div className="max-w-3xl mx-auto w-full px-4 pt-4">
+          <PromptInput
           onSubmit={(message) => {
             if (message.text?.trim()) {
               handleSendMessage(message.text)
