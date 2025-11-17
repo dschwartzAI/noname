@@ -292,3 +292,6 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
 
 
 
+
+
+

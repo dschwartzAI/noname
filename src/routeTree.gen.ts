@@ -30,14 +30,15 @@ import { Route as AuthenticatedGodIndexRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedCommunityIndexRouteImport } from './routes/_authenticated/community/index'
 import { Route as AuthenticatedAiChatIndexRouteImport } from './routes/_authenticated/ai-chat/index'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin/index'
-import { Route as AuthenticatedSyndicateCalendarRouteImport } from './routes/_authenticated/syndicate/calendar'
-import { Route as AuthenticatedSyndicateBoardRouteImport } from './routes/_authenticated/syndicate/board'
 import { Route as AuthenticatedSettingsProfileRouteImport } from './routes/_authenticated/settings/profile'
 import { Route as AuthenticatedSettingsMemoriesRouteImport } from './routes/_authenticated/settings/memories'
 import { Route as AuthenticatedSettingsIntegrationsRouteImport } from './routes/_authenticated/settings/integrations'
 import { Route as AuthenticatedSettingsAppearanceRouteImport } from './routes/_authenticated/settings/appearance'
 import { Route as AuthenticatedOrganizationSettingsRouteImport } from './routes/_authenticated/organization/settings'
 import { Route as AuthenticatedErrorsErrorRouteImport } from './routes/_authenticated/errors/$error'
+import { Route as AuthenticatedCommunityFeedRouteImport } from './routes/_authenticated/community/feed'
+import { Route as AuthenticatedCommunityEventsRouteImport } from './routes/_authenticated/community/events'
+import { Route as AuthenticatedCommunityChatRouteImport } from './routes/_authenticated/community/chat'
 import { Route as AuthenticatedAiChatBackupRouteImport } from './routes/_authenticated/ai-chat.backup'
 import { Route as AuthenticatedAiChatConversationIdRouteImport } from './routes/_authenticated/ai-chat/$conversationId'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin/users'
@@ -49,7 +50,7 @@ import { Route as AuthenticatedSyndicateClassroomRouteRouteImport } from './rout
 import { Route as AuthenticatedSyndicateClassroomIndexRouteImport } from './routes/_authenticated/syndicate/classroom.index'
 import { Route as AuthenticatedSyndicateClassroomBuilderRouteImport } from './routes/_authenticated/syndicate/classroom.builder'
 import { Route as AuthenticatedSyndicateClassroomCourseIdRouteImport } from './routes/_authenticated/syndicate/classroom.$courseId'
-import { Route as AuthenticatedSyndicateBoardThreadIdRouteImport } from './routes/_authenticated/syndicate/board.$threadId'
+import { Route as AuthenticatedCommunityFeedThreadIdRouteImport } from './routes/_authenticated/community/feed.$threadId'
 import { Route as AuthenticatedSyndicateClassroomCourseIdLessonIdRouteImport } from './routes/_authenticated/syndicate/classroom.$courseId.$lessonId'
 
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
@@ -163,18 +164,6 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   path: '/admin/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedSyndicateCalendarRoute =
-  AuthenticatedSyndicateCalendarRouteImport.update({
-    id: '/calendar',
-    path: '/calendar',
-    getParentRoute: () => AuthenticatedSyndicateRouteRoute,
-  } as any)
-const AuthenticatedSyndicateBoardRoute =
-  AuthenticatedSyndicateBoardRouteImport.update({
-    id: '/board',
-    path: '/board',
-    getParentRoute: () => AuthenticatedSyndicateRouteRoute,
-  } as any)
 const AuthenticatedSettingsProfileRoute =
   AuthenticatedSettingsProfileRouteImport.update({
     id: '/profile',
@@ -209,6 +198,24 @@ const AuthenticatedErrorsErrorRoute =
   AuthenticatedErrorsErrorRouteImport.update({
     id: '/errors/$error',
     path: '/errors/$error',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedCommunityFeedRoute =
+  AuthenticatedCommunityFeedRouteImport.update({
+    id: '/community/feed',
+    path: '/community/feed',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedCommunityEventsRoute =
+  AuthenticatedCommunityEventsRouteImport.update({
+    id: '/community/events',
+    path: '/community/events',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedCommunityChatRoute =
+  AuthenticatedCommunityChatRouteImport.update({
+    id: '/community/chat',
+    path: '/community/chat',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAiChatBackupRoute =
@@ -275,11 +282,11 @@ const AuthenticatedSyndicateClassroomCourseIdRoute =
     path: '/$courseId',
     getParentRoute: () => AuthenticatedSyndicateClassroomRouteRoute,
   } as any)
-const AuthenticatedSyndicateBoardThreadIdRoute =
-  AuthenticatedSyndicateBoardThreadIdRouteImport.update({
+const AuthenticatedCommunityFeedThreadIdRoute =
+  AuthenticatedCommunityFeedThreadIdRouteImport.update({
     id: '/$threadId',
     path: '/$threadId',
-    getParentRoute: () => AuthenticatedSyndicateBoardRoute,
+    getParentRoute: () => AuthenticatedCommunityFeedRoute,
   } as any)
 const AuthenticatedSyndicateClassroomCourseIdLessonIdRoute =
   AuthenticatedSyndicateClassroomCourseIdLessonIdRouteImport.update({
@@ -311,21 +318,22 @@ export interface FileRoutesByFullPath {
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/ai-chat/$conversationId': typeof AuthenticatedAiChatConversationIdRoute
   '/ai-chat/backup': typeof AuthenticatedAiChatBackupRoute
+  '/community/chat': typeof AuthenticatedCommunityChatRoute
+  '/community/events': typeof AuthenticatedCommunityEventsRoute
+  '/community/feed': typeof AuthenticatedCommunityFeedRouteWithChildren
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/organization/settings': typeof AuthenticatedOrganizationSettingsRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/settings/memories': typeof AuthenticatedSettingsMemoriesRoute
   '/settings/profile': typeof AuthenticatedSettingsProfileRoute
-  '/syndicate/board': typeof AuthenticatedSyndicateBoardRouteWithChildren
-  '/syndicate/calendar': typeof AuthenticatedSyndicateCalendarRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/ai-chat/': typeof AuthenticatedAiChatIndexRoute
   '/community': typeof AuthenticatedCommunityIndexRoute
   '/god': typeof AuthenticatedGodIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
   '/syndicate/': typeof AuthenticatedSyndicateIndexRoute
-  '/syndicate/board/$threadId': typeof AuthenticatedSyndicateBoardThreadIdRoute
+  '/community/feed/$threadId': typeof AuthenticatedCommunityFeedThreadIdRoute
   '/syndicate/classroom/$courseId': typeof AuthenticatedSyndicateClassroomCourseIdRouteWithChildren
   '/syndicate/classroom/builder': typeof AuthenticatedSyndicateClassroomBuilderRoute
   '/syndicate/classroom/': typeof AuthenticatedSyndicateClassroomIndexRoute
@@ -350,21 +358,22 @@ export interface FileRoutesByTo {
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/ai-chat/$conversationId': typeof AuthenticatedAiChatConversationIdRoute
   '/ai-chat/backup': typeof AuthenticatedAiChatBackupRoute
+  '/community/chat': typeof AuthenticatedCommunityChatRoute
+  '/community/events': typeof AuthenticatedCommunityEventsRoute
+  '/community/feed': typeof AuthenticatedCommunityFeedRouteWithChildren
   '/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/organization/settings': typeof AuthenticatedOrganizationSettingsRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/settings/memories': typeof AuthenticatedSettingsMemoriesRoute
   '/settings/profile': typeof AuthenticatedSettingsProfileRoute
-  '/syndicate/board': typeof AuthenticatedSyndicateBoardRouteWithChildren
-  '/syndicate/calendar': typeof AuthenticatedSyndicateCalendarRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/ai-chat': typeof AuthenticatedAiChatIndexRoute
   '/community': typeof AuthenticatedCommunityIndexRoute
   '/god': typeof AuthenticatedGodIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
   '/syndicate': typeof AuthenticatedSyndicateIndexRoute
-  '/syndicate/board/$threadId': typeof AuthenticatedSyndicateBoardThreadIdRoute
+  '/community/feed/$threadId': typeof AuthenticatedCommunityFeedThreadIdRoute
   '/syndicate/classroom/$courseId': typeof AuthenticatedSyndicateClassroomCourseIdRouteWithChildren
   '/syndicate/classroom/builder': typeof AuthenticatedSyndicateClassroomBuilderRoute
   '/syndicate/classroom': typeof AuthenticatedSyndicateClassroomIndexRoute
@@ -395,21 +404,22 @@ export interface FileRoutesById {
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/ai-chat/$conversationId': typeof AuthenticatedAiChatConversationIdRoute
   '/_authenticated/ai-chat/backup': typeof AuthenticatedAiChatBackupRoute
+  '/_authenticated/community/chat': typeof AuthenticatedCommunityChatRoute
+  '/_authenticated/community/events': typeof AuthenticatedCommunityEventsRoute
+  '/_authenticated/community/feed': typeof AuthenticatedCommunityFeedRouteWithChildren
   '/_authenticated/errors/$error': typeof AuthenticatedErrorsErrorRoute
   '/_authenticated/organization/settings': typeof AuthenticatedOrganizationSettingsRoute
   '/_authenticated/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/_authenticated/settings/integrations': typeof AuthenticatedSettingsIntegrationsRoute
   '/_authenticated/settings/memories': typeof AuthenticatedSettingsMemoriesRoute
   '/_authenticated/settings/profile': typeof AuthenticatedSettingsProfileRoute
-  '/_authenticated/syndicate/board': typeof AuthenticatedSyndicateBoardRouteWithChildren
-  '/_authenticated/syndicate/calendar': typeof AuthenticatedSyndicateCalendarRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/ai-chat/': typeof AuthenticatedAiChatIndexRoute
   '/_authenticated/community/': typeof AuthenticatedCommunityIndexRoute
   '/_authenticated/god/': typeof AuthenticatedGodIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
   '/_authenticated/syndicate/': typeof AuthenticatedSyndicateIndexRoute
-  '/_authenticated/syndicate/board/$threadId': typeof AuthenticatedSyndicateBoardThreadIdRoute
+  '/_authenticated/community/feed/$threadId': typeof AuthenticatedCommunityFeedThreadIdRoute
   '/_authenticated/syndicate/classroom/$courseId': typeof AuthenticatedSyndicateClassroomCourseIdRouteWithChildren
   '/_authenticated/syndicate/classroom/builder': typeof AuthenticatedSyndicateClassroomBuilderRoute
   '/_authenticated/syndicate/classroom/': typeof AuthenticatedSyndicateClassroomIndexRoute
@@ -440,21 +450,22 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/ai-chat/$conversationId'
     | '/ai-chat/backup'
+    | '/community/chat'
+    | '/community/events'
+    | '/community/feed'
     | '/errors/$error'
     | '/organization/settings'
     | '/settings/appearance'
     | '/settings/integrations'
     | '/settings/memories'
     | '/settings/profile'
-    | '/syndicate/board'
-    | '/syndicate/calendar'
     | '/admin'
     | '/ai-chat/'
     | '/community'
     | '/god'
     | '/settings/'
     | '/syndicate/'
-    | '/syndicate/board/$threadId'
+    | '/community/feed/$threadId'
     | '/syndicate/classroom/$courseId'
     | '/syndicate/classroom/builder'
     | '/syndicate/classroom/'
@@ -479,21 +490,22 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/ai-chat/$conversationId'
     | '/ai-chat/backup'
+    | '/community/chat'
+    | '/community/events'
+    | '/community/feed'
     | '/errors/$error'
     | '/organization/settings'
     | '/settings/appearance'
     | '/settings/integrations'
     | '/settings/memories'
     | '/settings/profile'
-    | '/syndicate/board'
-    | '/syndicate/calendar'
     | '/admin'
     | '/ai-chat'
     | '/community'
     | '/god'
     | '/settings'
     | '/syndicate'
-    | '/syndicate/board/$threadId'
+    | '/community/feed/$threadId'
     | '/syndicate/classroom/$courseId'
     | '/syndicate/classroom/builder'
     | '/syndicate/classroom'
@@ -523,21 +535,22 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/users'
     | '/_authenticated/ai-chat/$conversationId'
     | '/_authenticated/ai-chat/backup'
+    | '/_authenticated/community/chat'
+    | '/_authenticated/community/events'
+    | '/_authenticated/community/feed'
     | '/_authenticated/errors/$error'
     | '/_authenticated/organization/settings'
     | '/_authenticated/settings/appearance'
     | '/_authenticated/settings/integrations'
     | '/_authenticated/settings/memories'
     | '/_authenticated/settings/profile'
-    | '/_authenticated/syndicate/board'
-    | '/_authenticated/syndicate/calendar'
     | '/_authenticated/admin/'
     | '/_authenticated/ai-chat/'
     | '/_authenticated/community/'
     | '/_authenticated/god/'
     | '/_authenticated/settings/'
     | '/_authenticated/syndicate/'
-    | '/_authenticated/syndicate/board/$threadId'
+    | '/_authenticated/community/feed/$threadId'
     | '/_authenticated/syndicate/classroom/$courseId'
     | '/_authenticated/syndicate/classroom/builder'
     | '/_authenticated/syndicate/classroom/'
@@ -708,20 +721,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/syndicate/calendar': {
-      id: '/_authenticated/syndicate/calendar'
-      path: '/calendar'
-      fullPath: '/syndicate/calendar'
-      preLoaderRoute: typeof AuthenticatedSyndicateCalendarRouteImport
-      parentRoute: typeof AuthenticatedSyndicateRouteRoute
-    }
-    '/_authenticated/syndicate/board': {
-      id: '/_authenticated/syndicate/board'
-      path: '/board'
-      fullPath: '/syndicate/board'
-      preLoaderRoute: typeof AuthenticatedSyndicateBoardRouteImport
-      parentRoute: typeof AuthenticatedSyndicateRouteRoute
-    }
     '/_authenticated/settings/profile': {
       id: '/_authenticated/settings/profile'
       path: '/profile'
@@ -762,6 +761,27 @@ declare module '@tanstack/react-router' {
       path: '/errors/$error'
       fullPath: '/errors/$error'
       preLoaderRoute: typeof AuthenticatedErrorsErrorRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/community/feed': {
+      id: '/_authenticated/community/feed'
+      path: '/community/feed'
+      fullPath: '/community/feed'
+      preLoaderRoute: typeof AuthenticatedCommunityFeedRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/community/events': {
+      id: '/_authenticated/community/events'
+      path: '/community/events'
+      fullPath: '/community/events'
+      preLoaderRoute: typeof AuthenticatedCommunityEventsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/community/chat': {
+      id: '/_authenticated/community/chat'
+      path: '/community/chat'
+      fullPath: '/community/chat'
+      preLoaderRoute: typeof AuthenticatedCommunityChatRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/ai-chat/backup': {
@@ -841,12 +861,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSyndicateClassroomCourseIdRouteImport
       parentRoute: typeof AuthenticatedSyndicateClassroomRouteRoute
     }
-    '/_authenticated/syndicate/board/$threadId': {
-      id: '/_authenticated/syndicate/board/$threadId'
+    '/_authenticated/community/feed/$threadId': {
+      id: '/_authenticated/community/feed/$threadId'
       path: '/$threadId'
-      fullPath: '/syndicate/board/$threadId'
-      preLoaderRoute: typeof AuthenticatedSyndicateBoardThreadIdRouteImport
-      parentRoute: typeof AuthenticatedSyndicateBoardRoute
+      fullPath: '/community/feed/$threadId'
+      preLoaderRoute: typeof AuthenticatedCommunityFeedThreadIdRouteImport
+      parentRoute: typeof AuthenticatedCommunityFeedRoute
     }
     '/_authenticated/syndicate/classroom/$courseId/$lessonId': {
       id: '/_authenticated/syndicate/classroom/$courseId/$lessonId'
@@ -936,25 +956,8 @@ const AuthenticatedSyndicateClassroomRouteRouteWithChildren =
     AuthenticatedSyndicateClassroomRouteRouteChildren,
   )
 
-interface AuthenticatedSyndicateBoardRouteChildren {
-  AuthenticatedSyndicateBoardThreadIdRoute: typeof AuthenticatedSyndicateBoardThreadIdRoute
-}
-
-const AuthenticatedSyndicateBoardRouteChildren: AuthenticatedSyndicateBoardRouteChildren =
-  {
-    AuthenticatedSyndicateBoardThreadIdRoute:
-      AuthenticatedSyndicateBoardThreadIdRoute,
-  }
-
-const AuthenticatedSyndicateBoardRouteWithChildren =
-  AuthenticatedSyndicateBoardRoute._addFileChildren(
-    AuthenticatedSyndicateBoardRouteChildren,
-  )
-
 interface AuthenticatedSyndicateRouteRouteChildren {
   AuthenticatedSyndicateClassroomRouteRoute: typeof AuthenticatedSyndicateClassroomRouteRouteWithChildren
-  AuthenticatedSyndicateBoardRoute: typeof AuthenticatedSyndicateBoardRouteWithChildren
-  AuthenticatedSyndicateCalendarRoute: typeof AuthenticatedSyndicateCalendarRoute
   AuthenticatedSyndicateIndexRoute: typeof AuthenticatedSyndicateIndexRoute
 }
 
@@ -962,15 +965,27 @@ const AuthenticatedSyndicateRouteRouteChildren: AuthenticatedSyndicateRouteRoute
   {
     AuthenticatedSyndicateClassroomRouteRoute:
       AuthenticatedSyndicateClassroomRouteRouteWithChildren,
-    AuthenticatedSyndicateBoardRoute:
-      AuthenticatedSyndicateBoardRouteWithChildren,
-    AuthenticatedSyndicateCalendarRoute: AuthenticatedSyndicateCalendarRoute,
     AuthenticatedSyndicateIndexRoute: AuthenticatedSyndicateIndexRoute,
   }
 
 const AuthenticatedSyndicateRouteRouteWithChildren =
   AuthenticatedSyndicateRouteRoute._addFileChildren(
     AuthenticatedSyndicateRouteRouteChildren,
+  )
+
+interface AuthenticatedCommunityFeedRouteChildren {
+  AuthenticatedCommunityFeedThreadIdRoute: typeof AuthenticatedCommunityFeedThreadIdRoute
+}
+
+const AuthenticatedCommunityFeedRouteChildren: AuthenticatedCommunityFeedRouteChildren =
+  {
+    AuthenticatedCommunityFeedThreadIdRoute:
+      AuthenticatedCommunityFeedThreadIdRoute,
+  }
+
+const AuthenticatedCommunityFeedRouteWithChildren =
+  AuthenticatedCommunityFeedRoute._addFileChildren(
+    AuthenticatedCommunityFeedRouteChildren,
   )
 
 interface AuthenticatedRouteRouteChildren {
@@ -982,6 +997,9 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminKnowledgeRoute: typeof AuthenticatedAdminKnowledgeRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
+  AuthenticatedCommunityChatRoute: typeof AuthenticatedCommunityChatRoute
+  AuthenticatedCommunityEventsRoute: typeof AuthenticatedCommunityEventsRoute
+  AuthenticatedCommunityFeedRoute: typeof AuthenticatedCommunityFeedRouteWithChildren
   AuthenticatedErrorsErrorRoute: typeof AuthenticatedErrorsErrorRoute
   AuthenticatedOrganizationSettingsRoute: typeof AuthenticatedOrganizationSettingsRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
@@ -999,6 +1017,9 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminKnowledgeRoute: AuthenticatedAdminKnowledgeRoute,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
+  AuthenticatedCommunityChatRoute: AuthenticatedCommunityChatRoute,
+  AuthenticatedCommunityEventsRoute: AuthenticatedCommunityEventsRoute,
+  AuthenticatedCommunityFeedRoute: AuthenticatedCommunityFeedRouteWithChildren,
   AuthenticatedErrorsErrorRoute: AuthenticatedErrorsErrorRoute,
   AuthenticatedOrganizationSettingsRoute:
     AuthenticatedOrganizationSettingsRoute,

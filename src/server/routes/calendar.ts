@@ -67,6 +67,73 @@ async function getTenantId(env: Env, organizationId: string): Promise<string> {
   return tenantId
 }
 
+/**
+ * Helper: Generate recurring event instances
+ */
+function generateRecurringInstances(
+  event: any,
+  startDate: Date,
+  endDate: Date
+): Array<{ startTime: Date; endTime: Date; eventId: string }> {
+  if (!event.recurring || !event.recurrenceRule) {
+    return []
+  }
+
+  const instances: Array<{ startTime: Date; endTime: Date; eventId: string }> = []
+  const rule = event.recurrenceRule
+  const eventStart = new Date(event.startTime)
+  const eventEnd = new Date(event.endTime)
+  const duration = eventEnd.getTime() - eventStart.getTime()
+
+  // Get exceptions (deleted instances)
+  const exceptions = rule.exceptions || []
+
+  // Calculate until date (use rule.until or endDate, whichever is earlier)
+  const untilDate = rule.until ? new Date(rule.until) : endDate
+  const maxDate = untilDate < endDate ? untilDate : endDate
+
+  let currentDate = new Date(eventStart)
+
+  // Generate instances up to maxDate
+  while (currentDate <= maxDate) {
+    const currentDateISO = currentDate.toISOString()
+    
+    // Check if this instance falls within the requested range
+    // AND is not in the exceptions list
+    if (currentDate >= startDate && currentDate <= endDate && !exceptions.includes(currentDateISO)) {
+      instances.push({
+        startTime: new Date(currentDate),
+        endTime: new Date(currentDate.getTime() + duration),
+        eventId: event.id
+      })
+    }
+
+    // Advance to next occurrence
+    switch (rule.frequency) {
+      case 'daily':
+        currentDate.setDate(currentDate.getDate() + (rule.interval || 1))
+        break
+      case 'weekly':
+        currentDate.setDate(currentDate.getDate() + 7 * (rule.interval || 1))
+        break
+      case 'monthly':
+        currentDate.setMonth(currentDate.getMonth() + (rule.interval || 1))
+        break
+      default:
+        // Unknown frequency, stop
+        currentDate = new Date(maxDate.getTime() + 1)
+    }
+
+    // Safety: prevent infinite loops
+    if (instances.length > 1000) {
+      console.warn('⚠️ Stopped generating recurring instances at 1000')
+      break
+    }
+  }
+
+  return instances
+}
+
 // Validation schemas
 const createEventSchema = z.object({
   title: z.string().min(1),
@@ -160,7 +227,35 @@ calendarApp.get('/',
         .where(and(...conditions))
         .orderBy(calendarEvents.startTime)
       
-      return c.json({ events })
+      // Expand recurring events into instances
+      const expandedEvents: any[] = []
+      
+      for (const { event, userRsvp } of events) {
+        if (event.recurring) {
+          // Generate instances for this recurring event
+          const instances = generateRecurringInstances(event, new Date(startDate), new Date(endDate))
+          
+          for (const instance of instances) {
+            expandedEvents.push({
+              event: {
+                ...event,
+                // Use instance times
+                startTime: instance.startTime,
+                endTime: instance.endTime,
+                // Mark as instance with original ID
+                isRecurringInstance: true,
+                originalEventId: event.id,
+              },
+              userRsvp
+            })
+          }
+        } else {
+          // Regular event
+          expandedEvents.push({ event, userRsvp })
+        }
+      }
+      
+      return c.json({ events: expandedEvents })
     } catch (error) {
       console.error('❌ Get calendar events error:', error)
       return c.json({ error: 'Failed to fetch events' }, 500)
@@ -326,13 +421,20 @@ calendarApp.patch('/:eventId',
 )
 
 /**
- * DELETE /api/v1/calendar/:eventId - Delete event
+ * DELETE /api/v1/calendar/:eventId - Delete event (entire series if recurring)
+ * Query params:
+ * - deleteType: 'single' | 'series' (default: 'series')
+ * - instanceDate: ISO string (required if deleteType='single')
  */
 calendarApp.delete('/:eventId', async (c) => {
   try {
     const { eventId } = c.req.param()
+    const deleteType = c.req.query('deleteType') || 'series'
+    const instanceDate = c.req.query('instanceDate')
     const user = c.get('user')
     const organizationId = c.get('organizationId')
+
+    console.log('🗑️ Delete event:', { eventId, deleteType, instanceDate })
 
     if (!organizationId) {
       return c.json({ error: 'No organization context' }, 403)
@@ -362,13 +464,38 @@ calendarApp.delete('/:eventId', async (c) => {
       return c.json({ error: 'Not authorized' }, 403)
     }
     
-    await db
-      .delete(calendarEvents)
-      .where(eq(calendarEvents.id, eventId))
-    
-    console.log('✅ Calendar event deleted:', eventId)
-    
-    return c.json({ success: true })
+    // Handle deletion based on type
+    if (deleteType === 'single' && existing.recurring) {
+      if (!instanceDate) {
+        return c.json({ error: 'instanceDate required for single instance deletion' }, 400)
+      }
+      
+      // For recurring events, we "delete" a single instance by adding an exception
+      // We'll store this in the recurrence rule's exceptions array
+      const exceptions = (existing.recurrenceRule as any)?.exceptions || []
+      exceptions.push(instanceDate)
+      
+      await db
+        .update(calendarEvents)
+        .set({
+          recurrenceRule: {
+            ...existing.recurrenceRule as any,
+            exceptions
+          }
+        })
+        .where(eq(calendarEvents.id, eventId))
+      
+      console.log('✅ Added exception to recurring event:', eventId, instanceDate)
+      return c.json({ success: true, deletedInstance: instanceDate })
+    } else {
+      // Delete the entire event (or non-recurring event)
+      await db
+        .delete(calendarEvents)
+        .where(eq(calendarEvents.id, eventId))
+      
+      console.log('✅ Calendar event deleted:', eventId)
+      return c.json({ success: true })
+    }
   } catch (error) {
     console.error('❌ Delete event error:', error)
     return c.json({ error: 'Failed to delete event' }, 500)

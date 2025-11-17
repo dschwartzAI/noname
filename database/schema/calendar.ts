@@ -49,6 +49,7 @@ export const calendarEvents = pgTable('calendar_events', {
     interval: number;
     until?: string;
     daysOfWeek?: number[]; // 0-6 (Sunday-Saturday)
+    exceptions?: string[]; // ISO date strings of deleted instances
   }>(),
   
   // Reminders
@@ -68,6 +69,34 @@ export const calendarEvents = pgTable('calendar_events', {
   
   // Cancellation
   cancelled: boolean('cancelled').default(false),
+  
+  // Timestamps
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull().$onUpdate(() => new Date()),
+});
+
+// Recurring event instances - tracks individual occurrences
+export const recurringEventInstances = pgTable('recurring_event_instances', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  parentEventId: uuid('parent_event_id')
+    .references(() => calendarEvents.id, { onDelete: 'cascade' })
+    .notNull(),
+  tenantId: uuid('tenant_id')
+    .references(() => tenants.id, { onDelete: 'cascade' })
+    .notNull(),
+  
+  // Instance-specific time (can be modified from parent)
+  startTime: timestamp('start_time').notNull(),
+  endTime: timestamp('end_time').notNull(),
+  
+  // Instance-specific overrides
+  title: text('title'), // Override parent title if set
+  description: text('description'), // Override parent description if set
+  location: text('location'), // Override parent location if set
+  meetingUrl: text('meeting_url'), // Override parent meeting URL if set
+  
+  // Status
+  cancelled: boolean('cancelled').default(false), // Individual instance cancelled
   
   // Timestamps
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -95,6 +124,8 @@ export const eventRsvps = pgTable('event_rsvps', {
 // Types
 export type InsertCalendarEvent = typeof calendarEvents.$inferInsert;
 export type SelectCalendarEvent = typeof calendarEvents.$inferSelect;
+export type InsertRecurringEventInstance = typeof recurringEventInstances.$inferInsert;
+export type SelectRecurringEventInstance = typeof recurringEventInstances.$inferSelect;
 export type InsertEventRsvp = typeof eventRsvps.$inferInsert;
 export type SelectEventRsvp = typeof eventRsvps.$inferSelect;
 

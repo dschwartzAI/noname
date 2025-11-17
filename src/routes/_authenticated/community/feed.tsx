@@ -19,11 +19,11 @@ import { ThreadPreviewCard } from '@/components/lms/board/thread-preview-card'
 import { CreateThreadModal } from '@/components/lms/board/create-thread-modal'
 import { InsertBoardThread } from '@/database/schema/message-board'
 
-export const Route = createFileRoute('/_authenticated/syndicate/board')({
-  component: MessageBoardPage
+export const Route = createFileRoute('/_authenticated/community/feed')({
+  component: CommunityFeedPage
 })
 
-function MessageBoardPage() {
+function CommunityFeedPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [searchQuery, setSearchQuery] = useState('')
@@ -115,20 +115,20 @@ function MessageBoardPage() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => navigate({ to: '/syndicate' })}
+          onClick={() => navigate({ to: '/community' })}
           className="h-auto p-0 hover:text-foreground"
         >
-          Syndicate
+          Community
         </Button>
         <span>/</span>
-        <span className="font-medium text-foreground">Message Board</span>
+        <span className="font-medium text-foreground">Feed</span>
       </div>
 
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Message Board</h1>
-          <p className="text-muted-foreground mt-2">Community discussions and Q&A</p>
+          <h1 className="text-3xl font-bold">Community Feed</h1>
+          <p className="text-muted-foreground mt-2">Share, discuss, and connect with the community</p>
         </div>
         <Button onClick={() => setShowCreateModal(true)} className="gap-2">
           <Plus className="h-4 w-4" />
@@ -187,7 +187,7 @@ function MessageBoardPage() {
                 key={thread.id}
                 thread={thread}
                 onClick={() => navigate({ 
-                  to: '/syndicate/board/$threadId', 
+                  to: '/community/feed/$threadId', 
                   params: { threadId: thread.id } 
                 })}
               />
@@ -209,7 +209,7 @@ function MessageBoardPage() {
               key={thread.id}
               thread={thread}
               onClick={() => navigate({ 
-                to: '/syndicate/board/$threadId', 
+                to: '/community/feed/$threadId', 
                 params: { threadId: thread.id } 
               })}
             />
@@ -227,3 +227,5 @@ function MessageBoardPage() {
     </div>
   )
 }
+
+

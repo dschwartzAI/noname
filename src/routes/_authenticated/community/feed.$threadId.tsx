@@ -28,7 +28,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { ReplyCard } from '@/components/lms/board/reply-card'
 import { cn } from '@/lib/utils'
 
-export const Route = createFileRoute('/_authenticated/syndicate/board/$threadId')({
+export const Route = createFileRoute('/_authenticated/community/feed/$threadId')({
   component: ThreadPage
 })
 
@@ -103,19 +103,19 @@ function ThreadPage() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => navigate({ to: '/syndicate' })}
+          onClick={() => navigate({ to: '/community' })}
           className="h-auto p-0 hover:text-foreground"
         >
-          Syndicate
+          Community
         </Button>
         <span>/</span>
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => navigate({ to: '/syndicate/board' })}
+          onClick={() => navigate({ to: '/community/feed' })}
           className="h-auto p-0 hover:text-foreground"
         >
-          Message Board
+          Feed
         </Button>
         <span>/</span>
         <span className="font-medium text-foreground line-clamp-1">{thread.title}</span>
@@ -303,3 +303,5 @@ function ThreadPage() {
     </div>
   )
 }
+
+

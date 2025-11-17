@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useChat } from '@ai-sdk/react'
 import { useEffect, useState, useRef, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bot } from 'lucide-react'
+import { Bot, Loader2 } from 'lucide-react'
 import { PaperclipIcon } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
@@ -717,13 +717,9 @@ function ConversationChat({
               return (
                 <Message from="assistant">
                   <MessageContent>
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <div className="flex gap-1">
-                        <span className="animate-bounce" style={{ animationDelay: '0ms' }}>●</span>
-                        <span className="animate-bounce" style={{ animationDelay: '150ms' }}>●</span>
-                        <span className="animate-bounce" style={{ animationDelay: '300ms' }}>●</span>
-                      </div>
-                      <span className="text-sm">Thinking...</span>
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-sm text-muted-foreground">Thinking...</span>
                     </div>
                   </MessageContent>
                 </Message>

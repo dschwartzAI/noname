@@ -11,11 +11,11 @@ import { EventFormModal } from '@/components/lms/calendar/event-form-modal'
 import { SelectCalendarEvent, InsertCalendarEvent } from '@/database/schema/calendar'
 import { startOfMonth, endOfMonth } from 'date-fns'
 
-export const Route = createFileRoute('/_authenticated/syndicate/calendar')({
-  component: CalendarPage
+export const Route = createFileRoute('/_authenticated/community/events')({
+  component: EventsPage
 })
 
-function CalendarPage() {
+function EventsPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [selectedEvent, setSelectedEvent] = useState<SelectCalendarEvent | null>(null)
@@ -102,12 +102,46 @@ function CalendarPage() {
     setShowFormModal(true)
   }
 
+  const deleteEventMutation = useMutation({
+    mutationFn: async ({ 
+      id, 
+      deleteType, 
+      instanceDate 
+    }: { 
+      id: string
+      deleteType?: 'single' | 'series'
+      instanceDate?: string 
+    }) => {
+      const params = new URLSearchParams()
+      if (deleteType) params.append('deleteType', deleteType)
+      if (instanceDate) params.append('instanceDate', instanceDate)
+      
+      const res = await fetch(`/api/v1/calendar/${id}?${params.toString()}`, {
+        method: 'DELETE'
+      })
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ error: 'Failed to delete event' }))
+        throw new Error(error.error || 'Failed to delete event')
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['calendar-events'] })
+      setShowDetailModal(false)
+      setSelectedEvent(null)
+    }
+  })
+
   const handleSave = async (eventData: Partial<InsertCalendarEvent>) => {
     if (editingEvent) {
       await updateEventMutation.mutateAsync({ id: editingEvent.id, data: eventData })
     } else {
       await createEventMutation.mutateAsync(eventData)
     }
+  }
+
+  const handleDelete = (eventId: string, deleteType?: 'single' | 'series', instanceDate?: string) => {
+    deleteEventMutation.mutate({ id: eventId, deleteType, instanceDate })
   }
 
   if (isLoading) {
@@ -128,13 +162,13 @@ function CalendarPage() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => navigate({ to: '/syndicate' })}
+          onClick={() => navigate({ to: '/community' })}
           className="h-auto p-0 hover:text-foreground"
         >
-          Syndicate
+          Community
         </Button>
         <span>/</span>
-        <span className="font-medium text-foreground">Calendar</span>
+        <span className="font-medium text-foreground">Events</span>
       </div>
 
       <div>
@@ -154,6 +188,7 @@ function CalendarPage() {
         isOpen={showDetailModal}
         onClose={() => setShowDetailModal(false)}
         onEdit={isAdmin ? handleEdit : undefined}
+        onDelete={isAdmin ? handleDelete : undefined}
         isAdmin={isAdmin}
       />
 

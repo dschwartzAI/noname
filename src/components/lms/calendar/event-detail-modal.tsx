@@ -1,12 +1,23 @@
 "use client"
 
 import { format } from 'date-fns'
+import { useState } from 'react'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -16,7 +27,8 @@ import {
   Video, 
   Repeat,
   Users,
-  Download
+  Download,
+  Trash2
 } from 'lucide-react'
 import { SelectCalendarEvent } from '@/database/schema/calendar'
 
@@ -25,6 +37,7 @@ interface EventDetailModalProps {
   isOpen: boolean
   onClose: () => void
   onEdit?: (event: SelectCalendarEvent) => void
+  onDelete?: (eventId: string, deleteType?: 'single' | 'series', instanceDate?: string) => void
   isAdmin?: boolean
 }
 
@@ -41,13 +54,20 @@ export function EventDetailModal({
   isOpen, 
   onClose, 
   onEdit,
+  onDelete,
   isAdmin 
 }: EventDetailModalProps) {
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deleteType, setDeleteType] = useState<'single' | 'series'>('series')
+
   if (!event) return null
 
   const startDate = new Date(event.startTime)
   const endDate = new Date(event.endTime)
   const duration = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60))
+  
+  // Check if this is a recurring instance (has originalEventId)
+  const isRecurringInstance = !!(event as any).isRecurringInstance && !!(event as any).originalEventId
 
   const handleAddToCalendar = () => {
     // Generate .ics file
@@ -180,14 +200,86 @@ END:VCALENDAR`
           )}
         </div>
 
-        <div className="flex gap-2 justify-end pt-4 border-t">
-          <Button variant="outline" onClick={handleAddToCalendar}>
-            <Download className="h-4 w-4 mr-2" />
-            Add to Calendar
-          </Button>
-          <Button onClick={onClose}>Close</Button>
+        <div className="flex gap-2 justify-between pt-4 border-t">
+          <div className="flex gap-2">
+            {isAdmin && onDelete && (
+              <Button 
+                variant="destructive" 
+                onClick={() => setShowDeleteDialog(true)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </Button>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleAddToCalendar}>
+              <Download className="h-4 w-4 mr-2" />
+              Add to Calendar
+            </Button>
+            <Button onClick={onClose}>Close</Button>
+          </div>
         </div>
       </DialogContent>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Event?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {event.recurring || isRecurringInstance ? (
+                <div className="space-y-4">
+                  <p>This is a recurring event. What would you like to delete?</p>
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="deleteType"
+                        value="single"
+                        checked={deleteType === 'single'}
+                        onChange={() => setDeleteType('single')}
+                        className="w-4 h-4"
+                      />
+                      <span>Just this occurrence</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="deleteType"
+                        value="series"
+                        checked={deleteType === 'series'}
+                        onChange={() => setDeleteType('series')}
+                        className="w-4 h-4"
+                      />
+                      <span>All occurrences (entire series)</span>
+                    </label>
+                  </div>
+                </div>
+              ) : (
+                <p>Are you sure you want to delete this event? This action cannot be undone.</p>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (onDelete) {
+                  const eventId = isRecurringInstance ? (event as any).originalEventId : event.id
+                  const instanceDate = deleteType === 'single' ? startDate.toISOString() : undefined
+                  onDelete(eventId, deleteType, instanceDate)
+                }
+                setShowDeleteDialog(false)
+                onClose()
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   )
 }

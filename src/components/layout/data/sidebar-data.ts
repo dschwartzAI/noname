@@ -69,8 +69,8 @@ export const sidebarData: SidebarData = {
           ],
         },
         {
-          title: 'Syndicate',
-          url: '/syndicate',
+          title: 'Classroom',
+          url: '/syndicate/classroom',
           icon: GraduationCap,
         },
         {

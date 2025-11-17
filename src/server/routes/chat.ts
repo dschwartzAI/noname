@@ -90,6 +90,7 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
       organizationId,
       conversationId,
       hasConversationId: !!conversationId,
+      agentId,  // Log agentId to verify it's received
       model,
       messageCount: messagesArray?.length,
       hasSingleMessage: !!message
@@ -292,10 +293,21 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
 
       if (agent && agent[0]) {
         agentInstructions = agent[0].instructions || ''
+        console.log(`🤖 Loaded agent: ${agent[0].name}`, {
+          artifactsEnabled: agent[0].artifactsEnabled,
+          hasArtifactInstructions: !!agent[0].artifactInstructions,
+          artifactInstructionsLength: agent[0].artifactInstructions?.length || 0
+        })
+
         if (agent[0].artifactsEnabled && agent[0].artifactInstructions) {
           artifactInstructions = agent[0].artifactInstructions
+          console.log('✅ Artifact instructions loaded')
+        } else {
+          console.log('⚠️ Artifacts not enabled:', {
+            enabled: agent[0].artifactsEnabled,
+            hasInstructions: !!agent[0].artifactInstructions
+          })
         }
-        console.log(`🤖 Loaded agent: ${agent[0].name} (artifacts: ${agent[0].artifactsEnabled})`)
 
         // Check if agent has knowledge base assigned (RAG via AI Search)
         if (agent[0].knowledgeBaseId) {
