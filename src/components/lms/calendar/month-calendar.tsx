@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -35,6 +35,7 @@ interface MonthCalendarProps {
   onEventClick: (event: SelectCalendarEvent) => void
   onDateClick?: (date: Date) => void
   isAdmin?: boolean
+  onVisibleRangeChange?: (range: { startDate: Date; endDate: Date }) => void
 }
 
 const eventTypeIcons = {
@@ -53,7 +54,13 @@ const eventTypeColors = {
   deadline: 'bg-red-500 text-white'
 }
 
-export function MonthCalendar({ events, onEventClick, onDateClick, isAdmin }: MonthCalendarProps) {
+export function MonthCalendar({
+  events,
+  onEventClick,
+  onDateClick,
+  isAdmin,
+  onVisibleRangeChange
+}: MonthCalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date())
 
   const monthStart = startOfMonth(currentMonth)
@@ -74,6 +81,10 @@ export function MonthCalendar({ events, onEventClick, onDateClick, isAdmin }: Mo
   const goToPreviousMonth = () => setCurrentMonth(subMonths(currentMonth, 1))
   const goToNextMonth = () => setCurrentMonth(addMonths(currentMonth, 1))
   const goToToday = () => setCurrentMonth(new Date())
+
+  useEffect(() => {
+    onVisibleRangeChange?.({ startDate: monthStart, endDate: monthEnd })
+  }, [monthEnd, monthStart, onVisibleRangeChange])
 
   return (
     <div className="space-y-4">

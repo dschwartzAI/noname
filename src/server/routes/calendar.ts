@@ -11,7 +11,7 @@ import { neon } from '@neondatabase/serverless'
 import { drizzle } from 'drizzle-orm/neon-http'
 import { calendarEvents, eventRsvps } from '../../../database/schema/calendar'
 import { tenants } from '../../../database/schema/tenants'
-import { eq, and, gte, lte, desc, sql } from 'drizzle-orm'
+import { eq, and, gte, lte, or, desc, sql } from 'drizzle-orm'
 import { requireAuth } from '../middleware/auth'
 import { injectOrganization } from '../middleware/organization'
 
@@ -86,48 +86,86 @@ function generateRecurringInstances(
   const duration = eventEnd.getTime() - eventStart.getTime()
 
   // Get exceptions (deleted instances)
-  const exceptions = rule.exceptions || []
+  const exceptions = new Set(rule.exceptions || [])
 
-  // Calculate until date (use rule.until or endDate, whichever is earlier)
-  const untilDate = rule.until ? new Date(rule.until) : endDate
-  const maxDate = untilDate < endDate ? untilDate : endDate
+  // Calculate until date
+  const twoYearsFromNow = new Date()
+  twoYearsFromNow.setFullYear(twoYearsFromNow.getFullYear() + 2)
+  const untilDate = rule.until ? new Date(rule.until) : twoYearsFromNow
+  const maxDate = untilDate
 
-  let currentDate = new Date(eventStart)
+  const interval = rule.interval || 1
+  const msPerDay = 24 * 60 * 60 * 1000
+  const msPerWeek = msPerDay * 7
 
-  // Generate instances up to maxDate
-  while (currentDate <= maxDate) {
-    const currentDateISO = currentDate.toISOString()
-    
-    // Check if this instance falls within the requested range
-    // AND is not in the exceptions list
-    if (currentDate >= startDate && currentDate <= endDate && !exceptions.includes(currentDateISO)) {
+  const addInstanceIfNeeded = (candidateStart: Date) => {
+    if (candidateStart < eventStart) {
+      return
+    }
+
+    if (candidateStart > maxDate) {
+      return
+    }
+
+    const iso = candidateStart.toISOString()
+    if (exceptions.has(iso)) {
+      return
+    }
+
+    if (candidateStart >= startDate && candidateStart <= endDate) {
       instances.push({
-        startTime: new Date(currentDate),
-        endTime: new Date(currentDate.getTime() + duration),
+        startTime: new Date(candidateStart),
+        endTime: new Date(candidateStart.getTime() + duration),
         eventId: event.id
       })
     }
 
-    // Advance to next occurrence
-    switch (rule.frequency) {
-      case 'daily':
-        currentDate.setDate(currentDate.getDate() + (rule.interval || 1))
-        break
-      case 'weekly':
-        currentDate.setDate(currentDate.getDate() + 7 * (rule.interval || 1))
-        break
-      case 'monthly':
-        currentDate.setMonth(currentDate.getMonth() + (rule.interval || 1))
-        break
-      default:
-        // Unknown frequency, stop
-        currentDate = new Date(maxDate.getTime() + 1)
-    }
-
-    // Safety: prevent infinite loops
     if (instances.length > 1000) {
       console.warn('⚠️ Stopped generating recurring instances at 1000')
-      break
+    }
+  }
+
+  if (rule.frequency === 'daily') {
+    let currentDate = new Date(eventStart)
+    while (currentDate <= maxDate) {
+      addInstanceIfNeeded(currentDate)
+
+      if (instances.length > 1000) break
+
+      currentDate = new Date(currentDate.getTime())
+      currentDate.setDate(currentDate.getDate() + interval)
+    }
+  } else if (rule.frequency === 'weekly') {
+    const daysOfWeek = rule.daysOfWeek && rule.daysOfWeek.length > 0
+      ? Array.from(new Set(rule.daysOfWeek)).sort((a: number, b: number) => a - b)
+      : [eventStart.getDay()]
+
+    let currentDate = new Date(eventStart)
+    while (currentDate <= maxDate) {
+      const dayOfWeek = currentDate.getDay()
+      if (daysOfWeek.includes(dayOfWeek)) {
+        const diffWeeks = Math.floor(
+          (currentDate.getTime() - eventStart.getTime()) / msPerWeek
+        )
+
+        if (diffWeeks >= 0 && diffWeeks % interval === 0) {
+          addInstanceIfNeeded(currentDate)
+          if (instances.length > 1000) break
+        }
+      }
+
+      currentDate = new Date(currentDate.getTime())
+      currentDate.setDate(currentDate.getDate() + 1)
+    }
+  } else if (rule.frequency === 'monthly') {
+    let currentDate = new Date(eventStart)
+    while (currentDate <= maxDate) {
+      addInstanceIfNeeded(currentDate)
+
+      if (instances.length > 1000) break
+
+      currentDate = new Date(currentDate.getTime())
+      currentDate.setMonth(currentDate.getMonth() + interval)
     }
   }
 
@@ -200,8 +238,13 @@ calendarApp.get('/',
       const conditions = [
         eq(calendarEvents.tenantId, tenantId),
         eq(calendarEvents.cancelled, false),
-        gte(calendarEvents.endTime, new Date(startDate)),
-        lte(calendarEvents.startTime, new Date(endDate))
+        or(
+          eq(calendarEvents.recurring, true),
+          and(
+            gte(calendarEvents.endTime, new Date(startDate)),
+            lte(calendarEvents.startTime, new Date(endDate))
+          )
+        )
       ]
       
       if (type) {

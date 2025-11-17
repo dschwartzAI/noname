@@ -11,11 +11,11 @@ import { EventFormModal } from '@/components/lms/calendar/event-form-modal'
 import { SelectCalendarEvent, InsertCalendarEvent } from '@/database/schema/calendar'
 import { startOfMonth, endOfMonth } from 'date-fns'
 
-export const Route = createFileRoute('/_authenticated/community/events')({
-  component: EventsPage
+export const Route = createFileRoute('/_authenticated/syndicate/calendar')({
+  component: CalendarPage
 })
 
-function EventsPage() {
+function CalendarPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [selectedEvent, setSelectedEvent] = useState<SelectCalendarEvent | null>(null)
@@ -189,7 +189,25 @@ function EventsPage() {
   const events = data?.events?.map((item: any) => item.event) || []
 
   return (
-    <div className="space-y-6">
+    <div className="container max-w-7xl py-6 space-y-6">
+      {/* Breadcrumb Navigation */}
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate({ to: '/syndicate' })}
+          className="h-auto p-0 hover:text-foreground"
+        >
+          Syndicate
+        </Button>
+        <span>/</span>
+        <span className="font-medium text-foreground">Calendar</span>
+      </div>
+
+      <div>
+        <h1 className="text-3xl font-bold">Calendar</h1>
+        <p className="text-muted-foreground mt-2">View and manage your events</p>
+      </div>
 
       <MonthCalendar 
         events={events}

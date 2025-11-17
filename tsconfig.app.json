@@ -19,7 +19,9 @@
     /* Alias */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@/database/*": ["./database/*"],
+      "@/database": ["./database"]
     },
 
     /* Linting */
