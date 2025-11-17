@@ -540,50 +540,51 @@ function ChatPage() {
       >
         <div className="max-w-3xl mx-auto w-full px-4 pt-4">
           <PromptInput
-          onSubmit={(message) => {
-            if (message.text?.trim()) {
-              handleSendMessage(message.text)
-            }
-          }}
-        >
-          <PromptInputBody>
-            <PromptInputTextarea
-              placeholder="Send a message..."
-              disabled={status === 'submitted' || status === 'streaming'}
-            />
-          </PromptInputBody>
+            onSubmit={(message) => {
+              if (message.text?.trim()) {
+                handleSendMessage(message.text)
+              }
+            }}
+          >
+            <PromptInputBody>
+              <PromptInputTextarea
+                placeholder="Send a message..."
+                disabled={status === 'submitted' || status === 'streaming'}
+              />
+            </PromptInputBody>
 
-          <PromptInputFooter>
-            <PromptInputTools>
-              <PromptInputButton>
-                <PaperclipIcon className="h-4 w-4" />
-              </PromptInputButton>
+            <PromptInputFooter>
+              <PromptInputTools>
+                <PromptInputButton>
+                  <PaperclipIcon className="h-4 w-4" />
+                </PromptInputButton>
 
-              {/* Model selector commented out - using agent's default model */}
-              {/* <PromptInputSelect value={selectedModel} onValueChange={setSelectedModel}>
-                <PromptInputSelectTrigger>
-                  <PromptInputSelectValue>
-                    {MODELS.find(m => m.value === selectedModel)?.label}
-                  </PromptInputSelectValue>
-                </PromptInputSelectTrigger>
-                <PromptInputSelectContent>
-                  {MODELS.map((model) => (
-                    <PromptInputSelectItem key={model.value} value={model.value}>
-                      <div className="flex flex-col">
-                        <span>{model.label}</span>
-                        <span className="text-xs text-muted-foreground">{model.provider}</span>
-                      </div>
-                    </PromptInputSelectItem>
-                  ))}
-                </PromptInputSelectContent>
-              </PromptInputSelect> */}
-            </PromptInputTools>
+                {/* Model selector commented out - using agent's default model */}
+                {/* <PromptInputSelect value={selectedModel} onValueChange={setSelectedModel}>
+                  <PromptInputSelectTrigger>
+                    <PromptInputSelectValue>
+                      {MODELS.find(m => m.value === selectedModel)?.label}
+                    </PromptInputSelectValue>
+                  </PromptInputSelectTrigger>
+                  <PromptInputSelectContent>
+                    {MODELS.map((model) => (
+                      <PromptInputSelectItem key={model.value} value={model.value}>
+                        <div className="flex flex-col">
+                          <span>{model.label}</span>
+                          <span className="text-xs text-muted-foreground">{model.provider}</span>
+                        </div>
+                      </PromptInputSelectItem>
+                    ))}
+                  </PromptInputSelectContent>
+                </PromptInputSelect> */}
+              </PromptInputTools>
 
-            <PromptInputSubmit status={status} />
-          </PromptInputFooter>
-        </PromptInput>
+              <PromptInputSubmit status={status} />
+            </PromptInputFooter>
+          </PromptInput>
+        </div>
       </div>
-      </div>
+    </div>
 
       {/* Artifact Side Panel */}
       {isPanelOpen && artifacts.length > 0 && (() => {
