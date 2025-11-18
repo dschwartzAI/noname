@@ -185,50 +185,6 @@ function ChatPage() {
     },
     credentials: 'include',
 
-    // CRITICAL: Strip tool-call parts before sending to backend
-    // Tool calls are already persisted in the database - we only need text content
-    experimental_prepareRequestBody: ({ messages }) => {
-      const cleanMessages = messages.map(msg => {
-        // For user messages, just send the content
-        if (msg.role === 'user') {
-          return {
-            role: msg.role,
-            content: typeof msg.content === 'string' ? msg.content : '',
-          }
-        }
-
-        // For assistant messages, extract ONLY text content (no tool-call parts)
-        if (msg.role === 'assistant') {
-          let textContent = ''
-
-          // If message has content field (string), use it
-          if (typeof msg.content === 'string') {
-            textContent = msg.content
-          }
-          // If message has parts array, extract text parts only
-          else if (Array.isArray(msg.parts)) {
-            const textParts = msg.parts.filter(p => p.type === 'text')
-            textContent = textParts.map(p => p.text || '').join('\n')
-          }
-
-          return {
-            role: msg.role,
-            content: textContent,
-          }
-        }
-
-        // For system messages, pass through as-is
-        return msg
-      })
-
-      return {
-        messages: cleanMessages,
-        conversationId: effectiveConversationId,
-        agentId: agentId || undefined,
-        model: selectedModel,
-      }
-    },
-
     // Handle custom artifact data parts from backend
     onToolCall: ({ toolCall }) => {
       console.log('🔧 Tool call:', toolCall.toolName)

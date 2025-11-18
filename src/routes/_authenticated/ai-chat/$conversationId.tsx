@@ -228,50 +228,6 @@ function ConversationChat({
     messages: initialMessages, // Load existing messages from database (explicit prop name)
     experimental_throttle: 100, // Match Vercel AI Chatbot
 
-    // CRITICAL: Strip tool-call parts before sending to backend
-    // Tool calls are already persisted in the database - we only need text content
-    experimental_prepareRequestBody: ({ messages }) => {
-      const cleanMessages = messages.map(msg => {
-        // For user messages, just send the content
-        if (msg.role === 'user') {
-          return {
-            role: msg.role,
-            content: typeof msg.content === 'string' ? msg.content : '',
-          }
-        }
-
-        // For assistant messages, extract ONLY text content (no tool-call parts)
-        if (msg.role === 'assistant') {
-          let textContent = ''
-
-          // If message has content field (string), use it
-          if (typeof msg.content === 'string') {
-            textContent = msg.content
-          }
-          // If message has parts array, extract text parts only
-          else if (Array.isArray(msg.parts)) {
-            const textParts = msg.parts.filter(p => p.type === 'text')
-            textContent = textParts.map(p => p.text || '').join('\n')
-          }
-
-          return {
-            role: msg.role,
-            content: textContent,
-          }
-        }
-
-        // For system messages, pass through as-is
-        return msg
-      })
-
-      return {
-        messages: cleanMessages,
-        conversationId,
-        agentId: data.agentId || undefined,
-        model: selectedModel,
-      }
-    },
-
     // Handle custom data stream parts for artifact streaming
     experimental_onData: (data) => {
       console.log('📡 Received data part:', data)
@@ -341,49 +297,19 @@ function ConversationChat({
   useEffect(() => {
     // Only sync when conversationId changes (navigating between conversations)
     if (prevConversationIdRef.current !== conversationId) {
-      // Convert API messages to UIMessage format with tool calls/results
+      // CRITICAL: Only sync text content, NO tool-call parts
+      // Tool calls are already in the database and will be parsed by messageArtifacts useMemo
+      // Re-adding tool-call parts causes AI SDK validation errors
       const syncedMessages = data.messages.map((msg) => {
-        const parts: Array<{ type: string; text?: string; toolName?: string; toolCallId?: string; args?: Record<string, unknown> }> = [
-          {
-            type: 'text',
-            text: msg.content,
-          }
-        ]
-
-        // Add tool call parts if present (for artifact reconstruction)
-        if (msg.toolCalls && msg.toolCalls.length > 0) {
-          msg.toolCalls.forEach((toolCall) => {
-            // Find corresponding tool result
-            const toolResult = msg.toolResults?.find(tr => tr.toolCallId === toolCall.id)
-            
-            if (toolCall.name === 'createDocument' && toolCall.arguments) {
-              // Ensure arguments is always defined - required by AI SDK
-              const args = {
-                ...toolCall.arguments,
-                // Include artifact content from tool result if available
-                ...(toolResult?.result && typeof toolResult.result === 'object' && 'content' in toolResult.result
-                  ? { content: (toolResult.result as any).content }
-                  : {}),
-              }
-
-              // Only add tool-call part if we have valid arguments
-              if (args.title && args.kind) {
-                parts.push({
-                  type: 'tool-call',
-                  toolName: 'createDocument',
-                  toolCallId: toolCall.id,
-                  args,
-                })
-              }
-            }
-          })
-        }
+        const content = msg.content || ''
 
         return {
           id: msg.id,
           role: msg.role as 'user' | 'assistant' | 'system',
-          parts,
-          status: 'ready' as const,
+          ...(content
+            ? { content }
+            : { parts: [{ type: 'text', text: '' }] }
+          ),
         }
       })
 
@@ -392,62 +318,65 @@ function ConversationChat({
     }
   }, [conversationId, data.messages, setMessages])
 
-  // Parse artifacts from messages (both code blocks and tool calls)
+  // Parse artifacts from DATABASE messages (not AI SDK messages)
+  // This is critical because AI SDK messages don't have tool-call parts
   // Also track which message contains each artifact for editing
   const messageArtifacts = useMemo(() => {
     const artifactsByMessage = new Map<string, Artifact[]>()
     const isStreaming = status === 'streaming'
 
-    messages.forEach((message, index) => {
+    // Parse from database messages (data.messages) which have toolCalls and toolResults
+    data.messages.forEach((message, index) => {
       if (!agentData?.artifactsEnabled) return
 
       const artifacts: Artifact[] = []
 
-      // 1. Check for createDocument tool calls (from streaming or database)
-      message.parts?.forEach((part) => {
-        if (part.type === 'tool-call' && part.toolName === 'createDocument') {
-          console.log('🔧 Detected createDocument tool call:', part)
-          // Extract parameters from tool call
-          const args = part.args as { title: string; kind: string; content?: string }
-          const { title, kind, content } = args
-          
-          // Ensure we have a toolCallId - this is critical for editing
-          if (!part.toolCallId) {
-            console.warn('⚠️ Tool call missing toolCallId:', part)
-            return
-          }
-          
-          // Map kind to artifact type
-          const kindMap: Record<string, Artifact['type']> = {
-            'document': 'document',
-            'text': 'document', // Legacy support
-            'code': 'code',
-            'html': 'html',
-            'react': 'react-component',
-          }
-          
-          if (title && kind && content) {
-            artifacts.push({
-              id: part.toolCallId, // Always use toolCallId as artifact ID
-              title,
-              type: kindMap[kind] || 'markdown',
-              content,
-              createdAt: Date.now(),
-              updatedAt: Date.now(),
-              // Store messageId for editing
-              metadata: { messageId: message.id },
-            } as Artifact)
-          }
-        }
-      })
+      // 1. Check for createDocument tool calls from database
+      if (message.toolCalls && message.toolCalls.length > 0) {
+        message.toolCalls.forEach((toolCall) => {
+          if (toolCall.name === 'createDocument' && toolCall.arguments) {
+            console.log('🔧 Detected createDocument tool call from database:', toolCall)
 
-      // 2. Fallback: Parse code blocks (for backwards compatibility)
-      const textContent = message.parts?.map((part) =>
-        part.type === 'text' ? part.text : ''
-      ).join('') || ''
+            // Find corresponding tool result for content
+            const toolResult = message.toolResults?.find(tr => tr.toolCallId === toolCall.id)
+            const resultContent = toolResult?.result && typeof toolResult.result === 'object' && 'content' in toolResult.result
+              ? (toolResult.result as any).content
+              : undefined
+
+            const args = toolCall.arguments as { title: string; kind: string; content?: string }
+            const { title, kind } = args
+            const content = resultContent || args.content
+
+            // Map kind to artifact type
+            const kindMap: Record<string, Artifact['type']> = {
+              'document': 'document',
+              'text': 'document', // Legacy support
+              'code': 'code',
+              'html': 'html',
+              'react': 'react-component',
+            }
+
+            if (title && kind && content) {
+              artifacts.push({
+                id: toolCall.id, // Use toolCallId as artifact ID
+                title,
+                type: kindMap[kind] || 'markdown',
+                content,
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+                // Store messageId for editing
+                metadata: { messageId: message.id },
+              } as Artifact)
+            }
+          }
+        })
+      }
+
+      // 2. Fallback: Parse code blocks from content (for backwards compatibility)
+      const textContent = message.content || ''
 
       if (textContent && artifacts.length === 0) {
-        const isLastMessage = index === messages.length - 1
+        const isLastMessage = index === data.messages.length - 1
         const allowPartial = isStreaming && isLastMessage && message.role === 'assistant'
         const parsedArtifacts = parseArtifactsFromContent(textContent, message.id, allowPartial)
         // Add messageId metadata to parsed artifacts
@@ -463,7 +392,7 @@ function ConversationChat({
     })
 
     return artifactsByMessage
-  }, [messages, agentData?.artifactsEnabled, status])
+  }, [data.messages, agentData?.artifactsEnabled, status])
 
   // Collect all artifacts from the cached parse results + streaming artifact
   const allArtifacts = useMemo(() => {
