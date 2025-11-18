@@ -328,9 +328,13 @@ export function ArtifactSidePanel({
   }
 
   return (
-    <div className={cn('flex flex-col h-full bg-background border-l animate-in slide-in-from-right duration-300', className)}>
+    <div 
+      data-artifact-container
+      className={cn('flex flex-col h-full min-h-0 max-h-full overflow-hidden bg-background border-l animate-in slide-in-from-right duration-300', className)} 
+      style={{ height: '100%', maxHeight: '100%' }}
+    >
       {/* Sticky Header */}
-      <div className='sticky top-0 z-10 bg-background border-b p-4 space-y-3'>
+      <div className='sticky top-0 z-10 bg-background border-b p-4 space-y-3 flex-shrink-0'>
         <div className='flex items-start justify-between'>
           <div className='space-y-2 flex-1 min-w-0'>
             <div className='flex items-center gap-3'>
@@ -450,7 +454,7 @@ export function ArtifactSidePanel({
       </div>
 
       {/* Content - Preview or Edit */}
-      <div className='flex-1 overflow-hidden px-4 py-4'>
+      <div className='flex-1 min-h-0 overflow-hidden px-4 py-4'>
         {isEditing ? (
           // Use rich text editor for document/markdown artifacts, textarea for others
           artifact.type === 'document' || artifact.type === 'markdown' ? (

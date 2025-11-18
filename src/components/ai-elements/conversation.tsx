@@ -9,12 +9,20 @@ import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
 
 export type ConversationProps = ComponentProps<typeof StickToBottom>;
 
-export const Conversation = ({ className, ...props }: ConversationProps) => (
+// NOTE:
+// - Conversation itself should NOT be the scroll container.
+// - The parent should handle `overflow-y-auto` so we can precisely
+//   control height via flex layout in page routes.
+export const Conversation = ({ className, style, ...props }: ConversationProps) => (
   <StickToBottom
-    className={cn("relative flex-1 overflow-y-auto", className)}
+    className={cn("relative flex flex-col min-h-full", className)}
     initial="smooth"
     resize="smooth"
     role="log"
+    style={{
+      minHeight: '100%',
+      ...style,
+    }}
     {...props}
   />
 );
@@ -28,7 +36,7 @@ export const ConversationContent = ({
   ...props
 }: ConversationContentProps) => (
   <StickToBottom.Content
-    className={cn("flex flex-col gap-8 p-4", className)}
+    className={cn("flex flex-col gap-8 p-4 max-w-3xl mx-auto w-full", className)}
     {...props}
   />
 );

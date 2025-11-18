@@ -4,7 +4,7 @@ function ChatLayout() {
   // Conversation list is now in the global sidebar (authenticated-layout.tsx)
   // This route just renders the main chat content area
   return (
-    <div className="flex-1 flex flex-col overflow-hidden h-full">
+    <div className="flex-1 flex flex-col overflow-hidden min-h-0 h-full">
       <Outlet />
     </div>
   )

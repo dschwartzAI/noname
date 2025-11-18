@@ -97,28 +97,17 @@ function ThreadPage() {
   const { thread, replies, category } = data
 
   return (
-    <div className="container max-w-5xl py-6 space-y-6">
+    <div className="space-y-6">
       {/* Breadcrumb Navigation */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate({ to: '/community' })}
-          className="h-auto p-0 hover:text-foreground"
-        >
-          Community
-        </Button>
-        <span>/</span>
         <Button
           variant="ghost"
           size="sm"
           onClick={() => navigate({ to: '/community/feed' })}
           className="h-auto p-0 hover:text-foreground"
         >
-          Feed
+          ← Back to Feed
         </Button>
-        <span>/</span>
-        <span className="font-medium text-foreground line-clamp-1">{thread.title}</span>
       </div>
 
       {/* Thread */}

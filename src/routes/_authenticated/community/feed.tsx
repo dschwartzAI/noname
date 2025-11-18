@@ -109,28 +109,10 @@ function CommunityFeedPage() {
   const regularThreads = filteredThreads.filter((t: any) => !t.pinned)
 
   return (
-    <div className="container max-w-6xl py-6 space-y-6">
-      {/* Breadcrumb Navigation */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate({ to: '/community' })}
-          className="h-auto p-0 hover:text-foreground"
-        >
-          Community
-        </Button>
-        <span>/</span>
-        <span className="font-medium text-foreground">Feed</span>
-      </div>
-
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Community Feed</h1>
-          <p className="text-muted-foreground mt-2">Share, discuss, and connect with the community</p>
-        </div>
-        <Button onClick={() => setShowCreateModal(true)} className="gap-2">
+        <Button onClick={() => setShowCreateModal(true)} className="gap-2 ml-auto">
           <Plus className="h-4 w-4" />
           New Post
         </Button>

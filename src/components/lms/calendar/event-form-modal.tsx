@@ -54,6 +54,10 @@ export function EventFormModal({
     frequency: event?.recurrenceRule?.frequency || 'weekly',
     interval: event?.recurrenceRule?.interval || 1,
     daysOfWeek: event?.recurrenceRule?.daysOfWeek || [],
+    endsType: event?.recurrenceRule?.until ? 'date' : 'never', // 'never' or 'date'
+    endsOn: event?.recurrenceRule?.until 
+      ? format(new Date(event.recurrenceRule.until), "yyyy-MM-dd")
+      : '',
     visibility: event?.visibility || 'organization',
   })
 
@@ -78,6 +82,9 @@ export function EventFormModal({
           frequency: formData.frequency as 'daily' | 'weekly' | 'monthly',
           interval: formData.interval,
           daysOfWeek: formData.daysOfWeek,
+          until: formData.endsType === 'date' && formData.endsOn 
+            ? new Date(formData.endsOn).toISOString()
+            : undefined,
         } : undefined,
         visibility: formData.visibility as 'public' | 'private' | 'organization',
       }
@@ -262,6 +269,51 @@ export function EventFormModal({
                     </div>
                   </div>
                 )}
+
+                {/* End Date Option */}
+                <div className="space-y-4">
+                  <Label>Ends</Label>
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id="never"
+                        name="endsType"
+                        value="never"
+                        checked={formData.endsType === 'never'}
+                        onChange={(e) => setFormData(prev => ({ ...prev, endsType: 'never' }))}
+                        className="cursor-pointer"
+                      />
+                      <Label htmlFor="never" className="cursor-pointer font-normal">
+                        Never (continues indefinitely)
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id="endsOnDate"
+                        name="endsType"
+                        value="date"
+                        checked={formData.endsType === 'date'}
+                        onChange={(e) => setFormData(prev => ({ ...prev, endsType: 'date' }))}
+                        className="cursor-pointer"
+                      />
+                      <Label htmlFor="endsOnDate" className="cursor-pointer font-normal">
+                        On specific date
+                      </Label>
+                    </div>
+                    {formData.endsType === 'date' && (
+                      <div className="pl-6">
+                        <Input
+                          type="date"
+                          value={formData.endsOn}
+                          onChange={(e) => setFormData(prev => ({ ...prev, endsOn: e.target.value }))}
+                          min={formData.startTime ? formData.startTime.split('T')[0] : undefined}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
           </div>

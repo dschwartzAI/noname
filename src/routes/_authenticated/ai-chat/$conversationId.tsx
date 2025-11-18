@@ -180,11 +180,20 @@ function ConversationChat({
 }) {
   // Convert API messages to simple format (text content only)
   // Tool calls are already processed and in the database - no need to reconstruct
-  const initialMessages = data.messages.map((msg) => ({
-    id: msg.id,
-    role: msg.role as 'user' | 'assistant' | 'system',
-    content: msg.content || '', // Simple text content
-  }))
+  const initialMessages = data.messages.map((msg) => {
+    const content = msg.content || ''
+
+    // AI SDK v5 requires either content (string) OR parts (array with at least one item)
+    // If no content, provide parts with empty text to satisfy schema
+    return {
+      id: msg.id,
+      role: msg.role as 'user' | 'assistant' | 'system',
+      ...(content
+        ? { content }
+        : { parts: [{ type: 'text', text: '' }] }
+      ),
+    }
+  })
 
   const queryClient = useQueryClient()
   const prevConversationIdRef = useRef<string | null>(null)
@@ -218,6 +227,50 @@ function ConversationChat({
     api: '/api/v1/chat',
     messages: initialMessages, // Load existing messages from database (explicit prop name)
     experimental_throttle: 100, // Match Vercel AI Chatbot
+
+    // CRITICAL: Strip tool-call parts before sending to backend
+    // Tool calls are already persisted in the database - we only need text content
+    experimental_prepareRequestBody: ({ messages }) => {
+      const cleanMessages = messages.map(msg => {
+        // For user messages, just send the content
+        if (msg.role === 'user') {
+          return {
+            role: msg.role,
+            content: typeof msg.content === 'string' ? msg.content : '',
+          }
+        }
+
+        // For assistant messages, extract ONLY text content (no tool-call parts)
+        if (msg.role === 'assistant') {
+          let textContent = ''
+
+          // If message has content field (string), use it
+          if (typeof msg.content === 'string') {
+            textContent = msg.content
+          }
+          // If message has parts array, extract text parts only
+          else if (Array.isArray(msg.parts)) {
+            const textParts = msg.parts.filter(p => p.type === 'text')
+            textContent = textParts.map(p => p.text || '').join('\n')
+          }
+
+          return {
+            role: msg.role,
+            content: textContent,
+          }
+        }
+
+        // For system messages, pass through as-is
+        return msg
+      })
+
+      return {
+        messages: cleanMessages,
+        conversationId,
+        agentId: data.agentId || undefined,
+        model: selectedModel,
+      }
+    },
 
     // Handle custom data stream parts for artifact streaming
     experimental_onData: (data) => {

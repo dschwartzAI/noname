@@ -185,9 +185,48 @@ function ChatPage() {
     },
     credentials: 'include',
 
-    // Static body (dynamic values passed in sendMessage)
-    body: {
-      conversationId: effectiveConversationId,
+    // CRITICAL: Strip tool-call parts before sending to backend
+    // Tool calls are already persisted in the database - we only need text content
+    experimental_prepareRequestBody: ({ messages }) => {
+      const cleanMessages = messages.map(msg => {
+        // For user messages, just send the content
+        if (msg.role === 'user') {
+          return {
+            role: msg.role,
+            content: typeof msg.content === 'string' ? msg.content : '',
+          }
+        }
+
+        // For assistant messages, extract ONLY text content (no tool-call parts)
+        if (msg.role === 'assistant') {
+          let textContent = ''
+
+          // If message has content field (string), use it
+          if (typeof msg.content === 'string') {
+            textContent = msg.content
+          }
+          // If message has parts array, extract text parts only
+          else if (Array.isArray(msg.parts)) {
+            const textParts = msg.parts.filter(p => p.type === 'text')
+            textContent = textParts.map(p => p.text || '').join('\n')
+          }
+
+          return {
+            role: msg.role,
+            content: textContent,
+          }
+        }
+
+        // For system messages, pass through as-is
+        return msg
+      })
+
+      return {
+        messages: cleanMessages,
+        conversationId: effectiveConversationId,
+        agentId: agentId || undefined,
+        model: selectedModel,
+      }
     },
 
     // Handle custom artifact data parts from backend
@@ -347,11 +386,20 @@ function ChatPage() {
   // Load messages from backend when conversation data is fetched
   useEffect(() => {
     if (conversationData && typeof conversationData === 'object' && 'messages' in conversationData && Array.isArray(conversationData.messages)) {
-      setMessages(conversationData.messages.map((msg: any) => ({
-        id: msg.id,
-        role: msg.role,
-        content: extractMessageContent(msg), // Simple text content only - tool calls already processed
-      })))
+      setMessages(conversationData.messages.map((msg: any) => {
+        const content = extractMessageContent(msg)
+
+        // AI SDK v5 requires either content (string) OR parts (array with at least one item)
+        // If no content, provide parts with empty text to satisfy schema
+        return {
+          id: msg.id,
+          role: msg.role,
+          ...(content
+            ? { content }
+            : { parts: [{ type: 'text', text: '' }] }
+          ),
+        }
+      }))
     }
   }, [conversationData, setMessages])
 
