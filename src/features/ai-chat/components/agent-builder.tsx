@@ -41,6 +41,7 @@ import { getAgentIconSrc, getAgentEmoji } from '../utils/get-agent-icon'
 const MODELS = [
   // OpenAI GPT-5 (Released August 2025)
   { value: 'gpt-5', label: 'GPT-5', provider: 'OpenAI' },
+  { value: 'gpt-5.1', label: 'GPT-5.1', provider: 'OpenAI' },
   { value: 'gpt-5-mini', label: 'GPT-5 Mini', provider: 'OpenAI' },
   { value: 'gpt-5-nano', label: 'GPT-5 Nano', provider: 'OpenAI' },
   { value: 'gpt-5-chat-latest', label: 'GPT-5 Chat (Latest)', provider: 'OpenAI' },
