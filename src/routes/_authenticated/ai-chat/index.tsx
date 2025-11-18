@@ -55,6 +55,14 @@ const MODELS = [
 // Store generated conversation IDs to survive React StrictMode double-mounting
 const conversationIdCache = new Map<string, string>()
 
+// Helper function to extract text content from database messages
+// Historical messages don't need tool parts - those are already processed
+function extractMessageContent(msg: any) {
+  // Just return text content - tool calls are already in the database
+  // and don't need to be sent back to the backend
+  return msg.content || ''
+}
+
 function ChatPage() {
   const { new: newChatKey, conversationId: urlConversationId, agentId } = Route.useSearch()
   const navigate = useNavigate()
@@ -342,8 +350,7 @@ function ChatPage() {
       setMessages(conversationData.messages.map((msg: any) => ({
         id: msg.id,
         role: msg.role,
-        content: msg.content,
-        parts: [{ type: 'text', text: msg.content }], // Add parts for rendering
+        content: extractMessageContent(msg), // Simple text content only - tool calls already processed
       })))
     }
   }, [conversationData, setMessages])

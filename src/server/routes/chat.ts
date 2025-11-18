@@ -502,9 +502,58 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
         const toolResults: Array<{ toolCallId: string; result: unknown }> = []
         const artifactDataMap = new Map<string, { title: string; kind: string; content: string; language?: string }>()
 
-        // Define createDocument tool for artifact generation
-        const tools = artifactInstructions ? {
-          createDocument: tool({
+        // Define tools based on agent capabilities
+        const tools: Record<string, any> = {}
+
+        // Always provide queryMemories tool for accessing user's business context
+        tools.queryMemories = tool({
+          description: 'Search user memories for specific information about their business, goals, personal details, etc. Use this when you need to recall specific facts about the user.',
+          inputSchema: z.object({
+            query: z.string().describe('What information to search for in memories (e.g., "baby birthday", "business name", "target audience")'),
+          }),
+          execute: async ({ query }, context?: { toolCallId?: string }) => {
+            const toolCallId = context?.toolCallId || nanoid()
+            console.log('💭 Querying memories for:', query)
+
+            // Track tool call
+            toolCalls.push({
+              id: toolCallId,
+              name: 'queryMemories',
+              arguments: { query },
+            })
+
+            // Search user memories (simple text matching for now)
+            const queryLower = query.toLowerCase()
+            const relevantMemories = userMemories.filter(mem => {
+              const keyMatch = mem.key.toLowerCase().includes(queryLower)
+              const valueMatch = mem.value.toLowerCase().includes(queryLower)
+              return keyMatch || valueMatch
+            })
+
+            let result = ''
+            if (relevantMemories.length === 0) {
+              result = `No memories found matching "${query}".`
+            } else {
+              // Format results
+              result = `Found ${relevantMemories.length} relevant memories:\n\n`
+              relevantMemories.forEach(mem => {
+                result += `- ${mem.key}: ${mem.value}\n`
+              })
+            }
+
+            // Track tool result
+            toolResults.push({
+              toolCallId,
+              result: { query, matchCount: relevantMemories.length, memories: relevantMemories.map(m => ({ key: m.key, value: m.value })) },
+            })
+
+            return result
+          },
+        })
+
+        // Add createDocument tool if artifacts are enabled
+        if (artifactInstructions) {
+          tools.createDocument = tool({
             description: 'Create an interactive artifact that streams to the side panel. Use ONLY for substantial content that benefits from side-by-side editing. For small code snippets, use inline markdown code blocks instead.',
             inputSchema: z.object({
               title: z.string().describe('Descriptive title for the artifact'),
@@ -597,15 +646,13 @@ chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
               // Return summary for chat message
               return `Created artifact: ${title}`
             },
-          }),
-        } : undefined
+          })
+        }
 
         // Debug logging
         console.log('🔍 Artifact instructions enabled:', !!artifactInstructions)
-        console.log('🔍 Tools defined:', !!tools)
-        if (tools) {
-          console.log('🔍 Tool names:', Object.keys(tools))
-        }
+        console.log('🔍 Tools defined:', Object.keys(tools).length > 0)
+        console.log('🔍 Tool names:', Object.keys(tools))
 
         // Stream AI response with tool support
         const result = streamText({

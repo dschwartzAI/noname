@@ -178,52 +178,13 @@ function ConversationChat({
   setSelectedModel: (model: string) => void
   invalidateConversations: () => void
 }) {
-  // Convert API messages to UIMessage format (AI SDK v5)
-  // Include tool calls and results for artifact reconstruction
-  const initialMessages = data.messages.map((msg) => {
-    const parts: Array<{ type: string; text?: string; toolName?: string; toolCallId?: string; args?: Record<string, unknown> }> = [
-      {
-        type: 'text',
-        text: msg.content,
-      }
-    ]
-
-    // Add tool call parts if present (for artifact reconstruction)
-    if (msg.toolCalls && msg.toolCalls.length > 0) {
-      msg.toolCalls.forEach((toolCall) => {
-        // Find corresponding tool result
-        const toolResult = msg.toolResults?.find(tr => tr.toolCallId === toolCall.id)
-        
-        if (toolCall.name === 'createDocument' && toolCall.arguments) {
-          // Ensure arguments is always defined - required by AI SDK
-          const args = {
-            ...toolCall.arguments,
-            // Include artifact content from tool result if available
-            ...(toolResult?.result && typeof toolResult.result === 'object' && 'content' in toolResult.result
-              ? { content: (toolResult.result as any).content }
-              : {}),
-          }
-
-          // Only add tool-call part if we have valid arguments
-          if (args.title && args.kind) {
-            parts.push({
-              type: 'tool-call',
-              toolName: 'createDocument',
-              toolCallId: toolCall.id,
-              args,
-            })
-          }
-        }
-      })
-    }
-
-    return {
-      id: msg.id,
-      role: msg.role as 'user' | 'assistant' | 'system',
-      parts,
-      status: 'ready' as const,
-    }
-  })
+  // Convert API messages to simple format (text content only)
+  // Tool calls are already processed and in the database - no need to reconstruct
+  const initialMessages = data.messages.map((msg) => ({
+    id: msg.id,
+    role: msg.role as 'user' | 'assistant' | 'system',
+    content: msg.content || '', // Simple text content
+  }))
 
   const queryClient = useQueryClient()
   const prevConversationIdRef = useRef<string | null>(null)
