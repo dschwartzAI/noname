@@ -3,6 +3,7 @@ export interface UserPreferences {
   emailNotifications?: boolean
   pushNotifications?: boolean
   language?: string
+  accentColor?: string
 }
 
 export interface UserProfile {
@@ -39,4 +40,5 @@ export interface UpdateUserPreferencesInput {
   emailNotifications?: boolean
   pushNotifications?: boolean
   language?: string
+  accentColor?: string
 }

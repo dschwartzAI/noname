@@ -182,7 +182,7 @@ function ClassroomPage() {
             variant="ghost"
             size="sm"
             onClick={() => navigate({ to: '/syndicate' })}
-            className="h-auto p-0 hover:text-foreground"
+            className="h-auto px-2 py-1 hover:text-foreground"
           >
             Syndicate
           </Button>

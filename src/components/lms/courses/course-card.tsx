@@ -98,7 +98,7 @@ export function CourseCard({
 
       <CardHeader className="pb-3 flex-grow">
         <div className="space-y-2">
-          <CardTitle className="line-clamp-2 group-hover:text-blue-600 transition-colors">
+          <CardTitle className="line-clamp-2 group-hover:text-foreground transition-colors font-medium group-hover:font-semibold">
             {course.title}
           </CardTitle>
           

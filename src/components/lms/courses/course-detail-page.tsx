@@ -110,7 +110,7 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
             variant="ghost"
             size="sm"
             onClick={() => navigate({ to: '/syndicate' })}
-            className="h-auto p-0 hover:text-foreground"
+            className="h-auto px-2 py-1 hover:text-foreground"
           >
             Syndicate
           </Button>
@@ -119,7 +119,7 @@ export function CourseDetailPage({ courseId }: CourseDetailPageProps) {
             variant="ghost"
             size="sm"
             onClick={() => navigate({ to: '/syndicate/classroom' })}
-            className="h-auto p-0 hover:text-foreground"
+            className="h-auto px-2 py-1 hover:text-foreground"
           >
             Classroom
           </Button>

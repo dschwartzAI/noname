@@ -186,8 +186,8 @@ function ChatPage() {
     credentials: 'include',
 
     // CRITICAL: Ensure all messages have valid content or parts for Zod validation
-    body: (options) => {
-      const cleanMessages = options.messages.map(msg => {
+    body: ({ messages }) => {
+      const cleanMessages = messages.map(msg => {
         // If message has content string, use it
         if (typeof msg.content === 'string' && msg.content.length > 0) {
           return {

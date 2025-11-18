@@ -229,8 +229,8 @@ function ConversationChat({
     experimental_throttle: 100, // Match Vercel AI Chatbot
 
     // CRITICAL: Ensure all messages have valid content or parts for Zod validation
-    body: (options) => {
-      const cleanMessages = options.messages.map(msg => {
+    body: ({ messages }) => {
+      const cleanMessages = messages.map(msg => {
         // If message has content string, use it
         if (typeof msg.content === 'string' && msg.content.length > 0) {
           return {
@@ -329,28 +329,38 @@ function ConversationChat({
   // Sync server messages with client state when navigating to a different conversation
   // AI SDK v5 pattern: setMessages updates state without remounting component
   useEffect(() => {
-    // Only sync when conversationId changes (navigating between conversations)
-    if (prevConversationIdRef.current !== conversationId) {
-      // CRITICAL: Only sync text content, NO tool-call parts
-      // Tool calls are already in the database and will be parsed by messageArtifacts useMemo
-      // Re-adding tool-call parts causes AI SDK validation errors
-      const syncedMessages = data.messages.map((msg) => {
-        const content = msg.content || ''
+    // Always sync messages when conversationId changes or when data.messages is available
+    // This ensures messages load on initial page load and when switching conversations
+    if (data.messages.length > 0) {
+      // Check if we need to sync: different conversation OR messages are empty/different
+      const isDifferentConversation = prevConversationIdRef.current !== conversationId
+      const hasNoMessages = messages.length === 0
+      const messagesDontMatch = messages.length > 0 && 
+                                (messages.length !== data.messages.length || 
+                                 messages[0]?.id !== data.messages[0]?.id)
+      
+      if (isDifferentConversation || hasNoMessages || messagesDontMatch) {
+        // CRITICAL: Only sync text content, NO tool-call parts
+        // Tool calls are already in the database and will be parsed by messageArtifacts useMemo
+        // Re-adding tool-call parts causes AI SDK validation errors
+        const syncedMessages = data.messages.map((msg) => {
+          const content = msg.content || ''
 
-        return {
-          id: msg.id,
-          role: msg.role as 'user' | 'assistant' | 'system',
-          ...(content
-            ? { content }
-            : { parts: [{ type: 'text', text: '' }] }
-          ),
-        }
-      })
+          return {
+            id: msg.id,
+            role: msg.role as 'user' | 'assistant' | 'system',
+            ...(content
+              ? { content }
+              : { parts: [{ type: 'text', text: '' }] }
+            ),
+          }
+        })
 
-      setMessages(syncedMessages)
-      prevConversationIdRef.current = conversationId
+        setMessages(syncedMessages)
+        prevConversationIdRef.current = conversationId
+      }
     }
-  }, [conversationId, data.messages, setMessages])
+  }, [conversationId, data.messages, setMessages, messages])
 
   // Parse artifacts from DATABASE messages (not AI SDK messages)
   // This is critical because AI SDK messages don't have tool-call parts
@@ -671,10 +681,12 @@ function ConversationChat({
           <Conversation>
           <ConversationContent>
             {messages.map((message) => {
-            // Extract text content from message parts
-            const textContent = message.parts?.map((part) =>
-              part.type === 'text' ? part.text : ''
-            ).join('') || ''
+            // Extract text content from message (either content string or parts array)
+            const textContent = typeof message.content === 'string' 
+              ? message.content 
+              : message.parts?.map((part) =>
+                  part.type === 'text' ? part.text : ''
+                ).join('') || ''
 
             // Use cached artifacts (already parsed)
             const artifacts = messageArtifacts.get(message.id) || []

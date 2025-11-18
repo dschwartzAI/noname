@@ -8,6 +8,7 @@ import { LogoUpload } from './_components/logo-upload';
 import { FaviconUpload } from './_components/favicon-upload';
 import { AppNameForm } from './_components/app-name-form';
 import { InstructorsManager } from './_components/instructors-manager';
+import { AccentColorForm } from './_components/accent-color-form';
 
 export const Route = createFileRoute('/_authenticated/admin/settings')({
   component: AdminSettings,
@@ -80,6 +81,14 @@ function AdminSettings() {
                   Upload your browser tab icon. This appears in browser tabs and bookmarks.
                 </p>
                 <FaviconUpload />
+              </div>
+
+              <div className="border-t" />
+
+              {/* Accent Color Section */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">Accent Color</label>
+                <AccentColorForm />
               </div>
             </div>
           </Card>
