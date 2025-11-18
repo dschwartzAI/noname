@@ -416,16 +416,30 @@ kbApp.get('/:id/documents', zValidator('param', kbIdSchema), async (c) => {
     }
 
     // List documents from R2
+    console.log('📂 Listing documents from R2 with prefix:', kb.r2PathPrefix)
     const objects = await c.env.KNOWLEDGE_BASE_DOCS.list({ prefix: kb.r2PathPrefix })
+    console.log('📂 R2 list result:', {
+      count: objects.objects.length,
+      truncated: objects.truncated,
+      prefix: kb.r2PathPrefix
+    })
 
-    const documents = objects.objects.map(obj => ({
-      key: obj.key,
-      filename: obj.key.replace(kb.r2PathPrefix, ''),
-      size: obj.size,
-      uploadedAt: obj.uploaded,
-      contentType: obj.httpMetadata?.contentType,
-    }))
+    const documents = objects.objects.map(obj => {
+      console.log('📄 Document object:', {
+        key: obj.key,
+        size: obj.size,
+        uploaded: obj.uploaded
+      })
+      return {
+        key: obj.key,
+        filename: obj.key.replace(kb.r2PathPrefix, ''),
+        size: obj.size,
+        uploadedAt: obj.uploaded,
+        contentType: obj.httpMetadata?.contentType,
+      }
+    })
 
+    console.log('✅ Returning documents:', documents.length)
     return c.json({ documents })
   } catch (error) {
     console.error('❌ List documents error:', error)

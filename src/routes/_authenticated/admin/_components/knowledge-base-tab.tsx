@@ -5,7 +5,7 @@
  * Located in Admin Panel > Knowledge Base tab
  */
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Trash2, FileText, Loader2, Upload, Check, X, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -65,9 +65,11 @@ export function KnowledgeBaseTab() {
   const documents = docsData?.documents || []
 
   // Select first KB by default
-  if (knowledgeBases.length > 0 && !selectedKB) {
-    setSelectedKB(knowledgeBases[0])
-  }
+  useEffect(() => {
+    if (knowledgeBases.length > 0 && !selectedKB) {
+      setSelectedKB(knowledgeBases[0])
+    }
+  }, [knowledgeBases, selectedKB])
 
   const handleCreateKB = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()

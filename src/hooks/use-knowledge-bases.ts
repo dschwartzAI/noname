@@ -81,11 +81,15 @@ export function useKnowledgeBaseDocuments(knowledgeBaseId: string | null) {
       if (!knowledgeBaseId) {
         throw new Error('No knowledge base ID provided')
       }
+      console.log('🔍 Fetching documents for KB:', knowledgeBaseId)
       const response = await fetch(`/api/v1/knowledge-base/${knowledgeBaseId}/documents`)
       if (!response.ok) {
+        console.error('❌ Failed to fetch documents:', response.status, response.statusText)
         throw new Error('Failed to fetch documents')
       }
-      return response.json()
+      const data = await response.json()
+      console.log('📦 Received documents:', data)
+      return data
     },
     enabled: !!knowledgeBaseId,
   })
