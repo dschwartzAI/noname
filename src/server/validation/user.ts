@@ -15,7 +15,7 @@ export const updatePreferencesSchema = z.object({
   emailNotifications: z.boolean().optional(),
   pushNotifications: z.boolean().optional(),
   language: z.string().optional(),
-  accentColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Accent color must be a valid hex color').optional(),
+  accentColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Accent color must be a valid hex color').nullable().optional(),
 })
 
 export const updateAvatarSchema = z.object({
