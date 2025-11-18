@@ -185,6 +185,40 @@ function ChatPage() {
     },
     credentials: 'include',
 
+    // CRITICAL: Ensure all messages have valid content or parts for Zod validation
+    body: (options) => {
+      const cleanMessages = options.messages.map(msg => {
+        // If message has content string, use it
+        if (typeof msg.content === 'string' && msg.content.length > 0) {
+          return {
+            role: msg.role,
+            content: msg.content,
+          }
+        }
+
+        // If message has parts array with items, use it
+        if (Array.isArray(msg.parts) && msg.parts.length > 0) {
+          return {
+            role: msg.role,
+            parts: msg.parts,
+          }
+        }
+
+        // Fallback: provide empty text content to satisfy validation
+        return {
+          role: msg.role,
+          content: '',
+        }
+      })
+
+      return {
+        conversationId: effectiveConversationId,
+        messages: cleanMessages,
+        agentId: agentId || undefined,
+        model: selectedModel,
+      }
+    },
+
     // Handle custom artifact data parts from backend
     onToolCall: ({ toolCall }) => {
       console.log('🔧 Tool call:', toolCall.toolName)

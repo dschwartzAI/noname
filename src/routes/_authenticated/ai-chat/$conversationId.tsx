@@ -228,6 +228,40 @@ function ConversationChat({
     messages: initialMessages, // Load existing messages from database (explicit prop name)
     experimental_throttle: 100, // Match Vercel AI Chatbot
 
+    // CRITICAL: Ensure all messages have valid content or parts for Zod validation
+    body: (options) => {
+      const cleanMessages = options.messages.map(msg => {
+        // If message has content string, use it
+        if (typeof msg.content === 'string' && msg.content.length > 0) {
+          return {
+            role: msg.role,
+            content: msg.content,
+          }
+        }
+
+        // If message has parts array with items, use it
+        if (Array.isArray(msg.parts) && msg.parts.length > 0) {
+          return {
+            role: msg.role,
+            parts: msg.parts,
+          }
+        }
+
+        // Fallback: provide empty text content to satisfy validation
+        return {
+          role: msg.role,
+          content: '',
+        }
+      })
+
+      return {
+        conversationId,
+        messages: cleanMessages,
+        agentId: data.agentId || undefined,
+        model: selectedModel,
+      }
+    },
+
     // Handle custom data stream parts for artifact streaming
     experimental_onData: (data) => {
       console.log('📡 Received data part:', data)
