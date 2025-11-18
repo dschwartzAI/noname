@@ -19,6 +19,7 @@ import { ConversationNavItem } from './conversation-nav-item'
 import { groupConversationsByTime } from '@/features/ai-chat/utils/time-grouping'
 import type { Conversation } from '@/features/ai-chat/types'
 import { ToolSelector } from './tool-selector'
+import { Button } from '@/components/ui/button'
 
 interface ConversationNavGroupProps {
   conversations: Conversation[]
@@ -29,7 +30,7 @@ export function ConversationNavGroup({
   conversations,
   activeConversationId,
 }: ConversationNavGroupProps) {
-  const { state } = useSidebar()
+  const { state, open, setOpen } = useSidebar()
   const grouped = groupConversationsByTime(conversations)
 
   // Determine default open state for each time group
@@ -44,28 +45,42 @@ export function ConversationNavGroup({
     )
   )
 
+  // When collapsed, show just the History button that opens the sidebar
+  if (state === 'collapsed') {
+    return (
+      <SidebarGroup>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="w-full"
+          onClick={() => setOpen(true)}
+          title="Open History"
+        >
+          <History className="h-4 w-4" />
+          <span className="sr-only">Open History</span>
+        </Button>
+      </SidebarGroup>
+    )
+  }
+
   if (conversations.length === 0) {
     return (
       <SidebarGroup>
         <SidebarGroupLabel>
           <History className="h-4 w-4 mr-2" />
           History
-          {state === 'expanded' && (
-            <ToolSelector
-              trigger={
-                <SidebarGroupAction title="New Chat">
-                  <Plus className="h-4 w-4" />
-                  <span className="sr-only">New Chat</span>
-                </SidebarGroupAction>
-              }
-            />
-          )}
+          <ToolSelector
+            trigger={
+              <SidebarGroupAction title="New Chat">
+                <Plus className="h-4 w-4" />
+                <span className="sr-only">New Chat</span>
+              </SidebarGroupAction>
+            }
+          />
         </SidebarGroupLabel>
-        {state === 'expanded' && (
-          <div className="px-3 py-4 text-sm text-muted-foreground text-center">
-            No conversations yet
-          </div>
-        )}
+        <div className="px-3 py-4 text-sm text-muted-foreground text-center">
+          No conversations yet
+        </div>
       </SidebarGroup>
     )
   }
@@ -75,16 +90,14 @@ export function ConversationNavGroup({
       <SidebarGroupLabel>
         <History className="h-4 w-4 mr-2" />
         History
-        {state === 'expanded' && (
-          <ToolSelector
-            trigger={
-              <SidebarGroupAction title="New Chat">
-                <Plus className="h-4 w-4" />
-                <span className="sr-only">New Chat</span>
-              </SidebarGroupAction>
-            }
-          />
-        )}
+        <ToolSelector
+          trigger={
+            <SidebarGroupAction title="New Chat">
+              <Plus className="h-4 w-4" />
+              <span className="sr-only">New Chat</span>
+            </SidebarGroupAction>
+          }
+        />
       </SidebarGroupLabel>
 
       <SidebarMenu>
@@ -104,7 +117,7 @@ export function ConversationNavGroup({
                       openGroups[timeGroup] ? 'rotate-90' : ''
                     }`}
                   />
-                  {state === 'expanded' && <span>{timeGroup}</span>}
+                  <span>{timeGroup}</span>
                 </SidebarMenuButton>
               </CollapsibleTrigger>
               <CollapsibleContent>
