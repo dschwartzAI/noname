@@ -1,4 +1,6 @@
 import { pgTable, text, timestamp, boolean, jsonb, index } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
+import { agents } from "./schema/agents";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -182,4 +184,12 @@ export const message = pgTable("message", {
   // Index for organization-wide message queries (for analytics/search)
   orgCreatedIdx: index("message_org_created_idx")
     .on(table.organizationId, table.createdAt.desc()),
+}));
+
+// Relations for conversation
+export const conversationRelations = relations(conversation, ({ one }) => ({
+  agent: one(agents, {
+    fields: [conversation.toolId],
+    references: [agents.id],
+  }),
 }));

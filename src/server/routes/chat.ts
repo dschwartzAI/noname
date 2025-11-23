@@ -10,21 +10,17 @@
 
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
-import { streamText, streamObject, convertToModelMessages, generateText, tool, createUIMessageStream, createUIMessageStreamResponse } from 'ai'
+import { generateText } from 'ai'
 import { requireAuth } from '../middleware/auth'
 import { injectOrganization } from '../middleware/organization'
 import { neon } from '@neondatabase/serverless'
 import { drizzle } from 'drizzle-orm/neon-http'
-import { eq, and, desc, asc, sql } from 'drizzle-orm'
+import { eq, and, desc, asc } from 'drizzle-orm'
 import { getModel } from '@/lib/ai-providers'
-import { nanoid } from 'nanoid'
 import { z } from 'zod'
 import * as authSchema from '../../../database/better-auth-schema'
-import { memories } from '../../../database/schema/memories'
 import { agents } from '../../../database/schema/agents'
-import { knowledgeBases } from '../../../database/schema/knowledge-base'
 import {
-  chatRequestSchema,
   getConversationSchema,
   listConversationsSchema,
   archiveConversationSchema,
@@ -60,861 +56,25 @@ const chatApp = new Hono<{ Bindings: Env; Variables: Variables }>()
 chatApp.use('*', requireAuth)
 chatApp.use('*', injectOrganization)
 
-// Artifact schema for streamObject
-const artifactSchema = z.object({
-  title: z.string().describe('Title of the artifact'),
-  kind: z.enum(['document', 'text', 'code', 'html', 'react']).describe('Type of artifact'),
-  content: z.string().describe('The full content of the artifact'),
-  language: z.string().optional().describe('Programming language for code artifacts'),
-})
-
 /**
- * POST /api/v1/chat - Send chat message with streaming response
+ * REMOVED: POST /api/v1/chat endpoint
  *
- * Creates/updates conversation and persists messages to database
- * Returns streaming AI response using Vercel AI SDK
+ * Chat streaming now handled by Agents SDK at /api/agents/chat/*
+ * See src/server/agents/chat-agent.ts for implementation
+ * Frontend uses useAgentChatSession hook to connect to Agents SDK
+ *
+ * This file now contains ONLY conversation CRUD operations:
+ * - GET / - List conversations
+ * - GET /:id - Get conversation history
+ * - PATCH /:id - Update conversation metadata
+ * - DELETE /:id - Archive conversation
+ * - PATCH /artifact - Update artifact content
+ * - POST /:id/title - Generate conversation title
  */
-chatApp.post('/', zValidator('json', chatRequestSchema), async (c) => {
-  try {
-    const { conversationId, message, messages: messagesArray, model, agentId } = c.req.valid('json')
-    const user = c.get('user')
-    const organizationId = c.get('organizationId')
 
-    // Require organization context for tenant isolation
-    if (!organizationId) {
-      return c.json({ error: 'No organization context. User must be a member of an organization.' }, 403)
-    }
-
-    console.log('💬 Chat request:', {
-      userId: user.id,
-      organizationId,
-      conversationId,
-      hasConversationId: !!conversationId,
-      agentId,  // Log agentId to verify it's received
-      model,
-      messageCount: messagesArray?.length,
-      hasSingleMessage: !!message
-    })
-    console.log('📥 Received messagesArray:', JSON.stringify(messagesArray, null, 2))
-
-    // Initialize database connection
-    const sqlClient = neon(c.env.DATABASE_URL)
-    const db = drizzle(sqlClient, { schema: { ...authSchema, memories, agents, knowledgeBases } })
-
-    // Step 1: Get or create conversation
-    let currentConversationId = conversationId
-    if (!currentConversationId) {
-      // Create new conversation
-      currentConversationId = nanoid()
-
-      // Extract first message - handle both AI SDK v5 format and custom API
-      let firstMessage = message // Custom API format (single message string)
-      if (!firstMessage && messagesArray && messagesArray.length > 0) {
-        // AI SDK v5 format - messages have parts array
-        const firstMsg = messagesArray[0]
-        if (firstMsg.parts && firstMsg.parts.length > 0) {
-          // Extract text from parts array
-          firstMessage = firstMsg.parts
-            .filter(part => part.type === 'text' && part.text)
-            .map(part => part.text)
-            .join('')
-        } else if (firstMsg.content) {
-          // Fallback to legacy content field
-          firstMessage = firstMsg.content
-        }
-      }
-
-      if (!firstMessage) {
-        firstMessage = 'New Chat'
-      }
-
-      // Generate title from first user message (Vercel AI Chatbot pattern)
-      let title = firstMessage.substring(0, 100) // Fallback title
-
-      console.log('🔍 Title generation check:', {
-        hasOpenAIKey: !!c.env.OPENAI_API_KEY,
-        firstMessage,
-        firstMessageLength: firstMessage.length,
-        isNewChat: firstMessage === 'New Chat'
-      })
-
-      if (c.env.OPENAI_API_KEY && firstMessage !== 'New Chat') {
-        console.log('🏷️ Generating title with GPT-4o-mini...')
-        try {
-          const titleModel = getModel({ OPENAI_API_KEY: c.env.OPENAI_API_KEY }, 'gpt-4o-mini')
-          const { text: generatedTitle } = await generateText({
-            model: titleModel,
-            prompt: `Generate a concise, descriptive 3-5 word title for a conversation that starts with: "${firstMessage}"\n\nReturn ONLY the title, no quotes.`,
-            maxTokens: 20,
-            temperature: 0.7,
-          })
-          title = generatedTitle.replace(/^["']|["']$/g, '').trim()
-          console.log('✅ Generated title:', title)
-        } catch (error) {
-          console.error('❌ Title generation failed, using fallback:', error)
-        }
-      } else {
-        console.log('⏭️ Skipping title generation - using fallback:', title)
-      }
-
-      await db.insert(authSchema.conversation).values({
-        id: currentConversationId,
-        organizationId,
-        userId: user.id,
-        title,
-        toolId: agentId, // null if not provided
-        model,
-        systemPrompt: null,
-        metadata: {},
-      })
-
-      console.log('✅ Created new conversation:', currentConversationId, 'with title:', title)
-    } else {
-      // Check if conversation exists (using SQL builder to ensure proper column name mapping)
-      const [existingConv] = await db
-        .select()
-        .from(authSchema.conversation)
-        .where(
-          and(
-            eq(authSchema.conversation.id, currentConversationId),
-            eq(authSchema.conversation.organizationId, organizationId),
-            eq(authSchema.conversation.userId, user.id)
-          )
-        )
-        .limit(1)
-
-      // If conversation doesn't exist, create it (frontend generates ID upfront)
-      if (!existingConv) {
-        console.log('📝 Conversation ID provided but not found, creating new conversation:', currentConversationId)
-
-        // Extract first message for title generation
-        let firstMessage = message
-        if (!firstMessage && messagesArray && messagesArray.length > 0) {
-          const firstMsg = messagesArray[0]
-          if (firstMsg.parts && firstMsg.parts.length > 0) {
-            firstMessage = firstMsg.parts
-              .filter(part => part.type === 'text' && part.text)
-              .map(part => part.text)
-              .join('')
-          } else if (firstMsg.content) {
-            firstMessage = firstMsg.content
-          }
-        }
-
-        if (!firstMessage) {
-          firstMessage = 'New Chat'
-        }
-
-        // Generate title from first user message
-        let title = firstMessage.substring(0, 100)
-
-        if (c.env.OPENAI_API_KEY && firstMessage !== 'New Chat') {
-          try {
-            const titleModel = getModel({ OPENAI_API_KEY: c.env.OPENAI_API_KEY }, 'gpt-4o-mini')
-            const { text: generatedTitle } = await generateText({
-              model: titleModel,
-              prompt: `Generate a concise, descriptive 3-5 word title for a conversation that starts with: "${firstMessage}"\n\nReturn ONLY the title, no quotes.`,
-              maxTokens: 20,
-              temperature: 0.7,
-            })
-            title = generatedTitle.replace(/^["']|["']$/g, '').trim()
-          } catch (error) {
-            console.error('❌ Title generation failed, using fallback:', error)
-          }
-        }
-
-        await db.insert(authSchema.conversation).values({
-          id: currentConversationId,
-          organizationId,
-          userId: user.id,
-          title,
-          toolId: agentId,
-          model,
-          systemPrompt: null,
-          metadata: {},
-        })
-
-        console.log('✅ Created conversation from frontend ID:', currentConversationId, 'with title:', title)
-      }
-    }
-
-    // Step 2: Save user message (from either format)
-    let userMessageId: string | null = null
-    let userMessageContent = message // Custom API format
-
-    // If no single message, extract from messages array (AI SDK v5)
-    if (!userMessageContent && messagesArray && messagesArray.length > 0) {
-      const lastMessage = messagesArray[messagesArray.length - 1]
-      if (lastMessage.role === 'user') {
-        if (lastMessage.parts && lastMessage.parts.length > 0) {
-          userMessageContent = lastMessage.parts
-            .filter(part => part.type === 'text' && part.text)
-            .map(part => part.text)
-            .join('')
-        } else if (lastMessage.content) {
-          userMessageContent = lastMessage.content
-        }
-      }
-    }
-
-    if (userMessageContent) {
-      userMessageId = nanoid()
-      await db.insert(authSchema.message).values({
-        id: userMessageId,
-        conversationId: currentConversationId,
-        organizationId,
-        role: 'user',
-        content: userMessageContent,
-        toolCalls: null,
-        toolResults: null,
-        metadata: null,
-      })
-
-      console.log('✅ Saved user message:', userMessageId, 'content length:', userMessageContent.length)
-    } else {
-      console.log('⚠️ No user message to save')
-    }
-
-    // Step 3: Fetch agent instructions if agentId provided
-    let agentInstructions = ''
-    let artifactInstructions = ''
-    let knowledgeBaseContext = ''
-    if (agentId) {
-      const agent = await db
-        .select()
-        .from(agents)
-        .where(
-          and(
-            eq(agents.id, agentId),
-            eq(agents.organizationId, organizationId)
-          )
-        )
-        .limit(1)
-
-      if (agent && agent[0]) {
-        agentInstructions = agent[0].instructions || ''
-        console.log(`🤖 Loaded agent: ${agent[0].name}`, {
-          artifactsEnabled: agent[0].artifactsEnabled,
-          hasArtifactInstructions: !!agent[0].artifactInstructions,
-          artifactInstructionsLength: agent[0].artifactInstructions?.length || 0
-        })
-
-        if (agent[0].artifactsEnabled && agent[0].artifactInstructions) {
-          artifactInstructions = agent[0].artifactInstructions
-          console.log('✅ Artifact instructions loaded')
-        } else {
-          console.log('⚠️ Artifacts not enabled:', {
-            enabled: agent[0].artifactsEnabled,
-            hasInstructions: !!agent[0].artifactInstructions
-          })
-        }
-
-        // Check if agent has knowledge base assigned (RAG via AI Search)
-        if (agent[0].knowledgeBaseId) {
-          const knowledgeBaseId = agent[0].knowledgeBaseId
-          console.log(`📚 Agent has knowledge base: ${knowledgeBaseId}`)
-
-          // Get KB metadata for R2 path prefix
-          const kb = await db.query.knowledgeBases.findFirst({
-            where: eq(knowledgeBases.id, knowledgeBaseId),
-          })
-
-          // Retrieve relevant context using Cloudflare AI Search
-          if (kb && c.env.AI && userMessageContent) {
-            try {
-              console.log(`🔍 Searching AI Search: ${kb.aiSearchStoreId}`)
-              console.log(`   Query: "${userMessageContent.substring(0, 100)}..."`)
-              console.log(`   Target folder: ${kb.r2PathPrefix}`)
-
-              // Query AI Search using autorag().aiSearch()
-              // TODO: Filter by folder path for multi-tenant isolation once we determine correct syntax
-              // For now, retrieve all results and filter in code
-              const result = await c.env.AI.autorag(kb.aiSearchStoreId).aiSearch({
-                query: userMessageContent,
-                max_num_results: 20, // Get more results to filter
-                rewrite_query: false,
-              })
-
-              // Format context from search results
-              // AI Search returns: { answer: string, data: Array<{text, metadata, score}> }
-              if (result?.data && result.data.length > 0) {
-                console.log(`📦 Total results from AI Search: ${result.data.length}`)
-
-                // CRITICAL: Filter results by folder path for multi-tenant isolation
-                // AI Search returns: { file_id, filename, score, attributes, content }
-                const filteredResults = result.data.filter((item: any) => {
-                  // Check if the filename starts with our KB folder path
-                  const itemPath = item.filename || item.file_id || ''
-                  const isInFolder = itemPath.startsWith(kb.r2PathPrefix)
-
-                  if (!isInFolder) {
-                    console.log(`🚫 Filtered out: ${itemPath} (not in ${kb.r2PathPrefix})`)
-                  } else {
-                    console.log(`✅ Keeping: ${itemPath}`)
-                  }
-
-                  return isInFolder
-                })
-
-                console.log(`✅ Filtered to ${filteredResults.length} chunks from KB folder`)
-
-                if (filteredResults.length > 0) {
-                  knowledgeBaseContext = '\n\n═══ KNOWLEDGE BASE CONTEXT ═══\n'
-                  knowledgeBaseContext += `\nRelevant information from knowledge base "${kb.name}":\n\n`
-                  filteredResults.slice(0, 5).forEach((item: any, index: number) => {
-                    // AI Search structure: { content: [{text: "..."}, ...], filename, score, ... }
-                    let text = ''
-
-                    if (Array.isArray(item.content)) {
-                      // Content is array of objects with 'text' field
-                      // Join with newlines to preserve markdown structure (headings, lists, etc.)
-                      text = item.content.map((chunk: any) => chunk.text || chunk).join('\n')
-                    } else if (typeof item.content === 'string') {
-                      text = item.content
-                    } else {
-                      text = JSON.stringify(item.content)
-                    }
-
-                    knowledgeBaseContext += `${text}\n\n`
-                  })
-                  knowledgeBaseContext += '═══════════════════════════════\n'
-                } else {
-                  console.log('⚠️ No relevant context found in this KB folder after filtering')
-                }
-              } else {
-                console.log('⚠️ No results from AI Search')
-              }
-            } catch (error) {
-              console.error('❌ Failed to retrieve KB context from AI Search:', error)
-              // Continue without KB context - don't block chat
-            }
-          } else if (!c.env.AI) {
-            console.warn('⚠️ AI binding not available (use wrangler dev --remote for RAG)')
-          } else if (!kb) {
-            console.warn(`⚠️ Knowledge base ${knowledgeBaseId} not found`)
-          }
-        }
-      }
-    }
-
-    // Step 4: Fetch user memories for context injection
-    // ALWAYS inject memories - they're needed for personalization
-    let memoryContext = ''
-
-    const userMemories = await db
-      .select()
-      .from(memories)
-      .where(
-        and(
-          eq(memories.userId, user.id),
-          eq(memories.organizationId, organizationId)
-        )
-      )
-      .orderBy(asc(memories.category), desc(memories.createdAt))
-
-    // Format memories by category
-    if (userMemories.length > 0) {
-      const categories = {
-        business_info: 'Business Information',
-        target_audience: 'Target Audience',
-        offers: 'Offers & Services',
-        current_projects: 'Current Projects',
-        challenges: 'Challenges & Pain Points',
-        goals: 'Goals & Objectives',
-        personal_info: 'Personal Context',
-      }
-
-      let formatted = '\n\n═══ USER BUSINESS CONTEXT ═══\n'
-
-      for (const [categoryKey, categoryLabel] of Object.entries(categories)) {
-        const categoryMemories = userMemories.filter(m => m.category === categoryKey)
-        if (categoryMemories.length > 0) {
-          formatted += `\n${categoryLabel}:\n`
-          categoryMemories.forEach(mem => {
-            formatted += `  • ${mem.key}: ${mem.value}\n`
-          })
-        }
-      }
-
-      formatted += '\n═══════════════════════════════'
-      memoryContext = formatted
-
-      console.log(`💭 Injected ${userMemories.length} memories into context`)
-    } else {
-      console.log('ℹ️  No business memories found for this user')
-    }
-
-    // Get AI model instance
-    const aiModel = getModel({
-      ANTHROPIC_API_KEY: c.env.ANTHROPIC_API_KEY,
-      OPENAI_API_KEY: c.env.OPENAI_API_KEY,
-      XAI_API_KEY: c.env.XAI_API_KEY,
-    }, model)
-
-    console.log('🤖 Starting AI stream with model:', model)
-
-    // Handle both API formats:
-    // - Single message (custom API): { message: "text" }
-    // - Messages array (Vercel AI SDK): { messages: [{role, content}] }
-    const uiMessages = messagesArray || [
-      { role: 'user' as const, content: message! }
-    ]
-
-    // Convert UI messages to model messages (AI SDK v5 requirement)
-    // UI messages have 'parts' array, model messages have 'content' string
-    let messages = convertToModelMessages(uiMessages)
-
-    // Build system prompt with agent instructions, artifact instructions, memory context, and KB context
-    let systemPrompt = agentInstructions || 'You are a helpful AI assistant.'
-
-    // Add artifact instructions if enabled
-    if (artifactInstructions) {
-      systemPrompt += `\n\n${artifactInstructions}`
-    }
-
-    // Add knowledge base context (RAG)
-    if (knowledgeBaseContext) {
-      systemPrompt += `\n\n${knowledgeBaseContext}`
-      systemPrompt += '\n\nWhen referencing information from the knowledge base above, format your response using proper markdown:\n- Use **bold** for headings and key terms\n- Use bullet points and numbered lists where appropriate\n- Maintain clear structure with spacing between sections\n- Preserve the original formatting and organization from the source material'
-    }
-
-    // Add memory context
-    if (memoryContext) {
-      systemPrompt += ` You have access to the user's business context which will help you provide more personalized and relevant responses.${memoryContext}`
-    }
-
-    // Prepend system message
-    messages = [
-      {
-        role: 'system',
-        content: systemPrompt,
-      },
-      ...messages,
-    ]
-
-    console.log('📝 Converted messages:', JSON.stringify(messages, null, 2))
-
-    // Use createUIMessageStream for custom data parts (artifact streaming)
-    const stream = createUIMessageStream({
-      execute: async ({ writer }) => {
-        // Track tool calls and results for persistence
-        const toolCalls: Array<{ id: string; name: string; arguments: Record<string, unknown> }> = []
-        const toolResults: Array<{ toolCallId: string; result: unknown }> = []
-        const artifactDataMap = new Map<string, { title: string; kind: string; content: string; language?: string }>()
-
-        // Define tools based on agent capabilities
-        const tools: Record<string, any> = {}
-
-        // Always provide queryMemories tool for accessing user's business context
-        tools.queryMemories = tool({
-          description: 'Search user memories for specific information about their business, goals, personal details, etc. Use this when you need to recall specific facts about the user.',
-          inputSchema: z.object({
-            query: z.string().describe('What information to search for in memories (e.g., "baby birthday", "business name", "target audience")'),
-          }),
-          execute: async ({ query }, context?: { toolCallId?: string }) => {
-            const toolCallId = context?.toolCallId || nanoid()
-            console.log('💭 Querying memories for:', query)
-
-            // Track tool call
-            toolCalls.push({
-              id: toolCallId,
-              name: 'queryMemories',
-              arguments: { query },
-            })
-
-            // Search user memories (simple text matching for now)
-            const queryLower = query.toLowerCase()
-            const relevantMemories = userMemories.filter(mem => {
-              const keyMatch = mem.key.toLowerCase().includes(queryLower)
-              const valueMatch = mem.value.toLowerCase().includes(queryLower)
-              return keyMatch || valueMatch
-            })
-
-            let result = ''
-            if (relevantMemories.length === 0) {
-              result = `No memories found matching "${query}".`
-            } else {
-              // Format results
-              result = `Found ${relevantMemories.length} relevant memories:\n\n`
-              relevantMemories.forEach(mem => {
-                result += `- ${mem.key}: ${mem.value}\n`
-              })
-            }
-
-            // Track tool result
-            toolResults.push({
-              toolCallId,
-              result: { query, matchCount: relevantMemories.length, memories: relevantMemories.map(m => ({ key: m.key, value: m.value })) },
-            })
-
-            return result
-          },
-        })
-
-        // Add createDocument tool if artifacts are enabled
-        if (artifactInstructions) {
-          tools.createDocument = tool({
-            description: 'Create an interactive artifact that streams to the side panel. Use ONLY for substantial content that benefits from side-by-side editing. For small code snippets, use inline markdown code blocks instead.',
-            inputSchema: z.object({
-              title: z.string().describe('Descriptive title for the artifact'),
-              kind: z.enum(['document', 'code', 'html', 'react']).describe(`Artifact type:
-- document: Editable rich text document (essays, articles, documentation) - supports bold, italic, headers
-- code: Non-editable code example/snippet with syntax highlighting
-- html: Interactive HTML preview
-- react: React component preview`),
-            }),
-            execute: async ({ title, kind }, context?: { toolCallId?: string }) => {
-              const toolCallId = context?.toolCallId || nanoid()
-              const artifactId = nanoid()
-              console.log('🎨 Creating artifact via tool:', { artifactId, toolCallId, title, kind })
-
-              // Track tool call
-              toolCalls.push({
-                id: toolCallId,
-                name: 'createDocument',
-                arguments: { title, kind },
-              })
-
-              // 1. Signal artifact metadata (opens panel)
-              writer.write({
-                type: 'data-artifact-metadata',
-                id: artifactId,
-                data: { id: artifactId, title, kind },
-              })
-
-              // 2. Generate artifact content with streamObject
-              const kindPrompts: Record<string, string> = {
-                document: `Generate a well-formatted document with title: "${title}". Use markdown formatting (headers with #, **bold**, *italic*). Provide complete, substantial content.`,
-                code: `Generate complete, working code for: "${title}". Include comments and proper formatting.`,
-                html: `Generate complete HTML with inline CSS for: "${title}". Make it interactive and visually appealing.`,
-                react: `Generate a complete React component for: "${title}". Include all necessary imports and make it fully functional.`,
-              }
-
-              const { object, fullStream } = streamObject({
-                model: aiModel,
-                schema: artifactSchema,
-                prompt: kindPrompts[kind] || `Generate a ${kind} artifact with title: "${title}". Provide the full content.`,
-              })
-
-              // 3. Stream content deltas to client
-              for await (const delta of fullStream) {
-                if (delta.type === 'object' && delta.object.content) {
-                  writer.write({
-                    type: 'data-artifact-delta',
-                    id: artifactId,
-                    data: delta.object.content,
-                  })
-                }
-              }
-
-              // 4. Wait for final object
-              const finalArtifact = await object
-
-              // 5. Signal completion
-              writer.write({
-                type: 'data-artifact-complete',
-                id: artifactId,
-                data: finalArtifact,
-              })
-
-              // Store artifact data for persistence
-              artifactDataMap.set(toolCallId, {
-                title: finalArtifact.title,
-                kind: finalArtifact.kind,
-                content: finalArtifact.content,
-                language: finalArtifact.language,
-              })
-
-              // Track tool result
-              toolResults.push({
-                toolCallId,
-                result: {
-                  artifactId,
-                  title: finalArtifact.title,
-                  kind: finalArtifact.kind,
-                  content: finalArtifact.content,
-                  language: finalArtifact.language,
-                },
-              })
-
-              console.log('✅ Artifact creation complete:', {
-                artifactId,
-                toolCallId,
-                contentLength: finalArtifact.content?.length || 0,
-              })
-
-              // Return summary for chat message
-              return `Created artifact: ${title}`
-            },
-          })
-        }
-
-        // Debug logging
-        console.log('🔍 Artifact instructions enabled:', !!artifactInstructions)
-        console.log('🔍 Tools defined:', Object.keys(tools).length > 0)
-        console.log('🔍 Tool names:', Object.keys(tools))
-
-        // Stream AI response with tool support
-        const result = streamText({
-          model: aiModel,
-          messages,
-          temperature: 0.7,
-          maxTokens: 2048,
-          tools,
-          onFinish: async ({ text, finishReason, usage, response }) => {
-        try {
-          console.log('✅ AI response complete:', {
-            finishReason,
-            usage,
-            textLength: text.length,
-            toolCallsCount: toolCalls.length,
-            toolResultsCount: toolResults.length,
-          })
-
-          // 1. Save AI response to database with tool calls and results
-          const assistantMessageId = nanoid()
-          await db.insert(authSchema.message).values({
-            id: assistantMessageId,
-            conversationId: currentConversationId!,
-            organizationId,
-            role: 'assistant',
-            content: text,
-            toolCalls: toolCalls.length > 0 ? toolCalls : null,
-            toolResults: toolResults.length > 0 ? toolResults : null,
-            metadata: {
-              model,
-              usage: {
-                promptTokens: usage.promptTokens,
-                completionTokens: usage.completionTokens,
-                totalTokens: usage.totalTokens,
-              },
-            },
-          })
-
-          // Update conversation's updatedAt timestamp for sorting
-          await db.update(authSchema.conversation)
-            .set({ updatedAt: new Date() })
-            .where(eq(authSchema.conversation.id, currentConversationId!))
-
-          console.log('💾 Saved assistant message:', assistantMessageId)
-
-          // 2. AUTO-EXTRACT MEMORIES (after 3+ messages)
-          const messageCountResult = await db
-            .select({ count: sql<number>`cast(count(*) as integer)` })
-            .from(authSchema.message)
-            .where(eq(authSchema.message.conversationId, currentConversationId!))
-
-          const messageCount = messageCountResult[0].count
-
-          // Trigger extraction after 3+ messages
-          if (messageCount >= 3) {
-            console.log('🧠 Starting memory auto-extraction...')
-
-            // Get recent conversation history for context
-            const recentMessages = await db
-              .select()
-              .from(authSchema.message)
-              .where(eq(authSchema.message.conversationId, currentConversationId!))
-              .orderBy(desc(authSchema.message.createdAt))
-              .limit(10) // Last 10 messages for context
-
-            // Build conversation context
-            const conversationContext = recentMessages
-              .reverse()
-              .map(m => `${m.role.toUpperCase()}: ${m.content}`)
-              .join('\n\n')
-
-            // Extraction prompt
-            const extractionPrompt = `Analyze this conversation and extract any NEW facts about the user that should be remembered long-term.
-
-CONVERSATION HISTORY:
-${conversationContext}
-
-EXTRACTION RULES:
-1. Only extract factual information explicitly stated by the USER (not AI responses or assumptions)
-2. Focus primarily on business context, but may include relevant personal context if naturally mentioned
-3. Categories:
-   - business_info: Business type, industry, company name, business model
-   - target_audience: Who they serve, customer demographics, ideal client profile
-   - offers: Products, services, pricing, packages, programs
-   - current_projects: What they're actively working on (can be multiple projects)
-   - challenges: Pain points, obstacles, problems they face (both immediate and general)
-   - goals: Business objectives, targets, aspirations, what they want to achieve
-   - personal_info: Family, hobbies, interests, personal preferences (ONLY if naturally mentioned, NOT intrusive)
-
-4. Be specific and concise in values
-5. Only extract if explicitly mentioned by user
-6. For "personal_info" - ONLY extract if the user volunteers this information naturally (family members, hobbies they mention). DO NOT extract sensitive information or probe for personal details.
-
-OUTPUT FORMAT (JSON only, no explanation):
-{
-  "memories": [
-    {
-      "category": "business_info",
-      "key": "Business Type",
-      "value": "Real estate coaching"
-    },
-    {
-      "category": "current_projects",
-      "key": "Q2 Initiative",
-      "value": "Launching new agent onboarding program"
-    },
-    {
-      "category": "challenges",
-      "key": "Lead Generation",
-      "value": "Struggling to generate qualified leads for high-ticket coaching"
-    },
-    {
-      "category": "personal_info",
-      "key": "Hobby",
-      "value": "Enjoys hiking on weekends"
-    }
-  ]
-}
-
-If no business facts found, return: {"memories": []}
-
-RESPOND WITH ONLY VALID JSON, NO MARKDOWN, NO EXPLANATION:`
-
-            // Make extraction call (use same model as chat)
-            const extractionResult = await generateText({
-              model: aiModel,
-              prompt: extractionPrompt,
-              temperature: 0.1, // Low temperature for consistent, accurate extraction
-            })
-
-            console.log('🔍 Raw extraction result:', extractionResult.text)
-
-            // Parse extraction result
-            let extractedMemories: Array<{ category: string; key: string; value: string }> = []
-            try {
-              // Clean up response (remove markdown code blocks if present)
-              let cleanedText = extractionResult.text.trim()
-              cleanedText = cleanedText.replace(/```json\n?/g, '')
-              cleanedText = cleanedText.replace(/```\n?/g, '')
-              cleanedText = cleanedText.trim()
-
-              const parsed = JSON.parse(cleanedText)
-              extractedMemories = parsed.memories || []
-            } catch (parseError) {
-              console.error('❌ Failed to parse extraction result:', parseError)
-              console.error('Raw text was:', extractionResult.text)
-            }
-
-            if (extractedMemories.length > 0) {
-              console.log(`✨ Extracted ${extractedMemories.length} potential memories`)
-
-              // 3. CHECK FOR DUPLICATES & SAVE
-              for (const memory of extractedMemories) {
-                // Validate category
-                const validCategories = [
-                  'business_info',
-                  'target_audience',
-                  'offers',
-                  'current_projects',
-                  'challenges',
-                  'goals',
-                  'personal_info'
-                ]
-
-                if (!validCategories.includes(memory.category)) {
-                  console.warn(`⚠️  Skipping invalid category: ${memory.category}`)
-                  continue
-                }
-
-                // Check if similar memory already exists (same user, org, category, key)
-                const [existing] = await db
-                  .select()
-                  .from(memories)
-                  .where(
-                    and(
-                      eq(memories.userId, user.id),
-                      eq(memories.organizationId, organizationId),
-                      eq(memories.category, memory.category),
-                      eq(memories.key, memory.key)
-                    )
-                  )
-                  .limit(1)
-
-                if (existing) {
-                  // Update if value changed
-                  if (existing.value !== memory.value) {
-                    await db
-                      .update(memories)
-                      .set({
-                        value: memory.value,
-                        source: 'auto',
-                        updatedAt: new Date(),
-                      })
-                      .where(eq(memories.id, existing.id))
-
-                    console.log(`🔄 Updated memory: [${memory.category}] ${memory.key} = ${memory.value}`)
-                  } else {
-                    console.log(`⏭️  Memory unchanged: [${memory.category}] ${memory.key}`)
-                  }
-                } else {
-                  // Insert new memory
-                  await db.insert(memories).values({
-                    id: nanoid(),
-                    userId: user.id,
-                    organizationId: organizationId,
-                    key: memory.key,
-                    value: memory.value,
-                    category: memory.category,
-                    source: 'auto', // Mark as auto-extracted
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                  })
-
-                  console.log(`💾 Saved new memory: [${memory.category}] ${memory.key} = ${memory.value}`)
-                }
-              }
-            } else {
-              console.log('⏭️  No new business facts to extract from this conversation')
-            }
-          } else {
-            console.log(`⏭️  Skipping extraction (only ${messageCount} messages, need 3+)`)
-          }
-
-        } catch (error) {
-          console.error('❌ Error in onFinish:', error)
-        }
-      },
-        })
-
-        console.log('📡 Stream created, merging into writer')
-
-        // Merge AI stream into writer (includes custom artifact data)
-        writer.merge(result.toUIMessageStream())
-      },
-    })
-
-    // Create response from stream
-    const response = createUIMessageStreamResponse({ stream })
-
-    // Add conversationId to response headers for frontend to track
-    response.headers.set('X-Conversation-Id', currentConversationId!)
-    // Expose custom header for CORS
-    response.headers.set('Access-Control-Expose-Headers', 'X-Conversation-Id')
-
-    return response
-
-  } catch (error) {
-    console.error('❌ Chat API error:', error)
-
-    // Handle specific API errors
-    if (error instanceof Error) {
-      if (error.message.includes('API key')) {
-        return c.json({ error: 'AI provider API key not configured' }, 500)
-      }
-      return c.json({ error: error.message }, 500)
-    }
-
-    return c.json({ error: 'Failed to process chat request' }, 500)
-  }
-})
-
-// /artifact endpoint removed - now using createDocument tool in regular chat
+/*
+// DEPRECATED: Old streaming endpoint removed - Use Agents SDK /api/agents/chat/* instead
+*/
 
 /**
  * PATCH /api/v1/chat/artifact - Update artifact content
@@ -1053,19 +213,37 @@ chatApp.get('/:conversationId', zValidator('param', getConversationSchema), asyn
     console.log('📖 Get conversation:', { conversationId, userId: user.id, organizationId })
 
     const sqlClient = neon(c.env.DATABASE_URL)
-    const db = drizzle(sqlClient, { schema: authSchema })
+    const db = drizzle(sqlClient, { schema: { ...authSchema, agents } })
 
-    // Get conversation with tenant isolation
+    // Get conversation with tenant isolation and agent info
     const conversation = await db.query.conversation.findFirst({
       where: and(
         eq(authSchema.conversation.id, conversationId),
         eq(authSchema.conversation.organizationId, organizationId),
         eq(authSchema.conversation.userId, user.id)
       ),
+      // Include agent relation for UI display
+      with: {
+        agent: true,
+      },
     })
 
+    // Handle case where conversation doesn't exist yet (new chat before first message)
+    // Return empty conversation structure instead of 404 to prevent UI errors
     if (!conversation) {
-      return c.json({ error: 'Conversation not found' }, 404)
+      console.log('⚠️ Conversation not found (new chat?), returning empty state')
+      return c.json({
+        conversation: {
+          id: conversationId,
+          title: null,
+          model: 'gpt-4o',
+          toolId: null,
+          agent: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        messages: [],
+      })
     }
 
     // Get messages in chronological order
@@ -1085,7 +263,15 @@ chatApp.get('/:conversationId', zValidator('param', getConversationSchema), asyn
         id: conversation.id,
         title: conversation.title,
         model: conversation.model,
-        toolId: conversation.toolId,
+        toolId: conversation.toolId, // Keep for backward compatibility
+        // Include agent info if available
+        agent: conversation.agent ? {
+          id: conversation.agent.id,
+          name: conversation.agent.name,
+          description: conversation.agent.description,
+          icon: conversation.agent.icon,
+          avatar: conversation.agent.avatar,
+        } : null,
         createdAt: conversation.createdAt,
         updatedAt: conversation.updatedAt,
       },
@@ -1372,7 +558,6 @@ chatApp.post(
       const { text: generatedTitle } = await generateText({
         model: aiModel,
         prompt: `Generate a concise, descriptive 3-5 word title for a conversation that starts with this user message. Return ONLY the title, no quotes or extra text:\n\n${firstMessage}`,
-        maxTokens: 20,
         temperature: 0.7,
       })
 

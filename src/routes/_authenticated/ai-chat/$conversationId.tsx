@@ -98,8 +98,11 @@ function ConversationPage() {
     retry: 1,
   })
 
-  // Fetch agent details if conversation has a toolId
-  const { data: agentData } = useQuery({
+  // Use agent data from conversation if available, otherwise fetch separately
+  const agentData = data?.conversation.agent || null
+
+  // Fallback: Fetch agent details if conversation has a toolId but no agent data
+  const { data: fetchedAgentData } = useQuery({
     queryKey: ['agent', data?.conversation.toolId],
     queryFn: async () => {
       if (!data?.conversation.toolId) return null
@@ -108,8 +111,11 @@ function ConversationPage() {
       const agentResponse = await response.json()
       return agentResponse.agent
     },
-    enabled: !!data?.conversation.toolId,
+    enabled: !!data?.conversation.toolId && !agentData,
   })
+
+  // Use embedded agent data or fallback to fetched data
+  const effectiveAgentData = agentData || fetchedAgentData
 
   // Get model from conversation data, with fallback
   const [selectedModel, setSelectedModel] = useState(data?.conversation.model || 'gpt-4o')
@@ -156,7 +162,7 @@ function ConversationPage() {
   return <ConversationChat
     conversationId={conversationId}
     data={data}
-    agentData={agentData}
+    agentData={effectiveAgentData}
     selectedModel={selectedModel}
     setSelectedModel={setSelectedModel}
     invalidateConversations={invalidateConversations}
