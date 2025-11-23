@@ -63,6 +63,7 @@ export interface Env {
   AI_CHAT_WEBSOCKET: DurableObjectNamespace;
   VOICE_AI_WEBSOCKET: DurableObjectNamespace;
   USER_SYS_DO: DurableObjectNamespace;
+  CHAT_AGENT: DurableObjectNamespace;
   R2_ASSETS?: R2Bucket;
   R2_PUBLIC_URL?: string;
   BETTER_AUTH_SECRET?: string;
@@ -1689,6 +1690,49 @@ app.get('/ws/user-sys/:userId', async (c) => {
   }
 })
 
+// WebSocket endpoint for Chat Agent (Cloudflare Agents SDK)
+app.get('/api/agents/chat/websocket', async (c) => {
+  console.log('🔌 Chat Agent WebSocket endpoint hit:', c.req.path)
+
+  // Check for WebSocket upgrade header
+  const upgradeHeader = c.req.header('upgrade')
+
+  if (upgradeHeader !== 'websocket') {
+    console.log('❌ Missing websocket upgrade header')
+    return c.text('Expected Upgrade: websocket', 426)
+  }
+
+  if (!c.env.CHAT_AGENT) {
+    console.error('❌ CHAT_AGENT binding not available - check wrangler.toml configuration')
+    return c.text('Chat Agent service unavailable', 503)
+  }
+
+  try {
+    // Extract context from query params (set by frontend)
+    const url = new URL(c.req.url)
+    const conversationId = url.searchParams.get('conversationId')
+    const agentId = url.searchParams.get('agentId')
+
+    console.log('🎯 Chat Agent context:', { conversationId, agentId })
+
+    // Use conversationId as the Durable Object ID, or generate a new one
+    const doId = conversationId
+      ? c.env.CHAT_AGENT.idFromString(conversationId)
+      : c.env.CHAT_AGENT.newUniqueId()
+
+    const stub = c.env.CHAT_AGENT.get(doId)
+
+    console.log('✅ Forwarding to Chat Agent Durable Object...')
+
+    // Forward the request to the Chat Agent Durable Object
+    // The Chat Agent's fetch method will handle WebSocket upgrade
+    return stub.fetch(c.req.raw)
+  } catch (error) {
+    console.error('❌ Chat Agent WebSocket error:', error)
+    return c.text('Chat Agent connection failed', 500)
+  }
+})
+
 // Handle static assets and SPA routing
 app.get('*', async (c) => {
   // Skip API routes - they should be handled above
@@ -1739,6 +1783,9 @@ app.get('*', async (c) => {
   }
 })
 
+
+// Export Chat Agent from Cloudflare Agents SDK
+export { Chat } from './agents/chat-agent'
 
 export default app
 export { AIChatWebSocket, VoiceAIWebSocket, UserSysDO }

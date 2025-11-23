@@ -105,6 +105,10 @@ class_name = "VoiceAIWebSocket"
 name = "USER_SYS_DO"
 class_name = "UserSysDO"
 
+[[env.development.durable_objects.bindings]]
+name = "CHAT_AGENT"
+class_name = "Chat"
+
 [env.development.vars]
 NODE_ENV = "development"
 DATABASE_URL = "postgresql://neondb_owner:npg_YBZ6UpWyojN4@ep-holy-dawn-afutxqyk.c-2.us-west-2.aws.neon.tech/neondb?sslmode=require"
@@ -140,6 +144,10 @@ class_name = "VoiceAIWebSocket"
 name = "USER_SYS_DO"
 class_name = "UserSysDO"
 
+[[durable_objects.bindings]]
+name = "CHAT_AGENT"
+class_name = "Chat"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["AIChatWebSocket"]
@@ -151,6 +159,10 @@ new_sqlite_classes = ["VoiceAIWebSocket"]
 [[migrations]]
 tag = "v3"
 new_sqlite_classes = ["UserSysDO"]
+
+[[migrations]]
+tag = "v4"
+new_sqlite_classes = ["Chat"]
 
 # Secrets (set via: wrangler secret put <NAME>):
 # - DATABASE_URL: Neon Postgres connection string
