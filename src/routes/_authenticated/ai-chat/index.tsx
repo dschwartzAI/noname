@@ -1,10 +1,12 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Bot, Loader2 } from 'lucide-react'
 import { nanoid } from 'nanoid'
+import { toast } from 'sonner'
 import { useInvalidateConversations } from '@/hooks/use-conversations'
-import { useAgentChatSession } from '@/hooks/use-agent-chat'
+// Custom hook that combines useChat with WebSocket connection management
+import { useWebSocketChat } from '@/hooks/use-websocket-chat'
 import { useAuth } from '@/stores/auth-simple'
 import { getAgentIconSrc, getAgentEmoji } from '@/features/ai-chat/utils/get-agent-icon'
 import { ArtifactSidePanel } from '@/components/artifacts/artifact-side-panel'
@@ -72,9 +74,10 @@ function ChatPage() {
   const navigate = useNavigate()
   const [selectedModel, setSelectedModel] = useState('gpt-4o')
   const invalidateConversations = useInvalidateConversations()
+  const queryClient = useQueryClient()
 
   // Get auth context for WebSocket
-  const { user } = useAuth()
+  const { user, isLoading: isAuthLoading } = useAuth()
   // TODO: Get organization from user membership - for now hardcode
   const organizationId = 'soloos-org-id-2025'
 
@@ -128,7 +131,7 @@ function ChatPage() {
       setCurrentChatKey(newChatKey)
       // Clear artifacts and messages for new chat
       setArtifacts([])
-      setMessages([])
+      clearHistory() // SDK method to clear message history
       setIsPanelOpen(false)
 
       // Update URL immediately with new conversationId (preserve agentId from URL)
@@ -196,113 +199,168 @@ function ChatPage() {
   // Track approved tool call IDs to hide confirmation cards immediately
   const [approvedToolIds, setApprovedToolIds] = useState<Set<string>>(new Set())
 
-  // Agents SDK chat integration
-  const agentSession = useAgentChatSession({
-    model: selectedModel,
-    conversationId: effectiveConversationId,
-    userId: user?.id,
-    organizationId,
-    agentId,
+  // Artifact event handlers (custom - SDK doesn't manage artifacts)
+  const onArtifactMetadata = useCallback(({ artifactId, metadata }: any) => {
+    console.log('🎨 onArtifactMetadata called:', { artifactId, metadata });
+    // Track this artifact ID for later messageId update
+    pendingArtifactIdsRef.current.add(artifactId)
 
-    // Artifact event handlers (kept for backward compatibility)
-    onArtifactMetadata: useCallback(({ artifactId, metadata }) => {
-      // Track this artifact ID for later messageId update
-      pendingArtifactIdsRef.current.add(artifactId)
+    setArtifacts((prev) => {
+      const now = Date.now()
 
-      setArtifacts((prev) => {
-        const now = Date.now()
+      // Map backend 'kind' to frontend 'type'
+      let artifactType = metadata.kind || 'document'
+      if (artifactType === 'text') {
+        artifactType = 'markdown'  // Convert 'text' to 'markdown' for proper rendering
+      }
 
-        // Map backend 'kind' to frontend 'type'
-        let artifactType = metadata.kind || 'document'
-        if (artifactType === 'text') {
-          artifactType = 'markdown'  // Convert 'text' to 'markdown' for proper rendering
-        }
+      const newArtifact: Artifact = {
+        id: artifactId,
+        title: metadata.title || 'Untitled',
+        type: artifactType,
+        content: '',
+        language: metadata.language,
+        createdAt: now,
+        updatedAt: now,
+        metadata: {}, // messageId will be added later
+      }
+      const newIndex = prev.length
 
-        const newArtifact: Artifact = {
-          id: artifactId,
-          title: metadata.title || 'Untitled',
-          type: artifactType,
-          content: '',
-          language: metadata.language,
-          createdAt: now,
-          updatedAt: now,
-          metadata: {}, // messageId will be added later
-        }
-        const newIndex = prev.length
+      // Auto-open panel when artifact is created
+      setIsPanelOpen(true)
+      setCurrentArtifactIndex(newIndex)
 
-        // Auto-open panel when artifact is created
-        setIsPanelOpen(true)
-        setCurrentArtifactIndex(newIndex)
+      return [...prev, newArtifact]
+    })
+  }, [])
 
-        return [...prev, newArtifact]
-      })
-    }, []),
-
-    onArtifactDelta: useCallback(({ artifactId, delta }) => {
-      // Update artifact content (full content sent each time)
-      setArtifacts((prev) =>
-        prev.map((artifact) =>
-          artifact.id === artifactId
-            ? { ...artifact, content: delta.content || delta, updatedAt: Date.now() }
-            : artifact
-        )
+  const onArtifactDelta = useCallback(({ artifactId, delta }: { artifactId: string; delta: string }) => {
+    console.log('📝 onArtifactDelta called:', { artifactId, deltaLength: delta?.length });
+    // Accumulate artifact content (delta is a string to append)
+    setArtifacts((prev) =>
+      prev.map((artifact) =>
+        artifact.id === artifactId
+          ? { ...artifact, content: (artifact.content || '') + delta, updatedAt: Date.now() }
+          : artifact
       )
-    }, []),
+    )
+  }, [])
 
-    onArtifactComplete: useCallback(({ artifactId, messageId, artifact: finalData }) => {
-      // Finalize artifact with complete data
-      setArtifacts((prev) =>
-        prev.map((artifact) => {
-          if (artifact.id === artifactId) {
-            // Map backend 'kind' to frontend 'type'
-            let finalType = finalData.kind || artifact.type
-            if (finalType === 'text') {
-              finalType = 'markdown'
-            }
-
-            return {
-              ...artifact,
-              title: finalData.title || artifact.title,
-              content: finalData.content || artifact.content,
-              type: finalType,
-              language: finalData.language || artifact.language,
-              updatedAt: Date.now(),
-              metadata: { messageId }, // Store messageId for saving later
-            }
+  const onArtifactComplete = useCallback(({ artifactId, messageId, artifact: finalData }: any) => {
+    console.log('✅ onArtifactComplete called:', { artifactId, messageId, title: finalData?.title });
+    // Finalize artifact with complete data
+    setArtifacts((prev) =>
+      prev.map((artifact) => {
+        if (artifact.id === artifactId) {
+          // Map backend 'kind' to frontend 'type'
+          let finalType = finalData.kind || artifact.type
+          if (finalType === 'text') {
+            finalType = 'markdown'
           }
-          return artifact
-        })
-      )
 
-      // Invalidate conversations list when artifact is complete
+          return {
+            ...artifact,
+            title: finalData.title || artifact.title,
+            content: finalData.content || artifact.content,
+            type: finalType,
+            language: finalData.language || artifact.language,
+            updatedAt: Date.now(),
+            metadata: { messageId }, // Store messageId for saving later
+          }
+        }
+        return artifact
+      })
+    )
+
+    // Invalidate conversations list when artifact is complete
+    invalidateConversations()
+  }, [invalidateConversations])
+
+  // Custom hook that manages WebSocket connection + useChat together
+  // This properly handles connection state separate from chat streaming state
+  // IMPORTANT: Hooks must be called unconditionally before any returns
+  const {
+    messages,
+    status,
+    error,
+    sendMessage,
+    addToolOutput,
+    setMessages,
+    isConnected,
+    connectionState,
+    clearHistory
+  } = useWebSocketChat({
+    chatId: effectiveConversationId,
+    agentId: agentId || '', // Provide fallback to satisfy hook rules
+    userId: user?.id || '', // Provide fallback to satisfy hook rules  
+    organizationId,
+    model: selectedModel,
+    toolsRequiringConfirmation: ['searchUsers', 'createDocument'],
+    onFinish: () => {
+      // Refresh conversations list when response completes
       invalidateConversations()
-    }, [invalidateConversations]),
+    },
+    onError: (err) => {
+      console.error('Chat error:', err)
+      toast.error('Chat error', { description: err.message })
+    },
+    // Artifact streaming callbacks
+    onArtifactStart: ({ artifactId, title, kind }) => {
+      console.log('🎨 [Chat Page] Artifact start:', { artifactId, title, kind })
+      onArtifactMetadata({ 
+        artifactId, 
+        metadata: { title, kind } 
+      })
+    },
+    onArtifactDelta: ({ artifactId, delta }) => {
+      onArtifactDelta({ artifactId, delta })
+    },
+    onArtifactComplete: ({ artifactId, title, kind, content }) => {
+      console.log('✅ [Chat Page] Artifact complete:', { artifactId, title })
+      onArtifactComplete({ 
+        artifactId, 
+        messageId: messages[messages.length - 1]?.id,
+        artifact: { title, kind, content } 
+      })
+    }
   })
 
-  // Use Agents SDK messages state
-  const [messages, setMessages] = useState(agentSession.messages)
-  const isLoading = agentSession.isLoading || agentSession.isStreaming
-  const error = agentSession.error ? { message: agentSession.error.message } : null
-  const isConnected = agentSession.isConnected
+  // Derive loading state from status
+  const isLoading = status === 'streaming' || status === 'submitted'
+  
+  // Alias addToolOutput to addToolResult for compatibility
+  const addToolResult = addToolOutput
 
-  // Map Agents SDK state to useChat-compatible status for UI components
-  const status = agentSession.isStreaming
+  // Track send state for typing indicator
+  const [isSending, setIsSending] = useState(false)
+
+  // Map status to legacy format for UI components
+  // Note: 'ready' means we can accept input (connected or will connect on send)
+  const chatStatus = status === 'streaming'
     ? 'streaming'
-    : agentSession.isLoading
+    : isLoading
       ? 'submitted'  // Show thinking indicator when loading
-      : agentSession.isConnected
-        ? 'awaiting_message'
-        : 'idle'
+      : 'ready' // Always ready - transport handles connection on send
+
+  // Clear sending state when assistant response starts streaming
+  // The status changes from 'submitted' to 'streaming' when the first chunk arrives
+  // We want to show the "thinking" indicator ONLY during the 'submitted' phase
+  useEffect(() => {
+    // When streaming starts, clear the sending indicator
+    if (status === 'streaming') {
+      setIsSending(false)
+    }
+  }, [status])
 
   // Refresh the sidebar once a message finishes streaming/saving
   const wasInFlightRef = useRef(false)
   useEffect(() => {
-    const inFlight = agentSession.isLoading || agentSession.isStreaming
+    const inFlight = isLoading || status === 'streaming'
     if (wasInFlightRef.current && !inFlight && messages.length > 0) {
       invalidateConversations()
     }
     wasInFlightRef.current = inFlight
-  }, [agentSession.isLoading, agentSession.isStreaming, messages.length, invalidateConversations])
+  }, [isLoading, status, messages.length, invalidateConversations])
 
   // Clear agent history when conversation changes (prevent message merging)
   // Use ref to track previous conversationId to avoid infinite loops
@@ -311,8 +369,8 @@ function ChatPage() {
     if (prevConversationIdRef.current && prevConversationIdRef.current !== effectiveConversationId) {
       console.log('🔄 Conversation changed, clearing agent history from', prevConversationIdRef.current, 'to', effectiveConversationId)
       // Clear Agents SDK history to prevent messages from different conversations merging
-      if (agentSession.clearHistory) {
-        agentSession.clearHistory()
+      if (clearHistory) {
+        clearHistory()
       }
       // Clear approved tool IDs for new conversation
       setApprovedToolIds(new Set())
@@ -321,60 +379,8 @@ function ChatPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveConversationId]) // Only depend on conversationId, not clearHistory function
 
-  // Sync Agents SDK messages to local state
-  useEffect(() => {
-    setMessages(agentSession.messages)
-  }, [agentSession.messages])
-
-  // Load messages from backend when conversation data is fetched
-  useEffect(() => {
-    if (conversationData && typeof conversationData === 'object' && 'messages' in conversationData && Array.isArray(conversationData.messages)) {
-      setMessages(conversationData.messages.map((msg: any) => {
-        const content = extractMessageContent(msg)
-        
-        // Reconstruct parts if possible for rich history rendering
-        // This allows displaying tool calls from history
-        let parts: any[] = []
-        
-        // 1. Add text content part
-        if (content) {
-          parts.push({ type: 'text', text: content })
-        } else if (!content && (!msg.toolCalls || msg.toolCalls.length === 0)) {
-          // Empty message fallback
-          parts.push({ type: 'text', text: '' })
-        }
-        
-        // 2. Add tool call parts
-        if (msg.toolCalls) {
-          try {
-            const toolCalls = typeof msg.toolCalls === 'string' 
-              ? JSON.parse(msg.toolCalls) 
-              : msg.toolCalls
-              
-            toolCalls.forEach((tc: any) => {
-              parts.push({
-                type: 'tool-invocation',
-                toolCallId: tc.toolCallId,
-                toolName: tc.toolName,
-                args: tc.input,
-                state: tc.output ? 'result' : 'call',
-                result: tc.output
-              })
-            })
-          } catch (e) {
-            console.error('Failed to parse tool calls from history:', e)
-          }
-        }
-
-        return {
-          id: msg.id,
-          role: msg.role,
-          content: content,
-          parts: parts.length > 0 ? parts : [{ type: 'text', text: content || '' }],
-        }
-      }))
-    }
-  }, [conversationData, setMessages])
+  // NOTE: Conversation history is now loaded server-side in chat-agent.ts fetch()
+  // The SDK manages message state internally, no need for client-side history loading
 
   // Load and persist artifacts - COMBINED into single effect to prevent cascading updates
   useEffect(() => {
@@ -420,17 +426,64 @@ function ChatPage() {
         return;
       }
 
-      if (!isConnected) {
-        console.error('❌ [Chat Page] Agents SDK not connected');
+      // Guard: Prevent double-sends
+      if (isSending) {
+        console.warn('⚠️ Already sending message, ignoring duplicate');
         return;
       }
 
-      try {
-        console.log('➡️ [Chat Page] Calling agentSession.sendMessage...');
-        // Send via Agents SDK (context already passed in hook initialization)
-        await agentSession.sendMessage(text);
+      // Connection is handled by the hook - it will connect on first send if needed
+      if (connectionState !== 'connected') {
+        console.log('🔌 [Chat Page] Will connect on send, current state:', connectionState);
+      }
 
-        console.log('✅ [Chat Page] agentSession.sendMessage completed');
+      // Set sending state immediately for typing indicator
+      setIsSending(true);
+
+      // Optimistic sidebar update - add conversation immediately
+      const existingConversations = queryClient.getQueryData(['conversations']) as any[] | undefined;
+      const isNewConversation = !existingConversations?.find(c => c.id === effectiveConversationId);
+
+      if (isNewConversation && agentData) {
+        console.log('📋 Optimistic sidebar update:', effectiveConversationId);
+        queryClient.setQueryData(['conversations'], (old: any[] | undefined) => {
+          if (!old) return old;
+
+          // Build conversation matching exact useConversations shape
+          const optimisticConvo = {
+            id: effectiveConversationId,
+            title: text.slice(0, 50) + (text.length > 50 ? '...' : ''),
+            agent: {
+              id: agentData.id,
+              name: agentData.name,
+              avatar: agentData.avatar,
+              icon: agentData.icon,
+              greeting: '',
+              model: agentData.model || selectedModel,
+            },
+            createdAt: new Date(), // Must be Date object
+            updatedAt: new Date(), // Must be Date object
+            lastMessage: undefined,
+            messages: undefined,
+          };
+
+          return [optimisticConvo, ...old];
+        });
+      }
+
+      // Performance logging - track first token latency
+      const sendTime = performance.now();
+      console.time('⏱️ first-token-latency');
+
+      try {
+        console.log('➡️ [Chat Page] Calling SDK sendMessage...');
+        // Send via Agents SDK sendMessage (expects object payload)
+        await sendMessage({ text });
+
+        console.log('✅ [Chat Page] SDK sendMessage completed');
+
+        // Clear draft on success
+        localStorage.removeItem(`draft-${effectiveConversationId}`);
 
         // Invalidate conversations list on first message
         if (messages.length === 0) {
@@ -440,10 +493,101 @@ function ChatPage() {
         // No need to navigate - conversationId is already in search params from New Chat logic
         // This prevents switching from WebSocket route to old HTTP route
       } catch (err) {
+        // Clear sending state on error
+        setIsSending(false);
+
+        // Save draft for retry
+        localStorage.setItem(`draft-${effectiveConversationId}`, text);
+
         console.error('❌ [Chat Page] Send failed:', err);
+
+        // Show error toast with retry option
+        toast.error('Failed to send message', {
+          description: err instanceof Error ? err.message : 'Please try again',
+          action: {
+            label: 'Retry',
+            onClick: () => handleSendMessage(text),
+          },
+        });
       }
     },
-    [agentSession.sendMessage, isConnected, messages.length, invalidateConversations]
+    [sendMessage, isConnected, isSending, messages.length, invalidateConversations, effectiveConversationId, queryClient, agentData, selectedModel]
+  )
+
+  // ============================================================
+  // ALL HOOKS MUST BE ABOVE THIS LINE
+  // Early returns below are safe because all hooks have been called
+  // ============================================================
+  
+  // Handle loading states - AFTER all hooks have been called
+  if (isAuthLoading || !user?.id || !agentId) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <div className="text-muted-foreground">
+          {isAuthLoading ? 'Loading session...' : 'Loading user context...'}
+        </div>
+      </div>
+    )
+  }
+
+  // Memoized message component to reduce re-renders during streaming
+  const MemoizedMessage = React.memo(
+    ({ message }: { message: any }) => {
+      return (
+        <Message from={message.role}>
+          <MessageContent>
+            {message.parts ? (
+              // Render parts if available (rich content with tools)
+              message.parts.map((part: any, idx: number) => {
+                if (part.type === 'text') {
+                  return (
+                    <MessageResponse key={idx}>
+                      {part.text}
+                    </MessageResponse>
+                  )
+                }
+
+                if (part.type === 'tool-invocation') {
+                  const toolName = part.toolName || (part as any).name
+                  return (
+                    <div key={idx} className="my-2">
+                      <ToolInvocation
+                        toolName={toolName}
+                        toolCallId={part.toolCallId}
+                        state={part.state}
+                        args={part.args}
+                        result={part.result}
+                      />
+                    </div>
+                  )
+                }
+
+                return null
+              })
+            ) : (
+              // Fallback to content string
+              <MessageResponse>
+                {message.content || ''}
+              </MessageResponse>
+            )}
+          </MessageContent>
+        </Message>
+      )
+    },
+    (prev, next) => {
+      // Only re-render if message content actually changed
+      const prevContent = prev.message.parts?.map((p: any) =>
+        p.type === 'text' ? p.text : p.type
+      ).join('|') || prev.message.content;
+      const nextContent = next.message.parts?.map((p: any) =>
+        p.type === 'text' ? p.text : p.type
+      ).join('|') || next.message.content;
+
+      return (
+        prev.message.id === next.message.id &&
+        prevContent === nextContent
+      );
+    }
   )
 
   return (
@@ -476,6 +620,19 @@ function ChatPage() {
         </div>
       </div>
 
+      {/* Connection status indicator */}
+      {connectionState === 'connecting' && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 border-b border-blue-200 text-sm text-blue-800">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span>Connecting to chat...</span>
+        </div>
+      )}
+      {connectionState === 'error' && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border-b border-red-200 text-sm text-red-800">
+          <span>Connection error. Will retry on next message.</span>
+        </div>
+      )}
+
       {/* Conversation Area with Auto-scroll */}
       <Conversation className="flex-1 min-h-0 overflow-y-auto pb-4">
         <ConversationContent>
@@ -503,114 +660,109 @@ function ChatPage() {
             </ConversationEmptyState>
           ) : (
             <>
-              {messages.map((message) => (
-                <Message key={message.id} from={message.role}>
-                  <MessageContent>
-                    {message.parts ? (
-                      // Render parts if available (rich content with tools)
-                      message.parts.map((part: any, idx: number) => {
-                        if (part.type === 'text') {
-                          return (
-                            <MessageResponse key={idx}>
-                              {part.text}
-                            </MessageResponse>
-                          )
-                        }
-                        
-                        if (part.type === 'tool-invocation') {
-                          const toolName = part.toolName || (part as any).name
-                          // Skip showing tool invocations that are just "thinking" or internal if desired
-                          // But generally we want to show all tool calls
-                          return (
-                            <div key={idx} className="my-2">
-                              <ToolInvocation
-                                toolName={toolName}
-                                toolCallId={part.toolCallId}
-                                state={part.state}
-                                args={part.args}
-                                result={part.result}
-                              />
-                            </div>
-                          )
-                        }
-                        
-                        return null
-                      })
-                    ) : (
-                      // Fallback to content string
-                      <MessageResponse>
-                        {message.content || ''}
-                      </MessageResponse>
-                    )}
-                  </MessageContent>
-                </Message>
-              ))}
-
-              {/* Thinking indicator - show when AI is processing */}
-              {(status === 'submitted' || status === 'streaming') && (
-                <Message from="assistant">
-                  <MessageContent>
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span className="text-sm text-muted-foreground">
-                        {status === 'submitted' ? 'Thinking...' : 'Streaming...'}
-                      </span>
-                    </div>
-                  </MessageContent>
-                </Message>
-              )}
-
-              {/* Tool Confirmation Cards (requires human approval) */}
-              {agentSession.rawMessages.map((msg) =>
-                msg.parts?.map((part: any, partIndex: number) => {
-                  // Check if this is a tool part that needs confirmation
-                  // AND hasn't already been approved (to prevent loop)
-                  if (
-                    isToolUIPart(part) &&
-                    part.state === 'input-available' &&
-                    !part.output &&
-                    !approvedToolIds.has(part.toolCallId)
-                  ) {
-                    return (
-                      <div key={`${msg.id}-tool-${part.toolCallId}-${partIndex}`} className="px-4 mb-4">
+              {messages.map((message, messageIndex) => {
+                // Find artifacts associated with this message
+                const messageArtifacts = artifacts.filter(
+                  (a) => a.metadata?.messageId === message.id
+                );
+                
+                // Check for tool confirmation parts in this message
+                const toolConfirmationParts = message.parts?.filter((part: any) => 
+                  isToolUIPart(part) &&
+                  part.state === 'input-available' &&
+                  !part.output &&
+                  !approvedToolIds.has(part.toolCallId)
+                ) || [];
+                
+                return (
+                  <React.Fragment key={message.id}>
+                    {/* Render the message */}
+                    <MemoizedMessage message={message} />
+                    
+                    {/* Render tool confirmation cards for this message */}
+                    {toolConfirmationParts.map((part: any, partIndex: number) => (
+                      <div key={`${message.id}-tool-${part.toolCallId}-${partIndex}`} className="px-4 mb-4">
                         <ToolConfirmationCard
                           toolName={part.type.replace('tool-', '')}
                           toolCallId={part.toolCallId}
                           input={part.input}
                           onConfirm={(toolCallId, result) => {
-                            // Mark as approved immediately to hide the card
+                            console.log('✅ Tool approved:', toolCallId);
                             setApprovedToolIds(prev => new Set(prev).add(toolCallId));
-                            // Call the actual confirm function
-                            agentSession.confirmTool(toolCallId, result);
+                            const toolName = part.type.replace('tool-', '');
+                            addToolResult({ 
+                              tool: toolName,
+                              toolCallId, 
+                              output: result 
+                            });
                           }}
                         />
                       </div>
+                    ))}
+                    
+                    {/* Render artifact cards associated with this message (inline) */}
+                    {messageArtifacts.length > 0 && (
+                      <div className="space-y-2 px-4 my-2">
+                        {messageArtifacts.map((artifact) => {
+                          const artifactIndex = artifacts.findIndex(a => a.id === artifact.id);
+                          return (
+                            <ArtifactPreviewCard
+                              key={artifact.id}
+                              artifact={artifact}
+                              onClick={() => {
+                                if (isPanelOpen && currentArtifactIndex === artifactIndex) {
+                                  setIsPanelOpen(false)
+                                } else {
+                                  setCurrentArtifactIndex(artifactIndex)
+                                  setIsPanelOpen(true)
+                                }
+                              }}
+                              isSelected={isPanelOpen && currentArtifactIndex === artifactIndex}
+                            />
+                          );
+                        })}
+                      </div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+              
+              {/* Artifacts without a messageId (orphaned or in-progress) - show at end */}
+              {artifacts.filter(a => !a.metadata?.messageId).length > 0 && (
+                <div className="space-y-2 px-4 my-2">
+                  {artifacts.filter(a => !a.metadata?.messageId).map((artifact) => {
+                    const artifactIndex = artifacts.findIndex(a => a.id === artifact.id);
+                    return (
+                      <ArtifactPreviewCard
+                        key={artifact.id}
+                        artifact={artifact}
+                        onClick={() => {
+                          if (isPanelOpen && currentArtifactIndex === artifactIndex) {
+                            setIsPanelOpen(false)
+                          } else {
+                            setCurrentArtifactIndex(artifactIndex)
+                            setIsPanelOpen(true)
+                          }
+                        }}
+                        isSelected={isPanelOpen && currentArtifactIndex === artifactIndex}
+                      />
                     );
-                  }
-                  return null;
-                })
+                  })}
+                </div>
               )}
 
-              {/* Artifact cards (clickable to toggle panel) */}
-              {artifacts.length > 0 && (
-                <div className="space-y-2 px-4">
-                  {artifacts.map((artifact, index) => (
-                    <ArtifactPreviewCard
-                      key={artifact.id}
-                      artifact={artifact}
-                      onClick={() => {
-                        // Toggle panel: if clicking same card, close panel; otherwise open/switch
-                        if (isPanelOpen && currentArtifactIndex === index) {
-                          setIsPanelOpen(false)
-                        } else {
-                          setCurrentArtifactIndex(index)
-                          setIsPanelOpen(true)
-                        }
-                      }}
-                      isSelected={isPanelOpen && currentArtifactIndex === index}
-                    />
-                  ))}
-                </div>
+              {/* Typing indicator - show when waiting for response */}
+              {(isSending || status === 'submitted') && (
+                <Message from="assistant">
+                  <MessageContent>
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-sm text-muted-foreground">
+                        Assistant is thinking...
+                      </span>
+                    </div>
+                  </MessageContent>
+                </Message>
               )}
 
               {error && (
@@ -641,8 +793,8 @@ function ChatPage() {
           >
             <PromptInputBody>
               <PromptInputTextarea
-                placeholder={!isConnected ? "Connecting..." : "Send a message..."}
-                disabled={!isConnected || status === 'submitted' || status === 'streaming'}
+                placeholder={connectionState === 'connecting' ? "Connecting..." : "Send a message..."}
+                disabled={chatStatus === 'submitted' || chatStatus === 'streaming'}
               />
             </PromptInputBody>
 
@@ -672,7 +824,7 @@ function ChatPage() {
                 </PromptInputSelect> */}
               </PromptInputTools>
 
-              <PromptInputSubmit status={status} />
+              <PromptInputSubmit status={chatStatus} />
             </PromptInputFooter>
           </PromptInput>
         </div>

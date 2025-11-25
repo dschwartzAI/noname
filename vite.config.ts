@@ -33,6 +33,12 @@ export default defineConfig(({ mode }) => ({
       '/api': {
         target: 'http://localhost:8788',
         changeOrigin: true,
+        ws: true, // Enable WebSocket proxying
+      },
+      '/agents': {
+        target: 'http://localhost:8788',
+        changeOrigin: true,
+        ws: true, // Enable WebSocket proxying for Agents SDK
       },
     },
     watch: {

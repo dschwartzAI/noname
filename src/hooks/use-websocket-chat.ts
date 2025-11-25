@@ -1,292 +1,271 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+/**
+ * Custom hook for WebSocket-based AI chat
+ * 
+ * Combines useChat from @ai-sdk/react with WebSocket connection management
+ * for Cloudflare Agents backend.
+ * 
+ * This hook:
+ * 1. Manages WebSocket connection state separately from chat state
+ * 2. Creates transport with proper callback wiring
+ * 3. Exposes both connection status and chat status
+ * 
+ * IMPORTANT: This hook must be called unconditionally to satisfy React's rules of hooks.
+ * It handles empty/placeholder values gracefully.
+ */
 
-interface ChatMessage {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  timestamp: number
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useChat } from '@ai-sdk/react'
+import { WebSocketChatTransport } from '@/lib/websocket-chat-transport'
+
+export interface UseWebSocketChatOptions {
+  /**
+   * Unique chat/conversation ID
+   */
+  chatId: string
+  
+  /**
+   * Agent ID for this chat session
+   */
+  agentId: string
+  
+  /**
+   * User ID for multi-tenant isolation
+   */
+  userId: string
+  
+  /**
+   * Organization ID for multi-tenant isolation
+   */
+  organizationId: string
+  
+  /**
+   * Optional model override
+   */
+  model?: string
+  
+  /**
+   * Called when a message finishes streaming
+   */
+  onFinish?: () => void
+  
+  /**
+   * Called on error
+   */
+  onError?: (error: Error) => void
+  
+  /**
+   * Tools requiring user confirmation before execution
+   */
+  toolsRequiringConfirmation?: string[]
+  
+  /**
+   * Called when artifact generation starts
+   */
+  onArtifactStart?: (data: { artifactId: string; title: string; kind: string }) => void
+  
+  /**
+   * Called with artifact content deltas
+   */
+  onArtifactDelta?: (data: { artifactId: string; delta: string }) => void
+  
+  /**
+   * Called when artifact generation completes
+   */
+  onArtifactComplete?: (data: { artifactId: string; title: string; kind: string; content: string }) => void
 }
 
-interface WebSocketChatState {
-  messages: ChatMessage[]
+export interface UseWebSocketChatReturn {
+  // Chat state from useChat
+  messages: ReturnType<typeof useChat>['messages']
+  status: ReturnType<typeof useChat>['status']
+  error: ReturnType<typeof useChat>['error']
+  sendMessage: ReturnType<typeof useChat>['sendMessage']
+  addToolOutput: ReturnType<typeof useChat>['addToolOutput']
+  setMessages: ReturnType<typeof useChat>['setMessages']
+  
+  // Connection state (separate from chat status)
   isConnected: boolean
-  isLoading: boolean
-  error: string | null
-  sessionId: string | null
-}
-
-interface WebSocketChatActions {
-  sendMessage: (content: string, messageId?: string) => void
-  changeModel: (model: string) => void
+  connectionState: 'disconnected' | 'connecting' | 'connected' | 'error'
+  
+  // Actions
   connect: () => void
   disconnect: () => void
-  retry: () => void
-}
-
-interface UseWebSocketChatProps {
-  model: string
-  enableFunctionCalling?: boolean
-  autoConnect?: boolean
+  clearHistory: () => void
 }
 
 export function useWebSocketChat({
+  chatId,
+  agentId,
+  userId,
+  organizationId,
   model,
-  enableFunctionCalling = false,
-  autoConnect = true
-}: UseWebSocketChatProps): [WebSocketChatState, WebSocketChatActions] {
-  const [state, setState] = useState<WebSocketChatState>({
-    messages: [],
-    isConnected: false,
-    isLoading: false,
-    error: null,
-    sessionId: null
+  onFinish,
+  onError,
+  toolsRequiringConfirmation = [],
+  onArtifactStart,
+  onArtifactDelta,
+  onArtifactComplete
+}: UseWebSocketChatOptions): UseWebSocketChatReturn {
+  
+  // Connection state - managed separately from useChat
+  const [connectionState, setConnectionState] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected')
+  
+  // Track if we have valid params to connect
+  const canConnect = Boolean(agentId && userId && chatId)
+  
+  // Create a stable transport key for memoization
+  // Only recreate transport when these ACTUAL values change (not boolean flags)
+  const transportKey = `${agentId || 'none'}-${userId || 'none'}-${organizationId || 'none'}-${model || 'default'}`
+  
+  // Use ref to track if we've logged the transport creation
+  const hasLoggedRef = useRef<string | null>(null)
+  
+  // Store artifact callbacks in refs to avoid transport recreation
+  const artifactCallbacksRef = useRef({
+    onArtifactStart,
+    onArtifactDelta,
+    onArtifactComplete
   })
-
-  const wsRef = useRef<WebSocket | null>(null)
-  const reconnectTimeoutRef = useRef<number | null>(null)
-  const reconnectAttemptsRef = useRef(0)
-  const maxReconnectAttempts = 3
-
-  const connect = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) return
-
-    setState(prev => ({ ...prev, isLoading: true, error: null }))
-
-    try {
-      // With Cloudflare Vite plugin, always use same origin
-      const wsUrl = new URL('/ws/ai-chat', window.location.origin)
-      wsUrl.protocol = wsUrl.protocol === 'https:' ? 'wss:' : 'ws:'
-      wsUrl.searchParams.set('model', model)
-
-      const ws = new WebSocket(wsUrl.toString())
-      wsRef.current = ws
-
-      ws.onopen = () => {
-        setState(prev => ({
-          ...prev,
-          isConnected: true,
-          isLoading: false,
-          error: null
-        }))
-        reconnectAttemptsRef.current = 0
-      }
-
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data)
-          
-          switch (data.type) {
-            case 'connection':
-              setState(prev => ({ ...prev, sessionId: data.sessionId }))
-              break
-              
-            case 'stream_start':
-              setState(prev => ({
-                ...prev,
-                messages: [...prev.messages, {
-                  id: data.messageId,
-                  role: 'assistant',
-                  content: '',
-                  timestamp: Date.now()
-                }]
-              }))
-              break
-
-            case 'stream_chunk':
-              setState(prev => ({
-                ...prev,
-                messages: prev.messages.map(msg =>
-                  msg.id === data.messageId
-                    ? { ...msg, content: msg.content + data.content }
-                    : msg
-                )
-              }))
-
-              if (data.done) {
-                setState(prev => ({ ...prev, isLoading: false }))
-              }
-              break
-
-            case 'function_calling_start':
-              setState(prev => ({ ...prev, isLoading: true }))
-              break
-
-            case 'function_calling_complete':
-              setState(prev => ({
-                ...prev,
-                isLoading: false,
-                messages: [...prev.messages, {
-                  id: data.messageId,
-                  role: 'assistant',
-                  content: data.content,
-                  timestamp: Date.now()
-                }]
-              }))
-              break
-
-            case 'error':
-            case 'stream_error':
-            case 'function_calling_error':
-              setState(prev => ({
-                ...prev,
-                isLoading: false,
-                error: data.message || data.error
-              }))
-              break
-
-            case 'pong':
-              // Handle ping/pong for connection health
-              break
-
-            case 'model_changed':
-              // Model successfully changed
-              break
-          }
-        } catch (err) {
-          console.error('Failed to parse WebSocket message:', err)
-        }
-      }
-
-      ws.onclose = () => {
-        setState(prev => ({ ...prev, isConnected: false, isLoading: false }))
-        
-        // Auto-reconnect logic
-        if (reconnectAttemptsRef.current < maxReconnectAttempts) {
-          const delay = Math.pow(2, reconnectAttemptsRef.current) * 1000 // Exponential backoff
-          reconnectTimeoutRef.current = setTimeout(() => {
-            reconnectAttemptsRef.current += 1
-            connect()
-          }, delay)
-        }
-      }
-
-      ws.onerror = () => {
-        setState(prev => ({
-          ...prev,
-          isConnected: false,
-          isLoading: false,
-          error: 'WebSocket connection error'
-        }))
-      }
-
-    } catch (err) {
-      setState(prev => ({
-        ...prev,
-        isLoading: false,
-        error: 'Failed to establish WebSocket connection'
-      }))
-    }
-  }, [model])
-
-  const disconnect = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current)
-      reconnectTimeoutRef.current = null
-    }
-    
-    if (wsRef.current) {
-      wsRef.current.close()
-      wsRef.current = null
-    }
-    
-    setState(prev => ({
-      ...prev,
-      isConnected: false,
-      isLoading: false
-    }))
-  }, [])
-
-  const sendMessage = useCallback((content: string, messageId?: string) => {
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      setState(prev => ({ ...prev, error: 'Not connected to WebSocket' }))
-      return
-    }
-
-    const id = messageId || crypto.randomUUID()
-    
-    // Add user message immediately
-    const userMessage: ChatMessage = {
-      id: `user_${id}`,
-      role: 'user',
-      content,
-      timestamp: Date.now()
-    }
-
-    setState(prev => ({
-      ...prev,
-      messages: [...prev.messages, userMessage],
-      isLoading: true,
-      error: null
-    }))
-
-    // Send to WebSocket
-    wsRef.current.send(JSON.stringify({
-      type: 'chat',
-      content,
-      messageId: id,
-      enableFunctionCalling
-    }))
-  }, [enableFunctionCalling])
-
-  const changeModel = useCallback((newModel: string) => {
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      setState(prev => ({ ...prev, error: 'Not connected to WebSocket' }))
-      return
-    }
-
-    wsRef.current.send(JSON.stringify({
-      type: 'change_model',
-      model: newModel
-    }))
-  }, [])
-
-  const retry = useCallback(() => {
-    reconnectAttemptsRef.current = 0
-    setState(prev => ({ ...prev, error: null }))
-    connect()
-  }, [connect])
-
-  // Auto-connect on mount
+  
+  // Update refs when callbacks change
   useEffect(() => {
-    if (autoConnect) {
-      connect()
+    artifactCallbacksRef.current = {
+      onArtifactStart,
+      onArtifactDelta,
+      onArtifactComplete
     }
+  }, [onArtifactStart, onArtifactDelta, onArtifactComplete])
 
-    return () => {
-      disconnect()
+  // Create transport instance - memoized to prevent recreation
+  // IMPORTANT: This must be stable across renders for useChat to work
+  // We use transportKey as the ONLY dependency to prevent unnecessary recreations
+  const transport = useMemo(() => {
+    // Log only once per unique key
+    if (hasLoggedRef.current !== transportKey) {
+      console.log('[useWebSocketChat] Creating transport with key:', transportKey)
+      hasLoggedRef.current = transportKey
     }
-  }, [autoConnect, connect, disconnect])
-
+    
+    return new WebSocketChatTransport({
+      agentId: agentId || 'placeholder',
+      userId: userId || 'placeholder',
+      organizationId: organizationId || 'placeholder',
+      model,
+      onOpen: () => {
+        console.log('[useWebSocketChat] WebSocket connected')
+        setConnectionState('connected')
+      },
+      onClose: () => {
+        console.log('[useWebSocketChat] WebSocket disconnected')
+        setConnectionState('disconnected')
+      },
+      onError: () => {
+        console.log('[useWebSocketChat] WebSocket error')
+        setConnectionState('error')
+      },
+      // Artifact callbacks - use refs to avoid transport recreation
+      onArtifactStart: (data) => artifactCallbacksRef.current.onArtifactStart?.(data),
+      onArtifactDelta: (data) => artifactCallbacksRef.current.onArtifactDelta?.(data),
+      onArtifactComplete: (data) => artifactCallbacksRef.current.onArtifactComplete?.(data),
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transportKey])
+  
+  // Use AI SDK useChat with our transport
+  // IMPORTANT: This hook must always be called, never conditionally
+  const {
+    messages,
+    status,
+    error,
+    sendMessage: sdkSendMessage,
+    addToolOutput,
+    setMessages
+  } = useChat({
+    id: chatId || 'placeholder',
+    transport,
+    onToolCall: async ({ toolCall }) => {
+      // Tools that need user confirmation - don't auto-execute
+      if (toolsRequiringConfirmation.includes(toolCall.toolName)) {
+        return undefined
+      }
+      return undefined
+    },
+    onFinish: () => {
+      onFinish?.()
+    },
+    onError: (err) => {
+      console.error('[useWebSocketChat] Chat error:', err)
+      onError?.(err)
+    }
+  })
+  
+  /**
+   * Connect to WebSocket (no-op, transport connects on send)
+   */
+  const connect = useCallback(() => {
+    if (!canConnect) return
+    setConnectionState('connecting')
+  }, [canConnect])
+  
+  /**
+   * Disconnect from WebSocket
+   */
+  const disconnect = useCallback(() => {
+    transport.disconnect()
+    setConnectionState('disconnected')
+  }, [transport])
+  
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current)
-      }
+      transport.disconnect()
     }
-  }, [])
-
-  // Send periodic pings to keep connection alive
-  useEffect(() => {
-    if (!state.isConnected) return
-
-    const pingInterval = setInterval(() => {
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({ type: 'ping' }))
-      }
-    }, 30000) // Ping every 30 seconds
-
-    return () => clearInterval(pingInterval)
-  }, [state.isConnected])
-
-  return [
-    state,
-    {
-      sendMessage,
-      changeModel,
-      connect,
-      disconnect,
-      retry
+  }, [transport])
+  
+  /**
+   * Wrapped sendMessage that handles connection state
+   */
+  const sendMessage = useCallback(async (message: Parameters<typeof sdkSendMessage>[0]) => {
+    if (!canConnect) {
+      console.warn('[useWebSocketChat] Cannot send - missing required params')
+      return
     }
-  ]
+    
+    // Update state to show we're connecting
+    if (connectionState === 'disconnected') {
+      setConnectionState('connecting')
+    }
+    
+    // Send the message - transport will handle connection
+    return sdkSendMessage(message)
+  }, [sdkSendMessage, canConnect, connectionState])
+  
+  /**
+   * Clear chat history
+   */
+  const clearHistory = useCallback(() => {
+    setMessages([])
+  }, [setMessages])
+  
+  // Derive isConnected boolean for convenience
+  const isConnected = connectionState === 'connected'
+  
+  return {
+    // Chat state
+    messages,
+    status,
+    error,
+    sendMessage,
+    addToolOutput,
+    setMessages,
+    
+    // Connection state
+    isConnected,
+    connectionState,
+    
+    // Actions
+    connect,
+    disconnect,
+    clearHistory
+  }
 }

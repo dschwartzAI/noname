@@ -4,7 +4,7 @@
 
 ## Executive Summary
 
-This repository is a **heavily customized LibreChat fork** that has evolved into a white-label SaaS platform for business AI tools. It's time to rebuild on a modern, scalable stack optimized for multi-tenancy and easy deployment.
+It's time to rebuild what was a **heavily customized LibreChat fork** that has evolved into a white-label SaaS platform for business AI tools. on a modern, scalable stack optimized for multi-tenancy and easy deployment.
 
 **All documents are cross-referenced** - follow the links to navigate between related sections.
 

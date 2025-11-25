@@ -1691,42 +1691,42 @@ app.get('/ws/user-sys/:userId', async (c) => {
 })
 
 // WebSocket endpoint for Chat Agent (Cloudflare Agents SDK)
-app.get('/api/agents/chat/websocket', async (c) => {
-  console.log('🔌 Chat Agent WebSocket endpoint hit:', c.req.path)
+// SDK pattern: /agents/:agentName/:roomName (SDK lowercases the agent name)
+app.all('/agents/:agent/:conversationId', async (c) => {
+  const { conversationId } = c.req.param()
+  const agentParam = c.req.param('agent')?.toLowerCase()
 
-  // Check for WebSocket upgrade header
-  const upgradeHeader = c.req.header('upgrade')
+  if (agentParam !== 'chat') {
+    return c.text('Not found', 404)
+  }
 
-  if (upgradeHeader !== 'websocket') {
-    console.log('❌ Missing websocket upgrade header')
+  const upgrade = c.req.header('upgrade')
+
+  if (upgrade !== 'websocket') {
     return c.text('Expected Upgrade: websocket', 426)
   }
 
   if (!c.env.CHAT_AGENT) {
-    console.error('❌ CHAT_AGENT binding not available - check wrangler.toml configuration')
     return c.text('Chat Agent service unavailable', 503)
   }
 
   try {
-    // Extract context from query params (set by frontend)
     const url = new URL(c.req.url)
-    const conversationId = url.searchParams.get('conversationId')
+    const userId = url.searchParams.get('userId')
+    const organizationId = url.searchParams.get('organizationId')
     const agentId = url.searchParams.get('agentId')
 
-    console.log('🎯 Chat Agent context:', { conversationId, agentId })
+    console.log('🎯 Chat Agent context:', { conversationId, userId, organizationId, agentId })
 
-    // Use conversationId as the Durable Object ID, or generate a new one
-    const doId = conversationId
-      ? c.env.CHAT_AGENT.idFromString(conversationId)
-      : c.env.CHAT_AGENT.newUniqueId()
-
+    const doId = c.env.CHAT_AGENT.idFromName(conversationId)
     const stub = c.env.CHAT_AGENT.get(doId)
 
-    console.log('✅ Forwarding to Chat Agent Durable Object...')
+    const headers = new Headers(c.req.raw.headers)
+    headers.set('X-PartyKit-Namespace', 'CHAT_AGENT') // binding name
+    headers.set('X-PartyKit-Room', conversationId)
 
-    // Forward the request to the Chat Agent Durable Object
-    // The Chat Agent's fetch method will handle WebSocket upgrade
-    return stub.fetch(c.req.raw)
+    const modifiedRequest = new Request(c.req.raw, { headers })
+    return stub.fetch(modifiedRequest)
   } catch (error) {
     console.error('❌ Chat Agent WebSocket error:', error)
     return c.text('Chat Agent connection failed', 500)

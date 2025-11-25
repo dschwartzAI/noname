@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useChat } from '@ai-sdk/react'
-import { useEffect, useState, useRef, useMemo } from 'react'
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Bot, Loader2 } from 'lucide-react'
 import { PaperclipIcon } from 'lucide-react'
@@ -9,6 +9,8 @@ import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { useInvalidateConversations } from '@/hooks/use-conversations'
 import { getAgentIconSrc, getAgentEmoji } from '@/features/ai-chat/utils/get-agent-icon'
 import { nanoid } from 'nanoid'
+import { WebSocketChatTransport } from '@/lib/websocket-chat-transport'
+import { useAuth } from '@/stores/auth-simple'
 import {
   Conversation,
   ConversationContent,
@@ -52,6 +54,7 @@ interface ConversationData {
     title: string
     model: string
     toolId: string | null
+    organizationId: string
     createdAt: string
     updatedAt: string
   }
@@ -228,45 +231,36 @@ function ConversationChat({
     language?: string
   } | null>(null)
 
+  // Get user from auth for WebSocket transport
+  const { user } = useAuth()
+  // Get agentId from conversation's toolId (the agent used for this conversation)
+  const agentId = data.conversation.toolId || data.agentId || ''
+  const organizationId = data.conversation.organizationId || ''
+
+  // WebSocket connection state
+  const [connectionState, setConnectionState] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected')
+
+  // Create WebSocket transport (same as index.tsx)
+  const transport = useMemo(() => {
+    if (!user?.id) return null
+    
+    return new WebSocketChatTransport({
+      agentId,
+      userId: user.id,
+      organizationId,
+      model: selectedModel,
+      onOpen: () => setConnectionState('connected'),
+      onClose: () => setConnectionState('disconnected'),
+      onError: () => setConnectionState('error'),
+      onConnecting: () => setConnectionState('connecting'),
+    })
+  }, [agentId, user?.id, organizationId, selectedModel])
+
   const { messages, setMessages, sendMessage, status, error } = useChat({
     id: conversationId, // Pass conversationId for persistence
-    api: '/api/v1/chat',
+    transport: transport || undefined, // Use WebSocket transport
     messages: initialMessages, // Load existing messages from database (explicit prop name)
     experimental_throttle: 100, // Match Vercel AI Chatbot
-
-    // CRITICAL: Ensure all messages have valid content or parts for Zod validation
-    body: ({ messages }) => {
-      const cleanMessages = messages.map(msg => {
-        // If message has content string, use it
-        if (typeof msg.content === 'string' && msg.content.length > 0) {
-          return {
-            role: msg.role,
-            content: msg.content,
-          }
-        }
-
-        // If message has parts array with items, use it
-        if (Array.isArray(msg.parts) && msg.parts.length > 0) {
-          return {
-            role: msg.role,
-            parts: msg.parts,
-          }
-        }
-
-        // Fallback: provide empty text content to satisfy validation
-        return {
-          role: msg.role,
-          content: '',
-        }
-      })
-
-      return {
-        conversationId,
-        messages: cleanMessages,
-        agentId: data.agentId || undefined,
-        model: selectedModel,
-      }
-    },
 
     // Handle custom data stream parts for artifact streaming
     experimental_onData: (data) => {
@@ -321,10 +315,11 @@ function ConversationChat({
         setStreamingArtifact(null)
       }
 
-      // Refresh sidebar conversation list
+      // Refresh sidebar conversation list only
+      // NOTE: Do NOT invalidate this conversation's query here - it causes a "flash" 
+      // where the UI resyncs from DB and shows duplicate messages momentarily
+      // The AI SDK already has the correct state from streaming
       invalidateConversations()
-      // Also refresh THIS conversation's data so cache stays fresh
-      queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] })
     },
     onError: (error) => {
       console.error('❌ Chat error:', error)
@@ -332,41 +327,44 @@ function ConversationChat({
     },
   })
 
-  // Sync server messages with client state when navigating to a different conversation
-  // AI SDK v5 pattern: setMessages updates state without remounting component
+  // Sync server messages with client state ONLY on initial load or when switching conversations
+  // CRITICAL: Do NOT sync while streaming or after finishing - this causes the "flash" issue
+  // The AI SDK manages messages during active chat, we only sync from DB on navigation
   useEffect(() => {
-    // Always sync messages when conversationId changes or when data.messages is available
-    // This ensures messages load on initial page load and when switching conversations
-    if (data.messages.length > 0) {
-      // Check if we need to sync: different conversation OR messages are empty/different
-      const isDifferentConversation = prevConversationIdRef.current !== conversationId
-      const hasNoMessages = messages.length === 0
-      const messagesDontMatch = messages.length > 0 && 
-                                (messages.length !== data.messages.length || 
-                                 messages[0]?.id !== data.messages[0]?.id)
+    // Only sync when conversation changes (navigation) or on initial load (no messages yet)
+    const isDifferentConversation = prevConversationIdRef.current !== conversationId
+    const isInitialLoad = messages.length === 0 && data.messages.length > 0
+    
+    // Don't sync if we're streaming or just finished - let AI SDK manage the state
+    const isActiveChat = status === 'streaming' || status === 'submitted'
+    
+    if ((isDifferentConversation || isInitialLoad) && !isActiveChat) {
+      // CRITICAL: Only sync text content, NO tool-call parts
+      // Tool calls are already in the database and will be parsed by messageArtifacts useMemo
+      // Re-adding tool-call parts causes AI SDK validation errors
+      const syncedMessages = data.messages.map((msg) => {
+        const content = msg.content || ''
+
+        return {
+          id: msg.id,
+          role: msg.role as 'user' | 'assistant' | 'system',
+          ...(content
+            ? { content }
+            : { parts: [{ type: 'text', text: '' }] }
+          ),
+        }
+      })
+
+      console.log('🔄 Syncing messages from DB:', { 
+        isDifferentConversation, 
+        isInitialLoad, 
+        messageCount: syncedMessages.length 
+      })
       
-      if (isDifferentConversation || hasNoMessages || messagesDontMatch) {
-        // CRITICAL: Only sync text content, NO tool-call parts
-        // Tool calls are already in the database and will be parsed by messageArtifacts useMemo
-        // Re-adding tool-call parts causes AI SDK validation errors
-        const syncedMessages = data.messages.map((msg) => {
-          const content = msg.content || ''
-
-          return {
-            id: msg.id,
-            role: msg.role as 'user' | 'assistant' | 'system',
-            ...(content
-              ? { content }
-              : { parts: [{ type: 'text', text: '' }] }
-            ),
-          }
-        })
-
-        setMessages(syncedMessages)
-        prevConversationIdRef.current = conversationId
-      }
+      setMessages(syncedMessages)
+      prevConversationIdRef.current = conversationId
     }
-  }, [conversationId, data.messages, setMessages, messages])
+  }, [conversationId, data.messages, setMessages, messages.length, status])
 
   // Parse artifacts from DATABASE messages (not AI SDK messages)
   // This is critical because AI SDK messages don't have tool-call parts

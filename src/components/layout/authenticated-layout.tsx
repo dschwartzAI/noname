@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Outlet, useParams, useSearch } from '@tanstack/react-router'
 import { Wrench } from 'lucide-react'
 import { getCookie } from '@/lib/cookies'
@@ -39,6 +39,9 @@ import { useConversations } from '@/hooks/use-conversations'
 import { useAgents } from '@/hooks/use-agents'
 import { Skeleton } from '@/components/ui/skeleton'
 import { nanoid } from 'nanoid'
+
+// Generate stable IDs for agents to prevent URL regeneration on every render
+const agentNewChatIds = new Map<string, string>()
 
 type AuthenticatedLayoutProps = {
   children?: React.ReactNode
@@ -82,12 +85,20 @@ export function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
         if (item.title === 'Tools' && agents && agents.length > 0) {
           return {
             ...item,
-            items: agents.map((agent) => ({
-              title: agent.name,
-              url: `/ai-chat?new=${nanoid()}&agentId=${agent.id}`,
-              avatar: agent.avatar, // Pass avatar data for custom rendering
-              description: agent.description, // Pass description for tooltip
-            })),
+            items: agents.map((agent) => {
+              // Get or create a stable ID for this agent's "new chat" link
+              // This prevents URL regeneration on every render
+              if (!agentNewChatIds.has(agent.id)) {
+                agentNewChatIds.set(agent.id, nanoid())
+              }
+              const newChatId = agentNewChatIds.get(agent.id)!
+              return {
+                title: agent.name,
+                url: `/ai-chat?new=${newChatId}&agentId=${agent.id}`,
+                avatar: agent.avatar, // Pass avatar data for custom rendering
+                description: agent.description, // Pass description for tooltip
+              }
+            }),
           }
         }
         return item

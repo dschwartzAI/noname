@@ -264,6 +264,7 @@ chatApp.get('/:conversationId', zValidator('param', getConversationSchema), asyn
         title: conversation.title,
         model: conversation.model,
         toolId: conversation.toolId, // Keep for backward compatibility
+        organizationId: conversation.organizationId, // Include for WebSocket transport
         // Include agent info if available
         agent: conversation.agent ? {
           id: conversation.agent.id,

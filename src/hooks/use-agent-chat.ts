@@ -124,6 +124,7 @@ export function useAgentChatSession({
 
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectTimeoutRef = useRef<number | null>(null)
+  const reconnectAttemptRef = useRef<number>(0)
 
   /**
    * Connect to Chat Agent via WebSocket
@@ -151,6 +152,7 @@ export function useAgentChatSession({
 
       ws.onopen = () => {
         console.log('🔌 Connected to Chat Agent')
+        reconnectAttemptRef.current = 0 // Reset backoff on successful connection
         setState(prev => ({
           ...prev,
           isConnected: true,
@@ -216,11 +218,16 @@ export function useAgentChatSession({
         console.log('🔌 Disconnected from Chat Agent')
         setState(prev => ({ ...prev, isConnected: false, isLoading: false }))
 
-        // Auto-reconnect after 3 seconds
+        // Auto-reconnect with exponential backoff
         if (autoConnect) {
+          const attempt = reconnectAttemptRef.current
+          const delay = Math.min(1000 * Math.pow(2, attempt), 30000) // Max 30s
+          reconnectAttemptRef.current += 1
+
+          console.log(`🔄 Reconnecting in ${delay}ms (attempt ${attempt + 1})`)
           reconnectTimeoutRef.current = window.setTimeout(() => {
             connect()
-          }, 3000)
+          }, delay)
         }
       }
 
