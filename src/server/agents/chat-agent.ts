@@ -845,16 +845,34 @@ export class Chat extends AIChatAgent<Env> {
           .map(p => (p as any).text)
           .join('\n') || '';
 
-        // Extract tool calls and results
-        // AI SDK uses 'args' for tool invocations, we store as 'input' for Claude compatibility
-        const toolCalls = msg.parts
-          ?.filter(p => p.type === 'tool-invocation')
-          .map(p => ({
-            toolName: (p as any).toolName,
-            toolCallId: (p as any).toolCallId,
-            input: (p as any).args || (p as any).input || {}, // Use args (AI SDK) or input, never undefined
-            output: (p as any).result || (p as any).output
-          })) || [];
+        // Extract tool calls and results from message parts
+        // AI SDK v5 uses tool-{toolName} type parts with toolCallId, input, and output
+        const toolParts = msg.parts?.filter((p: any) => 
+          p.type?.startsWith('tool-') && p.type !== 'tool-result'
+        ) || [];
+        
+        // Format for database schema: { id, name, arguments }
+        const toolCalls = toolParts.map((p: any) => ({
+          id: p.toolCallId,
+          name: p.toolName || p.type?.replace('tool-', ''), // Extract tool name from type
+          arguments: p.input || p.args || {},
+        }));
+        
+        // Format tool results for database schema: { toolCallId, result }
+        const toolResults = toolParts
+          .filter((p: any) => p.output !== undefined || p.result !== undefined)
+          .map((p: any) => ({
+            toolCallId: p.toolCallId,
+            result: p.output || p.result,
+          }));
+        
+        console.log('💾 [Chat Agent] Saving message:', {
+          messageId: msg.id?.slice(0, 20),
+          role: msg.role,
+          toolCallsCount: toolCalls.length,
+          toolResultsCount: toolResults.length,
+          toolCalls: toolCalls.map(tc => ({ id: tc.id?.slice(0, 20), name: tc.name })),
+        });
 
         // Save message (upsert by id)
         await db.insert(authSchema.message).values({
@@ -864,6 +882,7 @@ export class Chat extends AIChatAgent<Env> {
           content: textContent,
           role: msg.role,
           toolCalls: toolCalls.length > 0 ? toolCalls : null,
+          toolResults: toolResults.length > 0 ? toolResults : null,
           createdAt: msg.metadata?.createdAt
             ? new Date(msg.metadata.createdAt as any)
             : new Date()
@@ -871,7 +890,8 @@ export class Chat extends AIChatAgent<Env> {
           target: authSchema.message.id,
           set: {
             content: textContent,
-            toolCalls: toolCalls.length > 0 ? toolCalls : null
+            toolCalls: toolCalls.length > 0 ? toolCalls : null,
+            toolResults: toolResults.length > 0 ? toolResults : null,
           }
         });
       }
