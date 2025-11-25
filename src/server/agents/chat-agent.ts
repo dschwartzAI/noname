@@ -459,7 +459,8 @@ export class Chat extends AIChatAgent<Env> {
       const stream = createUIMessageStream({
         execute: async ({ writer }) => {
           // Clean up incomplete tool calls to prevent API errors
-          const cleanedMessages = cleanupMessages(self.messages);
+          // Pass modelName to handle provider-specific formatting (Claude vs xAI/OpenAI)
+          const cleanedMessages = cleanupMessages(self.messages, modelName);
 
           // Process any pending tool calls from previous messages
           // This handles human-in-the-loop confirmations for tools
@@ -603,15 +604,24 @@ export class Chat extends AIChatAgent<Env> {
                 content: Array.isArray(m.content) 
                   ? m.content.map((c: any) => {
                       if (c.type === 'tool-call') {
-                        return { type: c.type, toolName: c.toolName, toolCallId: c.toolCallId, hasArgs: !!c.args }
+                        // AI SDK model messages use 'input' not 'args'
+                        return { 
+                          type: c.type, 
+                          toolName: c.toolName, 
+                          toolCallId: c.toolCallId, 
+                          hasInput: c.input !== undefined,
+                          inputType: typeof c.input,
+                          inputValue: JSON.stringify(c.input)?.slice(0, 200),
+                          inputIsEmpty: c.input && typeof c.input === 'object' && Object.keys(c.input).length === 0
+                        }
                       }
                       if (c.type === 'tool-result') {
                         return { 
                           type: c.type, 
                           toolCallId: c.toolCallId, 
                           hasOutput: c.output !== undefined,
-                          outputType: c.output?.type,
-                          outputValue: JSON.stringify(c.output?.value)?.slice(0, 200)
+                          outputType: typeof c.output,
+                          outputValue: JSON.stringify(c.output)?.slice(0, 200)
                         }
                       }
                       if (c.type === 'text') {
@@ -646,10 +656,26 @@ export class Chat extends AIChatAgent<Env> {
           ) || lastUserMessage.length < 15; // Very short messages are likely conversational
           
           // Also check if this is a follow-up after an artifact was just created
+          // Check both processedMessages and original this.messages for tool parts
           const hasRecentArtifact = processedMessages.some((m: any) => 
             m.role === 'assistant' && 
-            m.parts?.some((p: any) => p.type?.startsWith('tool-') && p.output)
+            m.parts?.some((p: any) => {
+              const isToolPart = p.type?.startsWith('tool-') || p.type === 'tool-invocation';
+              const hasOutput = p.output !== undefined || p.result !== undefined;
+              return isToolPart && hasOutput;
+            })
           );
+          
+          console.log('🔍 [Chat Agent] Tool disable check:', {
+            userMessage: lastUserMessage,
+            isSimpleMessage,
+            hasRecentArtifact,
+            messageCount: processedMessages.length,
+            assistantMessages: processedMessages.filter((m: any) => m.role === 'assistant').length,
+            toolPartsFound: processedMessages.flatMap((m: any) => 
+              (m.parts || []).filter((p: any) => p.type?.startsWith('tool-') || p.type === 'tool-invocation')
+            ).length
+          });
           
           const shouldDisableTools = isSimpleMessage && hasRecentArtifact;
           
@@ -792,28 +818,67 @@ export class Chat extends AIChatAgent<Env> {
         messageCount: this.messages.length,
         agentId: this.agentId,
         hasAssistantResponse: !!assistantResponse,
-        eventKeys: Object.keys(event || {})
+        eventKeys: Object.keys(event || {}),
+        hasToolCalls: !!(event as any).toolCalls?.length,
+        toolCallsCount: (event as any).toolCalls?.length || 0,
+        hasText: !!(event as any).text,
+        // Debug: Show full toolCalls structure
+        toolCallsDebug: JSON.stringify((event as any).toolCalls?.slice(0, 2), null, 2)?.slice(0, 500),
+        // Debug: Check response.messages
+        hasResponseMessages: !!(event as any).response?.messages?.length,
+        responseMessagesCount: (event as any).response?.messages?.length || 0
       });
       
-      // If we have an assistant response from the event, create a message for it
-      // The event.text contains the full text response
-      if (event.text && event.text.trim()) {
+      // Build assistant message parts from the event
+      const assistantParts: any[] = [];
+      
+      // Add text content if present
+      if ((event as any).text && (event as any).text.trim()) {
+        assistantParts.push({ type: 'text' as const, text: (event as any).text });
+      }
+      
+      // Add tool calls from the event
+      // The event.toolCalls contains tool calls made during this response
+      const eventToolCalls = (event as any).toolCalls || [];
+      for (const tc of eventToolCalls) {
+        // Format as tool-{toolName} part for UI rendering
+        assistantParts.push({
+          type: `tool-${tc.toolName}` as const,
+          toolCallId: tc.toolCallId,
+          toolName: tc.toolName,
+          input: tc.args || {},
+          output: tc.result, // Tool result if available
+          state: tc.result !== undefined ? 'output-available' : 'input-available'
+        });
+        
+        console.log('📦 [onFinish] Adding tool call to assistant message:', {
+          toolName: tc.toolName,
+          toolCallId: tc.toolCallId,
+          hasArgs: !!tc.args,
+          hasResult: tc.result !== undefined
+        });
+      }
+      
+      // Only add assistant message if we have parts
+      if (assistantParts.length > 0) {
         const assistantMessage = {
           id: crypto.randomUUID(),
           role: 'assistant' as const,
-          parts: [{ type: 'text' as const, text: event.text }],
+          parts: assistantParts,
           metadata: { createdAt: new Date().toISOString() }
         };
         
         // Check if we already have this message (avoid duplicates)
         const hasAssistantMsg = this.messages.some(m => 
           m.role === 'assistant' && 
-          m.parts?.some(p => p.type === 'text' && (p as any).text === event.text)
+          m.parts?.some(p => p.type === 'text' && (p as any).text === (event as any).text)
         );
         
         if (!hasAssistantMsg) {
           console.log('Adding assistant message to save queue', {
-            textLength: event.text.length
+            textLength: (event as any).text?.length || 0,
+            toolCallsCount: eventToolCalls.length,
+            partsCount: assistantParts.length
           });
           // Add to messages array for saving
           this.messages.push(assistantMessage as any);
@@ -850,7 +915,7 @@ export class Chat extends AIChatAgent<Env> {
       // For now, we'll just ensure all messages are saved (idempotent)
       
       // CRITICAL DEBUG: Log what we're about to save
-      console.log('💾 [Chat Agent] Messages to save:', {
+      console.log('💾 [Chat Agent] Messages to save:', JSON.stringify({
         count: this.messages.length,
         messages: this.messages.map((m: any, idx: number) => ({
           idx,
@@ -858,15 +923,19 @@ export class Chat extends AIChatAgent<Env> {
           role: m.role,
           partsCount: m.parts?.length || 0,
           partsTypes: m.parts?.map((p: any) => p.type),
-          toolInvocations: m.parts?.filter((p: any) => p.type === 'tool-invocation').map((p: any) => ({
-            toolName: p.toolName,
+          // Look for tool-{toolName} format parts (AI SDK v5)
+          toolParts: m.parts?.filter((p: any) => p.type?.startsWith('tool-')).map((p: any) => ({
+            type: p.type,
+            toolName: p.toolName || p.type?.replace('tool-', ''),
             toolCallId: p.toolCallId?.slice(0, 20),
+            hasInput: p.input !== undefined,
             hasArgs: p.args !== undefined,
-            argsKeys: p.args ? Object.keys(p.args) : [],
-            hasResult: p.result !== undefined
+            hasOutput: p.output !== undefined,
+            hasResult: p.result !== undefined,
+            state: p.state
           }))
         }))
-      });
+      }, null, 2));
       
       for (const msg of this.messages) {
         // Extract text content

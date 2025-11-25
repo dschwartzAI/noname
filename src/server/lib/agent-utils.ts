@@ -34,8 +34,13 @@ export async function processToolCalls({
  * Removes messages with incomplete or malformed tool data
  * Also ensures all messages have non-empty content (API requirement)
  * Fixes tool invocations that are missing required fields (args/input)
+ * @param modelName - Optional model name to determine provider-specific formatting
+ *                    For Claude/Anthropic: sets providerExecuted=true to embed tool_result in assistant message
+ *                    For xAI/OpenAI: leaves providerExecuted unset so tool_result goes in separate 'tool' message
  */
-export function cleanupMessages(messages: UIMessage[]): UIMessage[] {
+export function cleanupMessages(messages: UIMessage[], modelName?: string): UIMessage[] {
+  // Determine if we're using Claude/Anthropic (requires tool_result immediately after tool_use)
+  const isAnthropicModel = modelName?.startsWith('claude-') ?? false
   console.log('🧹 [cleanupMessages] Starting cleanup with', messages.length, 'messages');
   
   // DETAILED: Log all message parts before cleanup
@@ -140,15 +145,37 @@ export function cleanupMessages(messages: UIMessage[]): UIMessage[] {
           const isToolPart = partType && partType.startsWith('tool-')
           
           if (isToolPart) {
-            // Ensure input is never undefined (Claude API requires 'input' field)
-            const fixedInput = p.input ?? p.args ?? {}
+            // Ensure input is never undefined or empty (APIs reject empty tool arguments)
+            let fixedInput = p.input ?? p.args ?? {}
+            
+            // If input is empty but we have output, try to reconstruct input from output
+            // This handles cases where tool arguments weren't properly captured during streaming
+            const inputIsEmpty = typeof fixedInput === 'object' && Object.keys(fixedInput).length === 0
+            if (inputIsEmpty && p.output) {
+              // For createDocument, the output contains title, kind, description
+              // We can use these as the reconstructed input
+              const output = typeof p.output === 'string' ? JSON.parse(p.output) : p.output
+              if (output.title || output.kind) {
+                fixedInput = {
+                  title: output.title || 'Untitled',
+                  kind: output.kind || 'document',
+                  description: output.description || ''
+                }
+                console.log('🔄 [cleanupMessages] Reconstructed input from output:', {
+                  type: partType,
+                  toolCallId: p.toolCallId,
+                  reconstructedInput: JSON.stringify(fixedInput).slice(0, 100)
+                })
+              }
+            }
             
             // CRITICAL FIX FOR CLAUDE: Set providerExecuted: true on tool parts with output
             // This causes convertToModelMessages to include tool_result in the assistant message
             // instead of creating a separate 'tool' role message.
             // Claude requires tool_result immediately after tool_use in the SAME message turn.
+            // NOTE: Only do this for Anthropic models - xAI/OpenAI expect tool results in separate messages
             const hasOutput = p.output !== undefined || p.state === 'output-available'
-            const shouldSetProviderExecuted = hasOutput && p.providerExecuted !== true
+            const shouldSetProviderExecuted = isAnthropicModel && hasOutput && p.providerExecuted !== true
             
             console.log('🔧 [cleanupMessages] Fixing tool part:', {
               type: partType,
@@ -158,14 +185,15 @@ export function cleanupMessages(messages: UIMessage[]): UIMessage[] {
               fixedInput: JSON.stringify(fixedInput).slice(0, 100),
               state: p.state,
               hasOutput,
+              isAnthropicModel,
               settingProviderExecuted: shouldSetProviderExecuted
             })
             return {
               ...p,
               input: fixedInput, // AI SDK expects 'input', not 'args'
               toolCallId: p.toolCallId || `tc-${Date.now()}`,
-              // Set providerExecuted: true so tool_result is included in assistant message
-              providerExecuted: shouldSetProviderExecuted ? true : p.providerExecuted
+              // Set providerExecuted: true so tool_result is included in assistant message (Claude only)
+              ...(shouldSetProviderExecuted && { providerExecuted: true })
             }
           }
           
@@ -278,6 +306,12 @@ export function cleanupMessages(messages: UIMessage[]): UIMessage[] {
           // Tool result parts are valid
           if (p.type === 'tool-result') {
             return true
+          }
+          // AI SDK tool parts with 'tool-{toolName}' format (e.g., 'tool-createDocument')
+          // These need toolCallId and either input or output
+          const partType = p.type as string
+          if (partType && partType.startsWith('tool-')) {
+            return p.toolCallId && (p.input !== undefined || p.output !== undefined)
           }
           return false
         })
