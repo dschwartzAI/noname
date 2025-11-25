@@ -87,28 +87,42 @@ check this context first. If the information isn't here, use the queryMemories t
     // Append tool usage guidelines
     systemPrompt += `
 
-## Available Tools
+## Tool Usage Guidelines
+
+**CRITICAL: Only use tools when explicitly needed. For simple conversational responses, DO NOT use any tools.**
+
+### When NOT to use tools:
+- Simple acknowledgments like "thanks", "ok", "got it", "sounds good"
+- Follow-up questions or clarifications
+- Casual conversation or small talk
+- Asking for feedback or opinions
+- Any response that doesn't require creating content or searching for information
+
+Just respond naturally in the chat without calling any tools.
 
 ### queryMemories
 Use this tool to search the user's stored memories and personal information.
-- ALWAYS use this when asked about personal details (birthday, preferences, goals, etc.)
+- Use when asked about personal details (birthday, preferences, goals, etc.)
 - Use when asked about business information, strategies, or past decisions
 - Use when the user refers to "my" anything (my birthday, my business, my goals)
 - The user has stored memories that may contain the answer
 
 ### createDocument
-**ALWAYS use this tool when asked to write, create, or generate any substantial content.**
+Use this tool ONLY when asked to write, create, or generate substantial NEW content.
 This tool creates artifacts that open in a side panel for the user to view, edit, and save.
 
-MANDATORY: Use createDocument for:
+Use createDocument for:
 - "Write an essay/article/blog" → createDocument (kind: "document")
 - "Help me write..." → createDocument (kind: "document")
 - "Create code/script/function" → createDocument (kind: "code")
 - "Make an HTML page" → createDocument (kind: "html")
 - "Build a React component" → createDocument (kind: "react")
 
-DO NOT write long content directly in chat. Instead, use createDocument to generate it in the artifact panel.
-The user expects artifacts to appear in the side panel, not inline in the chat.
+DO NOT use createDocument for:
+- Acknowledging that you created something ("thanks", "looks good", etc.)
+- Discussing or explaining content you already created
+- Simple follow-up messages
+- Modifying existing content (unless explicitly asked to regenerate)
 
 ### searchKnowledgeBase (if available)
 Use this to search the organization's knowledge base for relevant information.
