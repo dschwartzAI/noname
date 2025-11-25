@@ -630,6 +630,36 @@ export class Chat extends AIChatAgent<Env> {
             throw conversionError;
           }
 
+          // Detect simple conversational messages that shouldn't trigger tool calls
+          // This prevents models like Grok from being overly aggressive with tools
+          const simpleAcknowledgments = [
+            'thanks', 'thank you', 'thx', 'ty', 'ok', 'okay', 'got it', 'sounds good',
+            'cool', 'great', 'awesome', 'perfect', 'nice', 'good', 'yes', 'no', 'sure',
+            'alright', 'right', 'yep', 'yup', 'nope', 'fine', 'k', 'kk', 'lol', 'haha',
+            'interesting', 'i see', 'understood', 'makes sense', 'noted'
+          ];
+          const lastUserMessage = userQuery.toLowerCase().trim();
+          const isSimpleMessage = simpleAcknowledgments.some(ack => 
+            lastUserMessage === ack || 
+            lastUserMessage === ack + '!' || 
+            lastUserMessage === ack + '.'
+          ) || lastUserMessage.length < 15; // Very short messages are likely conversational
+          
+          // Also check if this is a follow-up after an artifact was just created
+          const hasRecentArtifact = processedMessages.some((m: any) => 
+            m.role === 'assistant' && 
+            m.parts?.some((p: any) => p.type?.startsWith('tool-') && p.output)
+          );
+          
+          const shouldDisableTools = isSimpleMessage && hasRecentArtifact;
+          
+          if (shouldDisableTools) {
+            console.log('🚫 [Chat Agent] Disabling tools for simple follow-up message:', {
+              userMessage: lastUserMessage,
+              hasRecentArtifact
+            });
+          }
+
           // Stream text with tools
           let result;
           try {
@@ -637,7 +667,7 @@ export class Chat extends AIChatAgent<Env> {
               system: agentContext.systemPrompt,
               messages: modelMessages,
               model,
-              tools: allTools,
+              tools: shouldDisableTools ? {} : allTools, // Disable tools for simple messages
               // Type boundary: streamText expects specific tool types, but base class uses ToolSet
               // This is safe because our tools satisfy ToolSet interface
               onFinish: wrappedOnFinish as unknown as StreamTextOnFinishCallback<
